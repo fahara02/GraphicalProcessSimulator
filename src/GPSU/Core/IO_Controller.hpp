@@ -44,6 +44,7 @@ private:
     setupGPIOS();
     init_GPIOS();
     resetPoll();
+    configASSERT(autopoll(true));
     configASSERT(setPoll());
     if (_initialised_adc) {
       configASSERT(init_ADC());
@@ -245,6 +246,8 @@ public:
     gpio_set_level(pin, level);
   }
   void updateData() {
+    Serial.println("........");
+    Serial.printf(" updatting data in:%llu ms \n", esp_timer_get_time());
     updateInputs();
     updateAnalogInputs();
   }

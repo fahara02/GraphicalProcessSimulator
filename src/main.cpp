@@ -55,8 +55,8 @@ int percent = 0;
 void setup() {
   Serial.begin(9600);
   auto &controller = GPSU_CORE::IO_Controller::getInstance(
-      GPSU_CORE::Process::TRAFFIC_LIGHT, 1000, 0x48);
-  controller.autopoll(true);
+      GPSU_CORE::Process::TRAFFIC_LIGHT, 500, 0x48);
+
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
 

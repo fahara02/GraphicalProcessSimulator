@@ -5,8 +5,8 @@
 namespace GPSU_CORE {
 #define POOL_POLLER_NAME "PZP_Poll"
 #define POLLER_NAME "GPIO_POLLER"
-constexpr uint16_t I2C_TIMEOUT = 300;
-constexpr uint16_t GPIO_REFRESH_PERIOD = 1000;
+constexpr uint16_t I2C_TIMEOUT = 200;
+constexpr uint16_t GPIO_REFRESH_PERIOD = 800;
 constexpr uint16_t POLLER_PERIOD = GPIO_REFRESH_PERIOD;
 constexpr uint16_t POLLER_MIN_PERIOD = 2 * I2C_TIMEOUT;
 constexpr uint16_t TIMER_CMD_TIMEOUT = 100;
