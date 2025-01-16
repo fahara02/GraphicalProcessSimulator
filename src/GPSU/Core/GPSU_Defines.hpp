@@ -3,7 +3,17 @@
 #include "stdint.h"
 #include <driver/gpio.h>
 namespace GPSU_CORE {
+#define POOL_POLLER_NAME "PZP_Poll"
+#define POLLER_NAME "GPIO_POLLER"
+constexpr uint16_t I2C_TIMEOUT = 100;
 
+constexpr uint16_t GPIO_REFRESH_PERIOD = 100;
+constexpr uint16_t POLLER_PERIOD = GPIO_REFRESH_PERIOD;
+constexpr uint16_t POLLER_MIN_PERIOD = 2 * I2C_TIMEOUT;
+constexpr uint16_t TIMER_CMD_TIMEOUT = 100;
+constexpr size_t MAX_INPUTS = 4;
+constexpr size_t MAX_AI_CHANNEL = 2;
+constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x48;
 struct GPIO {
   struct DI {
     static constexpr gpio_num_t DI_PIN_0 = gpio_num_t::GPIO_NUM_2;

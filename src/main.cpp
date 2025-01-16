@@ -10,7 +10,6 @@
 #include <WiFiManager.h>
 #include <WifiClient.h>
 
-
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite img = TFT_eSprite(&tft);
 
@@ -54,6 +53,8 @@ int percent = 0;
 #define temperature_pin 15
 
 void setup() {
+  auto &controller = GPSU_CORE::IO_Controller::getInstance(
+      GPSU_CORE::Process::TRAFFIC_LIGHT, 100, 0x48);
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
 
@@ -86,15 +87,15 @@ void setup() {
       a = 0;
   }
 
-  ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
-  ledcAttachPin(TFT_BL, pwmLedChannelTFT);
-  ledcWrite(pwmLedChannelTFT, 100);
+  // ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
+  // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
+  // ledcWrite(pwmLedChannelTFT, 100);
 }
 
 void loop() {
-  rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
-  fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
-  tempA = map(analogRead(temperature_pin), 0, 3867, 0, 80);
+  // rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
+  // fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
+  // tempA = map(analogRead(temperature_pin), 0, 3867, 0, 80);
   // angle++;
   // if(angle==266)
 
@@ -104,9 +105,9 @@ void loop() {
   // angle3++;
   // if(angle3==266)
 
-  angle = rpmA;
-  angle2 = fuelA;
-  angle3 = tempA + 27;
+  angle = 0;
+  angle2 = 0;
+  angle3 = 27;
 
   img.fillSprite(TFT_WHITE);
   img.fillCircle(sx + 52, sy - 32, 4, 0x9062);
