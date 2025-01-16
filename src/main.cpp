@@ -53,8 +53,10 @@ int percent = 0;
 #define temperature_pin 15
 
 void setup() {
+  Serial.begin(9600);
   auto &controller = GPSU_CORE::IO_Controller::getInstance(
-      GPSU_CORE::Process::TRAFFIC_LIGHT, 100, 0x48);
+      GPSU_CORE::Process::TRAFFIC_LIGHT, 1000, 0x48);
+  controller.autopoll(true);
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
 

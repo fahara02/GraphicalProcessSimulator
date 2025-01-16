@@ -45,9 +45,17 @@ private:
     init_GPIOS();
     resetPoll();
     configASSERT(setPoll());
+    if (_initialised_adc) {
+      configASSERT(init_ADC());
+    }
   }
-  bool setPoll() { return setPollrate(_pollrate); }
+  bool setPoll() {
+    Serial.printf("setting pollrate with value  %d", _pollrate);
+    return setPollrate(_pollrate);
+    Serial.println("pollrate setup done");
+  }
   void setupGPIOS() {
+    Serial.println("Starting GPIO setup");
     gpio_configs.clear();
     allowed_output_pins.clear();
 
@@ -83,6 +91,7 @@ private:
           {GPIO::DO::DO_PIN_1, GPIO_MODE_OUTPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE}};
       allowed_output_pins = {GPIO::DO::DO_PIN_0, GPIO::DO::DO_PIN_1};
+      _initialised_adc = true;
       break;
 
     case Process::STEPPER_MOTOR_CONTROL:
@@ -152,6 +161,7 @@ private:
                        GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE}};
       break;
     }
+    Serial.println("GPIO Setup done");
   }
   bool init_ADC() {
     bool init_result = false;
@@ -167,6 +177,7 @@ private:
     return init_result;
   }
   void init_GPIOS() {
+    Serial.println("starting GPIO initialisation");
     for (const auto &config : gpio_configs) {
       gpio_config_t io_conf = {};
       io_conf.pin_bit_mask = 1ULL << config.pin;
@@ -182,6 +193,7 @@ private:
         gpio_set_level(config.pin, 0);
       }
     }
+    Serial.println(" GPIO initialisation done");
   }
   float readChannel(ADS1115_MUX channel) {
     float voltage = 0.0;
@@ -196,11 +208,6 @@ private:
 
     ANALOG_DATA[0] = readChannel(ADS1115_COMP_0_1); // Channel 0
     ANALOG_DATA[1] = readChannel(ADS1115_COMP_2_3); // Channel 1
-
-    // Fill remaining slots with a default value (e.g., 0.0 or -1.0)
-    for (size_t i = 2; i < ANALOG_DATA.size(); ++i) {
-      ANALOG_DATA[i] = 0.0f;
-    }
   }
 
   void updateInputs() {
@@ -230,8 +237,9 @@ public:
 
   void setOutput(gpio_num_t pin, int level) {
     if (allowed_output_pins.find(pin) == allowed_output_pins.end()) {
-      printf("Error: GPIO %d is not an allowed output pin for this process.\n",
-             pin);
+      Serial.printf(
+          "Error: GPIO %d is not an allowed output pin for this process.\n",
+          pin);
       return;
     }
     gpio_set_level(pin, level);
