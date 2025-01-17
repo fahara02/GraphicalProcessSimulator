@@ -7,30 +7,26 @@ Encoder::Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
     : aPin_(aPin), bPin_(bPin), buttonPin_(buttonPin), encoderSteps_(steps),
       encoderPinPulledDown_(encoderPinPulledDown), isEnabled_(true) {}
 
-void Encoder::begin() {
+void Encoder::configurePin(gpio_num_t pin, gpio_int_type_t intrType,
+                           bool pullDown, bool pullUp) {
   gpio_config_t ioConfig = {};
-  ioConfig.intr_type =
-      GPIO_INTR_ANYEDGE; // Enable interrupts for CHANGE on encoder pins
+  ioConfig.intr_type = intrType;
   ioConfig.mode = GPIO_MODE_INPUT;
-
-  // Configure encoder pins
-  ioConfig.pin_bit_mask = (1ULL << aPin_) | (1ULL << bPin_);
+  ioConfig.pin_bit_mask = (1ULL << pin);
   ioConfig.pull_down_en =
-      encoderPinPulledDown_ ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE;
-  ioConfig.pull_up_en =
-      encoderPinPulledDown_ ? GPIO_PULLUP_DISABLE : GPIO_PULLUP_ENABLE;
+      pullDown ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE;
+  ioConfig.pull_up_en = pullUp ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE;
   gpio_config(&ioConfig);
+}
 
-  // Configure button pin if defined
+void Encoder::begin() {
+  configurePin(aPin_, GPIO_INTR_ANYEDGE, encoderPinPulledDown_,
+               !encoderPinPulledDown_);
+  configurePin(bPin_, GPIO_INTR_ANYEDGE, encoderPinPulledDown_,
+               !encoderPinPulledDown_);
   if (buttonPin_ != GPIO_NUM_NC) {
-    ioConfig.pin_bit_mask = (1ULL << buttonPin_);
-    ioConfig.intr_type =
-        GPIO_INTR_POSEDGE; // Enable interrupts for RISING edge on button pin
-    ioConfig.pull_down_en =
-        isButtonPulldown_ ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE;
-    ioConfig.pull_up_en =
-        isButtonPulldown_ ? GPIO_PULLUP_DISABLE : GPIO_PULLUP_ENABLE;
-    gpio_config(&ioConfig);
+    configurePin(buttonPin_, GPIO_INTR_POSEDGE, isButtonPulldown_,
+                 !isButtonPulldown_);
   }
 
   // Attach interrupts
@@ -47,8 +43,10 @@ void Encoder::begin() {
         this);
   }
 
-  encoderQueue = xQueueCreate(QUEUE_SIZE, sizeof(int8_t));
-  buttonQueue = xQueueCreate(QUEUE_SIZE, sizeof(bool));
+  encoderQueue = xQueueCreateStatic(QUEUE_SIZE, sizeof(int8_t),
+                                    encoderQueueBuffer, &encoderQueueStorage);
+  buttonQueue = xQueueCreateStatic(QUEUE_SIZE, sizeof(int8_t),
+                                   buttonQueueBuffer, &buttonQueueStorage);
 
   xTaskCreatePinnedToCore(
       EncoderMonitorTask, "EncoderMonitor", GPSU_CORE::EncoderTaskStack, this,
@@ -66,6 +64,28 @@ void Encoder::setup(void (*ISR_callback)(void)) {
 void Encoder::setup(void (*ISR_callback)(void), void (*ISR_button)(void)) {
   encoderCallback_ = ISR_callback;
   buttonCallback_ = ISR_button;
+}
+void IRAM_ATTR Encoder::onTimer(void *arg) {
+  timeCounter.fetch_add(1,
+                        std::memory_order_relaxed); // Increment counter safely
+}
+void Encoder::setupTimer() {
+  timer_config_t config = {.alarm_en = TIMER_ALARM_EN,
+                           .counter_en = TIMER_PAUSE,
+                           .intr_type = TIMER_INTR_LEVEL,
+                           .counter_dir = TIMER_COUNT_UP,
+                           .auto_reload = TIMER_AUTORELOAD_EN,
+                           .divider = TIMER_DIVIDER};
+  timer_init(TIMER_GROUP_0, TIMER_0, &config);
+
+  timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x00000000ULL);
+  timer_set_alarm_value(TIMER_GROUP_0, TIMER_0,
+                        TIMER_SCALE * TIMER_INTERVAL_MS / 1000);
+  timer_enable_intr(TIMER_GROUP_0, TIMER_0);
+  timer_isr_register(TIMER_GROUP_0, TIMER_0, Encoder::onTimer, nullptr,
+                     ESP_INTR_FLAG_IRAM, nullptr);
+
+  timer_start(TIMER_GROUP_0, TIMER_0);
 }
 
 void IRAM_ATTR Encoder::encoderISR() {
@@ -117,8 +137,6 @@ void Encoder::EncoderMonitorTask(void *param) {
           encoder->encoderPosition_.load() / encoder->encoderSteps_;
 
       if (newPosition != prevPosition && encoder->rotaryAccelerationCoef_ > 1) {
-        constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
-        constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
 
         int8_t lastDirection = encoder->lastMovementDirection_.load();
         if (direction == lastDirection && direction != 0 &&
@@ -166,40 +184,45 @@ void Encoder::EncoderMonitorTask(void *param) {
   vTaskDelete(NULL);
 }
 
+bool Encoder::debounce(bool currentState, unsigned long &lastTime,
+                       unsigned long delay) {
+  unsigned long now = timeCounter.load(std::memory_order_relaxed);
+  if (now - lastTime > delay) {
+    lastTime = now;
+    return currentState;
+  }
+  return false;
+}
+
 void Encoder::ButtonMonitorTask(void *param) {
   Encoder *encoder = static_cast<Encoder *>(param);
 
-  static std::atomic<unsigned long> lastDebounceTime{0};
-  constexpr unsigned long DEBOUNCE_DELAY = 50;
+  unsigned long lastDebounceTime = 0;
 
   while (true) {
     bool buttonPressed;
     if (xQueueReceive(encoder->buttonQueue, &buttonPressed, portMAX_DELAY)) {
-      unsigned long currentTime = millis();
+      unsigned long currentTime = timeCounter.load(std::memory_order_relaxed);
 
       if (!encoder->isEnabled_) {
         encoder->buttonState_.store(ButtonState::BTN_DISABLED);
         continue;
       }
+      if (encoder->debounce(buttonPressed, lastDebounceTime, DEBOUNCE_DELAY)) {
+        ButtonState currentState = encoder->buttonState_.load();
 
-      if (currentTime - lastDebounceTime.load() < DEBOUNCE_DELAY) {
-        continue;
-      }
+        if (buttonPressed && currentState == ButtonState::UP) {
+          encoder->buttonState_.store(ButtonState::PUSHED);
+        } else if (!buttonPressed && currentState == ButtonState::DOWN) {
+          encoder->buttonState_.store(ButtonState::RELEASED);
+        } else {
+          encoder->buttonState_.store(buttonPressed ? ButtonState::DOWN
+                                                    : ButtonState::UP);
+        }
 
-      ButtonState currentState = encoder->buttonState_.load();
-      if (buttonPressed && currentState == ButtonState::UP) {
-        encoder->buttonState_.store(ButtonState::PUSHED);
-        lastDebounceTime.store(currentTime);
-      } else if (!buttonPressed && currentState == ButtonState::DOWN) {
-        encoder->buttonState_.store(ButtonState::RELEASED);
-        lastDebounceTime.store(currentTime);
-      } else {
-        encoder->buttonState_.store(buttonPressed ? ButtonState::DOWN
-                                                  : ButtonState::UP);
-      }
-
-      if (encoder->buttonCallback_) {
-        encoder->buttonCallback_();
+        if (encoder->buttonCallback_) {
+          encoder->buttonCallback_();
+        }
       }
     }
 
@@ -249,32 +272,40 @@ bool Encoder::isEncoderButtonClicked(unsigned long maximumWaitMilliseconds) {
   } state = ButtonClickState::IDLE;
 
   static unsigned long waitStartTime = 0;
+  static unsigned long lastDebounceTime = 0; // Debounce timer
   static bool wasTimeouted = false;
 
   bool buttonPressed = !gpio_get_level(buttonPin_);
 
+  // Use debounce helper to validate button press/release
+  if (!debounce(buttonPressed, lastDebounceTime, DEBOUNCE_DELAY)) {
+    return false; // Ignore changes within debounce period
+  }
+
   switch (state) {
   case ButtonClickState::IDLE:
     if (buttonPressed) {
-      // Start debounce timer
-      waitStartTime = millis();
+      // Start timing when button is first pressed
+      waitStartTime = timeCounter.load(std::memory_order_relaxed);
       state = ButtonClickState::WAIT_FOR_RELEASE;
     }
     break;
 
   case ButtonClickState::WAIT_FOR_RELEASE:
     if (!buttonPressed) {
-      // Button released within debounce time
-      if (millis() - waitStartTime > 30) {
+      // Button released after debounce period
+      if (timeCounter.load(std::memory_order_relaxed) - waitStartTime >
+          DEBOUNCE_DELAY) {
         wasTimeouted = false;
         state = ButtonClickState::IDLE;
         return true;
       } else {
-        // Too quick, ignore
+        // Release was too quick; ignore
         state = ButtonClickState::IDLE;
       }
-    } else if (millis() - waitStartTime > maximumWaitMilliseconds) {
-      // Timeout while waiting for release
+    } else if (timeCounter.load(std::memory_order_relaxed) - waitStartTime >
+               maximumWaitMilliseconds) {
+      // Timeout occurred before button was released
       wasTimeouted = true;
       state = ButtonClickState::IDLE;
     }
@@ -282,8 +313,11 @@ bool Encoder::isEncoderButtonClicked(unsigned long maximumWaitMilliseconds) {
 
   case ButtonClickState::WAIT_FOR_TIMEOUT:
     if (!buttonPressed) {
+      // Reset state when button is released after timeout
       state = ButtonClickState::IDLE;
-    } else if (millis() - waitStartTime > maximumWaitMilliseconds) {
+    } else if (timeCounter.load(std::memory_order_relaxed) - waitStartTime >
+               maximumWaitMilliseconds) {
+      // Timeout occurred while waiting for release
       wasTimeouted = true;
       state = ButtonClickState::IDLE;
     }
