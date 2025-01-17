@@ -1,11 +1,16 @@
 #ifndef ROTARY_ENCODER_HPP
 #define ROTARY_ENCODER_HPP
 #include "Arduino.h"
+#include "GPSU_Defines.hpp"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 #include "stdint.h"
 #include <atomic>
 #include <driver/gpio.h>
 
 namespace COMPONENT {
+
+constexpr uint16_t QUEUE_SIZE = 10;
 enum class ButtonState {
   DOWN = 0,
   PUSHED = 1,
@@ -25,8 +30,9 @@ private:
   bool encoderPinPulledDown_;
   bool isEnabled_;
 
-  portMUX_TYPE encoderMux_ = portMUX_INITIALIZER_UNLOCKED;
-  portMUX_TYPE buttonMux_ = portMUX_INITIALIZER_UNLOCKED;
+  xQueueHandle encoderQueue = nullptr;
+  xQueueHandle buttonQueue = nullptr;
+
   long minEncoderValue_ = -2147483648;
   long maxEncoderValue_ = 2147483647;
   std::atomic<long> encoderPosition_{0};
@@ -70,7 +76,8 @@ public:
     rotaryAccelerationCoef_ = acceleration;
   }
   void disableAcceleration() { setAcceleration(0); }
-
+  static void EncoderMonitorTask(void *param);
+  static void ButtonMonitorTask(void *param);
   void IRAM_ATTR encoderISR();
   void IRAM_ATTR buttonISR();
 };
