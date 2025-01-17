@@ -3,9 +3,11 @@
 #define LOG_TAG "RotaryEncoder"
 using namespace COMPONENT;
 Encoder::Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
-                 gpio_num_t buttonPin, bool encoderPinPulledDown)
+                 gpio_num_t buttonPin, bool encoderPinPulledDown,
+                 bool buttonPulledDown)
     : aPin_(aPin), bPin_(bPin), buttonPin_(buttonPin), encoderSteps_(steps),
-      encoderPinPulledDown_(encoderPinPulledDown), isEnabled_(true) {}
+      encoderPinPulledDown_(encoderPinPulledDown),
+      isButtonPulldown_(buttonPulledDown), isEnabled_(true) {}
 
 void Encoder::configurePin(gpio_num_t pin, gpio_int_type_t intrType,
                            bool pullDown, bool pullUp) {

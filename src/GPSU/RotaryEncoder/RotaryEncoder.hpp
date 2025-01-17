@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 #include "stdint.h"
 #include <atomic>
+#include <climits>
 #include <driver/gpio.h>
 
 namespace COMPONENT {
@@ -36,8 +37,8 @@ private:
   gpio_num_t buttonPin_;
   uint8_t encoderSteps_;
   int correctionOffset_ = 2;
-  bool isButtonPulldown_;
   bool encoderPinPulledDown_;
+  bool isButtonPulldown_;
   bool isEnabled_;
   StaticQueue_t encoderQueueStorage;
   StaticQueue_t buttonQueueStorage;
@@ -46,8 +47,8 @@ private:
   xQueueHandle encoderQueue = nullptr;
   xQueueHandle buttonQueue = nullptr;
 
-  long minEncoderValue_ = -2147483648;
-  long maxEncoderValue_ = 2147483647;
+  long minEncoderValue_ = LONG_MIN;
+  long maxEncoderValue_ = LONG_MAX;
   std::atomic<long> encoderPosition_{0};
   std::atomic<int8_t> lastMovementDirection_{0};
   std::atomic<unsigned long> lastMovementTime_{0};
@@ -74,7 +75,8 @@ private:
 
 public:
   Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
-          gpio_num_t buttonPin = GPIO_NUM_NC, bool encoderPinPulledDown = true);
+          gpio_num_t buttonPin = GPIO_NUM_NC, bool encoderPinPulledDown = true,
+          bool buttonPulledDown = false);
   void initGPIOS(){};
   void setBoundaries(long minValue = -100, long maxValue = 100,
                      bool circleValues = false);
