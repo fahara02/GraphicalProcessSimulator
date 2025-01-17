@@ -125,10 +125,6 @@ void Encoder::EncoderMonitorTask(void *param) {
         continue;
       }
 
-      if (encoder->encoderCallback_) {
-        encoder->encoderCallback_(); // Call callback if set
-      }
-
       // Update position
       long prevPosition =
           encoder->encoderPosition_.load() / encoder->encoderSteps_;
@@ -154,6 +150,9 @@ void Encoder::EncoderMonitorTask(void *param) {
 
         encoder->lastMovementTime_.store(now);
         encoder->lastMovementDirection_.store(direction);
+        if (encoder->encoderCallback_) {
+          encoder->encoderCallback_();
+        }
       }
 
       long adjustedPosition =
