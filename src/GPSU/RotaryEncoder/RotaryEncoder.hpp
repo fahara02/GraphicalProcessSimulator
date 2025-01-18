@@ -58,7 +58,7 @@ private:
 
   long minEncoderValue_ = LONG_MIN;
   long maxEncoderValue_ = LONG_MAX;
-  int8_t oldAB_{0};
+  std::atomic<int8_t> oldAB_{0};
   std::atomic<long> encoderPosition_{0};
   std::atomic<int8_t> lastMovementDirection_{0};
   std::atomic<unsigned long> lastMovementTime_{0};
@@ -71,8 +71,8 @@ private:
                                      -1, 0,  0, 1, 0, 1, -1, 0};
   std::atomic<ButtonState> buttonState_{ButtonState::UP};
 
-  void (*encoderCallback_)() = nullptr;
-  void (*buttonCallback_)() = nullptr;
+  std::atomic<void *> encoderCallback_{nullptr};
+  std::atomic<void *> buttonCallback_{nullptr};
 
   bool isEncoderButtonClicked(unsigned long maximumWaitMilliseconds = 300);
   bool isEncoderButtonDown();
@@ -82,6 +82,7 @@ private:
   bool debounce(bool currentState, unsigned long &lastTime,
                 unsigned long delay);
   void initGPIOS();
+  int8_t updateOldABState();
 
 public:
   Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,

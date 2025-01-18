@@ -49,8 +49,6 @@ void Encoder::initGPIOS() {
   if (buttonPin_ != GPIO_NUM_NC) {
     configurePin(buttonPin_, GPIO_INTR_POSEDGE, buttonPinPull_);
   }
-
-  // Attach interrupts
   gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
   gpio_isr_handler_add(
       aPin_, [](void *arg) { static_cast<Encoder *>(arg)->encoderISR(); },
@@ -79,16 +77,19 @@ void Encoder::begin() {
   }
 }
 void Encoder::setup(void (*ISR_callback)(void)) {
-  encoderCallback_ = ISR_callback;
+  encoderCallback_.store(reinterpret_cast<void *>(ISR_callback),
+                         std::memory_order_release);
 }
 
 void Encoder::setup(void (*ISR_callback)(void), void (*ISR_button)(void)) {
-  encoderCallback_ = ISR_callback;
-  buttonCallback_ = ISR_button;
+  encoderCallback_.store(reinterpret_cast<void *>(ISR_callback),
+                         std::memory_order_release);
+  buttonCallback_.store(reinterpret_cast<void *>(ISR_button),
+                        std::memory_order_release);
 }
+
 void IRAM_ATTR Encoder::onTimer(void *arg) {
-  timeCounter.fetch_add(1,
-                        std::memory_order_relaxed); // Increment counter safely
+  timeCounter.fetch_add(1, std::memory_order_relaxed);
 }
 void Encoder::setupTimer() {
   timer_config_t config = {.alarm_en = TIMER_ALARM_EN,
@@ -108,21 +109,28 @@ void Encoder::setupTimer() {
 
   timer_start(TIMER_GROUP_0, TIMER_0);
 }
-
+int8_t Encoder::updateOldABState() {
+  int8_t oldAB = oldAB_.load(std::memory_order_acquire);
+  oldAB <<= 2;
+  uint8_t state = (gpio_get_level(bPin_) << 1) | gpio_get_level(aPin_);
+  oldAB |= (state & 0x03);
+  oldAB_.store(oldAB, std::memory_order_release);
+  oldAB = oldAB_.load(std::memory_order_acquire);
+  return oldAB;
+}
 void IRAM_ATTR Encoder::encoderISR() {
-  if (!isEnabled_) {
-
+  if (!isEnabled_)
     return;
-  }
-  static unsigned long lastInterruptTime = 0;
-  unsigned long currentTime = timeCounter.load(std::memory_order_relaxed);
-  if (currentTime - lastInterruptTime > ENCODER_DEBOUNCE_DELAY) {
-    lastInterruptTime = currentTime;
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    vTaskNotifyGiveFromISR(encoderTaskHandle, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-  }
-};
+  static volatile unsigned long lastInterruptTime = 0;
+  unsigned long now = timeCounter.load(std::memory_order_relaxed);
+  if ((now - lastInterruptTime) < ENCODER_DEBOUNCE_DELAY)
+    return;
+  lastInterruptTime = now;
+  BaseType_t higherPriorityTaskWoken = pdFALSE;
+  vTaskNotifyGiveFromISR(encoderTaskHandle, &higherPriorityTaskWoken);
+  portYIELD_FROM_ISR(higherPriorityTaskWoken);
+}
+
 void IRAM_ATTR Encoder::buttonISR() {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   vTaskNotifyGiveFromISR(buttonTaskHandle, &xHigherPriorityTaskWoken);
@@ -140,18 +148,16 @@ void Encoder::EncoderMonitorTask(void *param) {
       if (!encoder->isEnabled_) {
         continue;
       }
-      encoder->oldAB_ <<= 2;
-      uint8_t state = (gpio_get_level(encoder->bPin_) << 1) |
-                      gpio_get_level(encoder->aPin_);
-      encoder->oldAB_ |= (state & 0x03);
-      currentDirection = encoder->encoderStates_[encoder->oldAB_ & 0x0F];
-      // Update position
+      int8_t oldAB = encoder->updateOldABState();
+      currentDirection = encoder->encoderStates_[oldAB & 0x0F];
+
+      long encoderPosition = encoder->encoderPosition_.load();
+      uint8_t encoderSteps = encoder->encoderSteps_;
+
       if (currentDirection != 0) {
-        long prevPosition =
-            encoder->encoderPosition_.load() / encoder->encoderSteps_;
-        encoder->encoderPosition_ += currentDirection;
-        long newPosition =
-            encoder->encoderPosition_.load() / encoder->encoderSteps_;
+        long prevPosition = encoderPosition / encoderSteps;
+        encoderPosition += currentDirection;
+        long newPosition = encoderPosition / encoderSteps;
 
         if (newPosition != prevPosition &&
             encoder->rotaryAccelerationCoef_ > 1) {
@@ -165,40 +171,37 @@ void Encoder::EncoderMonitorTask(void *param) {
               unsigned long limitedTime =
                   std::max(ACCELERATION_SHORT_CUTOFF, timeSinceLastMotion);
               int adjustment = encoder->rotaryAccelerationCoef_ / limitedTime;
-              encoder->encoderPosition_ +=
+              encoderPosition +=
                   currentDirection > 0 ? adjustment : -adjustment;
             }
           }
-
-          encoder->lastMovementTime_.store(now);
-          encoder->lastMovementDirection_.store(currentDirection);
         }
+        long maxEncoderValue = encoder->maxEncoderValue_;
+        long minEncoderValue = encoder->minEncoderValue_;
+        long adjustedValue = encoderPosition / encoderSteps;
 
-        long adjustedPosition =
-            encoder->encoderPosition_.load() / encoder->encoderSteps_;
-        int maxPosition = encoder->maxEncoderValue_ / encoder->encoderSteps_;
-        int minPosition = encoder->minEncoderValue_ / encoder->encoderSteps_;
-
-        if (adjustedPosition > maxPosition) {
-          if (encoder->circleValues_) {
-            long delta = adjustedPosition - maxPosition;
-            encoder->encoderPosition_.store(encoder->minEncoderValue_ +
-                                            (delta * encoder->encoderSteps_));
-          } else {
-            encoder->encoderPosition_.store(encoder->maxEncoderValue_);
-          }
-        } else if (adjustedPosition < minPosition) {
-          if (encoder->circleValues_) {
-            long delta = adjustedPosition - minPosition;
-            encoder->encoderPosition_.store(encoder->maxEncoderValue_ +
-                                            (delta * encoder->encoderSteps_));
-          } else {
-            encoder->encoderPosition_.store(encoder->minEncoderValue_);
-          }
+        if (adjustedValue > maxEncoderValue / encoderSteps) {
+          encoderPosition =
+              encoder->circleValues_
+                  ? minEncoderValue +
+                        ((adjustedValue - (maxEncoderValue / encoderSteps)) *
+                         encoderSteps)
+                  : maxEncoderValue;
+        } else if (adjustedValue < minEncoderValue / encoderSteps) {
+          encoderPosition =
+              encoder->circleValues_
+                  ? maxEncoderValue +
+                        ((adjustedValue - (minEncoderValue / encoderSteps)) *
+                         encoderSteps)
+                  : minEncoderValue;
         }
+        encoder->encoderPosition_.store(encoderPosition);
+        encoder->lastMovementTime_.store(now);
+        encoder->lastMovementDirection_.store(currentDirection);
       }
-      if (encoder->encoderCallback_) {
-        encoder->encoderCallback_();
+      if (auto callback = reinterpret_cast<void (*)()>(
+              encoder->encoderCallback_.load(std::memory_order_acquire))) {
+        callback();
       }
     }
 
@@ -223,7 +226,7 @@ void Encoder::ButtonMonitorTask(void *param) {
   unsigned long lastDebounceTime = 0;
 
   while (true) {
-    bool buttonPressed;
+
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
 
       if (!encoder->isEnabled_) {
@@ -243,8 +246,9 @@ void Encoder::ButtonMonitorTask(void *param) {
                                                     : ButtonState::UP);
         }
 
-        if (encoder->buttonCallback_) {
-          encoder->buttonCallback_();
+        if (auto callback = reinterpret_cast<void (*)()>(
+                encoder->buttonCallback_.load(std::memory_order_acquire))) {
+          callback();
         }
       }
     }
