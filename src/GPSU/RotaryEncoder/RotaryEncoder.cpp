@@ -152,9 +152,6 @@ void Encoder::EncoderMonitorTask(void *param) {
 
         encoder->lastMovementTime_.store(now);
         encoder->lastMovementDirection_.store(direction);
-        if (encoder->encoderCallback_) {
-          encoder->encoderCallback_();
-        }
       }
 
       long adjustedPosition =
@@ -179,6 +176,9 @@ void Encoder::EncoderMonitorTask(void *param) {
           encoder->encoderPosition_.store(encoder->minEncoderValue_);
         }
       }
+    }
+    if (encoder->encoderCallback_) {
+      encoder->encoderCallback_();
     }
     vTaskDelay(pdMS_TO_TICKS(100));
   }

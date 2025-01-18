@@ -35,14 +35,19 @@ struct GPIO {
   };
 
   struct DO {
-    static constexpr gpio_num_t DO_PIN_0 = gpio_num_t::GPIO_NUM_32;
-    static constexpr gpio_num_t DO_PIN_1 = gpio_num_t::GPIO_NUM_33;
-    static constexpr gpio_num_t DO_PIN_2 = gpio_num_t::GPIO_NUM_25;
-    static constexpr gpio_num_t DO_PIN_3 = gpio_num_t::GPIO_NUM_26;
+    static constexpr gpio_num_t DO_PIN_0 = gpio_num_t::GPIO_NUM_33;
+    static constexpr gpio_num_t DO_PIN_1 = gpio_num_t::GPIO_NUM_25;
+    static constexpr gpio_num_t DO_PIN_2 = gpio_num_t::GPIO_NUM_26;
+    static constexpr gpio_num_t DO_PIN_3 = gpio_num_t::GPIO_NUM_27;
   };
   struct I2C {
     static constexpr gpio_num_t I2C_SDA = gpio_num_t::GPIO_NUM_21;
     static constexpr gpio_num_t I2C_SCL = gpio_num_t::GPIO_NUM_22;
+  };
+  struct Encoder {
+    static constexpr gpio_num_t EN_A = gpio_num_t::GPIO_NUM_37;
+    static constexpr gpio_num_t EN_B = gpio_num_t::GPIO_NUM_38;
+    static constexpr gpio_num_t EN_Btn = gpio_num_t::GPIO_NUM_32;
   };
 };
 

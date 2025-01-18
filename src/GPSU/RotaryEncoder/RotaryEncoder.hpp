@@ -21,7 +21,15 @@ constexpr uint16_t TIMER_INTERVAL_MS = 1; // Interval in milliseconds
 static constexpr unsigned long DEBOUNCE_DELAY = 50;
 static constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
 static constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
-
+enum class EncoderType { SINGLE = 0, HALF = 1, FULL = 2 };
+enum class PullType {
+  INTERNAL_PULLUP = 0,
+  INTERNAL_PULLDOWN = 1,
+  EXTERNAL_PULLUP = 2,
+  EXTERNAL_PULLDOWN = 3,
+  NONE = 4
+};
+enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
 enum class ButtonState {
   DOWN = 0,
   PUSHED = 1,
