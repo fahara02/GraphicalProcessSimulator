@@ -3,32 +3,52 @@
 #define LOG_TAG "RotaryEncoder"
 using namespace COMPONENT;
 Encoder::Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
-                 gpio_num_t buttonPin, bool encoderPinPulledDown,
-                 bool buttonPulledDown)
+                 gpio_num_t buttonPin, PullType encoderPinPull,
+                 PullType buttonPinPull)
     : aPin_(aPin), bPin_(bPin), buttonPin_(buttonPin), encoderSteps_(steps),
-      encoderPinPulledDown_(encoderPinPulledDown),
-      isButtonPulldown_(buttonPulledDown), isEnabled_(true) {}
+      encoderPinPull_(encoderPinPull), buttonPinPull_(buttonPinPull),
+      isEnabled_(true) {}
 
 void Encoder::configurePin(gpio_num_t pin, gpio_int_type_t intrType,
-                           bool pullDown, bool pullUp) {
+                           PullType pullType) {
   gpio_config_t ioConfig = {};
   ioConfig.intr_type = intrType;
   ioConfig.mode = GPIO_MODE_INPUT;
   ioConfig.pin_bit_mask = (1ULL << pin);
-  ioConfig.pull_down_en =
-      pullDown ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE;
-  ioConfig.pull_up_en = pullUp ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE;
+
+  switch (pullType) {
+  case PullType::NONE:
+    ioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    ioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
+    break;
+  case PullType::INTERNAL_PULLUP:
+    ioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    ioConfig.pull_up_en = GPIO_PULLUP_ENABLE;
+    break;
+  case PullType::INTERNAL_PULLDOWN:
+    ioConfig.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    ioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
+    break;
+  case PullType::EXTERNAL_PULLUP:
+  case PullType::EXTERNAL_PULLDOWN:
+    // Assume external resistors; disable internal ones
+    ioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    ioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
+    break;
+  default:
+    // Fallback for unsupported types
+    Serial.println("Unsupported PullType specified.");
+    return;
+  }
+
   gpio_config(&ioConfig);
 }
 
 void Encoder::begin() {
-  configurePin(aPin_, GPIO_INTR_ANYEDGE, encoderPinPulledDown_,
-               !encoderPinPulledDown_);
-  configurePin(bPin_, GPIO_INTR_ANYEDGE, encoderPinPulledDown_,
-               !encoderPinPulledDown_);
+  configurePin(aPin_, GPIO_INTR_ANYEDGE, encoderPinPull_);
+  configurePin(bPin_, GPIO_INTR_ANYEDGE, encoderPinPull_);
   if (buttonPin_ != GPIO_NUM_NC) {
-    configurePin(buttonPin_, GPIO_INTR_POSEDGE, isButtonPulldown_,
-                 !isButtonPulldown_);
+    configurePin(buttonPin_, GPIO_INTR_POSEDGE, buttonPinPull_);
   }
 
   // Attach interrupts
@@ -121,7 +141,7 @@ void Encoder::EncoderMonitorTask(void *param) {
   while (true) {
 
     if (xQueueReceive(encoder->encoderQueue, &direction, portMAX_DELAY)) {
-      unsigned long now = millis();
+      unsigned long now = timeCounter.load(std::memory_order_relaxed);
 
       if (!encoder->isEnabled_) {
         continue;

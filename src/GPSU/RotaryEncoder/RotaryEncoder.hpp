@@ -9,6 +9,8 @@
 #include <atomic>
 #include <climits>
 #include <driver/gpio.h>
+#include <driver/pcnt.h>
+#include <soc/pcnt_struct.h>
 
 namespace COMPONENT {
 
@@ -43,10 +45,11 @@ private:
   gpio_num_t aPin_;
   gpio_num_t bPin_;
   gpio_num_t buttonPin_;
+  pcnt_unit_t unit;
   uint8_t encoderSteps_;
   int correctionOffset_ = 2;
-  bool encoderPinPulledDown_;
-  bool isButtonPulldown_;
+  PullType encoderPinPull_ = PullType::NONE;
+  PullType buttonPinPull_ = PullType::NONE;
   bool isEnabled_;
   StaticQueue_t encoderQueueStorage;
   StaticQueue_t buttonQueueStorage;
@@ -76,15 +79,16 @@ private:
   bool isEncoderButtonClicked(unsigned long maximumWaitMilliseconds = 300);
   bool isEncoderButtonDown();
   // Helper Functions
-  void configurePin(gpio_num_t pin, gpio_int_type_t intrType, bool pullDown,
-                    bool pullUp);
+  void configurePin(gpio_num_t pin, gpio_int_type_t intrType,
+                    PullType pullType);
   bool debounce(bool currentState, unsigned long &lastTime,
                 unsigned long delay);
 
 public:
   Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
-          gpio_num_t buttonPin = GPIO_NUM_NC, bool encoderPinPulledDown = true,
-          bool buttonPulledDown = false);
+          gpio_num_t buttonPin = GPIO_NUM_NC,
+          PullType encoderPinPull = PullType::EXTERNAL_PULLUP,
+          PullType buttonPinPull = PullType::EXTERNAL_PULLDOWN);
   void initGPIOS(){};
   void setBoundaries(long minValue = -100, long maxValue = 100,
                      bool circleValues = false);

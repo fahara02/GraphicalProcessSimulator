@@ -156,12 +156,11 @@ private:
 public:
   EncoderSelector(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
                   gpio_num_t buttonPin = GPIO_NUM_NC,
-                  bool encoderPinPulledDown = true,
-                  bool buttonPulledDown = false,
+                  PullType encoderPinPull = PullType::EXTERNAL_PULLUP,
+                  PullType buttonPinPull = PullType::EXTERNAL_PULLDOWN,
                   std::function<int(long)> customMapping = nullptr)
       : encoder(std::make_unique<Encoder>(steps, aPin, bPin, buttonPin,
-                                          encoderPinPulledDown,
-                                          buttonPulledDown)),
+                                          encoderPinPull, buttonPinPull)),
         customAccelerationMapping(customMapping) {}
 
   // Struct-based setRange for arithmetic types
