@@ -155,14 +155,13 @@ void Encoder::EncoderMonitorTask(void *param) {
       uint8_t encoderSteps = encoder->encoderSteps_;
 
       if (currentDirection != 0) {
-        long prevPosition = encoderPosition / encoderSteps;
+        long prevCount = encoderPosition / encoderSteps;
         encoderPosition += currentDirection;
-        long newPosition = encoderPosition / encoderSteps;
+        long newCount = encoderPosition / encoderSteps;
 
-        if (newPosition != prevPosition &&
-            encoder->rotaryAccelerationCoef_ > 1) {
+        if (newCount != prevCount && encoder->rotaryAccelerationCoef_ > 1) {
 
-          int8_t lastDirection = encoder->lastMovementDirection_.load();
+          int8_t lastDirection = encoder->oldDirection_.load();
           if (currentDirection == lastDirection && currentDirection != 0 &&
               lastDirection != 0) {
             unsigned long timeSinceLastMotion =
@@ -197,7 +196,7 @@ void Encoder::EncoderMonitorTask(void *param) {
         }
         encoder->encoderPosition_.store(encoderPosition);
         encoder->lastMovementTime_.store(now);
-        encoder->lastMovementDirection_.store(currentDirection);
+        encoder->oldDirection_.store(currentDirection);
       }
       if (auto callback = reinterpret_cast<void (*)()>(
               encoder->encoderCallback_.load(std::memory_order_acquire))) {

@@ -2,6 +2,7 @@
 #define ROTARY_ENCODER_HPP
 #include "Arduino.h"
 #include "GPSU_Defines.hpp"
+#include "PulseCounter.hpp"
 #include "driver/timer.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -9,8 +10,6 @@
 #include <atomic>
 #include <climits>
 #include <driver/gpio.h>
-#include <driver/pcnt.h>
-#include <soc/pcnt_struct.h>
 
 namespace COMPONENT {
 
@@ -24,15 +23,9 @@ static constexpr unsigned long DEBOUNCE_DELAY = 50;
 static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 50;
 static constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
 static constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
-enum class EncoderType { SINGLE = 0, HALF = 1, FULL = 2 };
-enum class PullType {
-  INTERNAL_PULLUP = 0,
-  INTERNAL_PULLDOWN = 1,
-  EXTERNAL_PULLUP = 2,
-  EXTERNAL_PULLDOWN = 3,
-  NONE = 4
-};
+
 enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
+
 enum class ButtonState {
   DOWN = 0,
   PUSHED = 1,
@@ -46,7 +39,7 @@ private:
   gpio_num_t aPin_;
   gpio_num_t bPin_;
   gpio_num_t buttonPin_;
-  pcnt_unit_t unit;
+
   uint8_t encoderSteps_;
   int correctionOffset_ = 2;
   PullType encoderPinPull_ = PullType::NONE;
@@ -60,7 +53,7 @@ private:
   long maxEncoderValue_ = LONG_MAX;
   std::atomic<int8_t> oldAB_{0};
   std::atomic<long> encoderPosition_{0};
-  std::atomic<int8_t> lastMovementDirection_{0};
+  std::atomic<int8_t> oldDirection_{0};
   std::atomic<unsigned long> lastMovementTime_{0};
   static std::atomic<unsigned long> timeCounter;
   long lastReadEncoderPosition_ = 0;
