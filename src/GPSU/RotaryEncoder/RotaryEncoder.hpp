@@ -21,6 +21,7 @@ constexpr uint16_t TIMER_INTERVAL_MS = 1; // Interval in milliseconds
 #define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // 1 MHz
 
 static constexpr unsigned long DEBOUNCE_DELAY = 50;
+static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 50;
 static constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
 static constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
 enum class EncoderType { SINGLE = 0, HALF = 1, FULL = 2 };
@@ -51,15 +52,13 @@ private:
   PullType encoderPinPull_ = PullType::NONE;
   PullType buttonPinPull_ = PullType::NONE;
   bool isEnabled_;
-  StaticQueue_t encoderQueueStorage;
-  StaticQueue_t buttonQueueStorage;
-  uint8_t encoderQueueBuffer[QUEUE_SIZE * sizeof(int8_t)];
-  uint8_t buttonQueueBuffer[QUEUE_SIZE * sizeof(bool)];
-  xQueueHandle encoderQueue = nullptr;
-  xQueueHandle buttonQueue = nullptr;
+
+  TaskHandle_t encoderTaskHandle = nullptr;
+  TaskHandle_t buttonTaskHandle = nullptr;
 
   long minEncoderValue_ = LONG_MIN;
   long maxEncoderValue_ = LONG_MAX;
+  int8_t oldAB_{0};
   std::atomic<long> encoderPosition_{0};
   std::atomic<int8_t> lastMovementDirection_{0};
   std::atomic<unsigned long> lastMovementTime_{0};
@@ -68,7 +67,6 @@ private:
   unsigned long rotaryAccelerationCoef_ = 150;
   bool circleValues_ = false;
 
-  int8_t oldAB_{0};
   const int8_t encoderStates_[16] = {0,  -1, 1, 0, 1, 0, 0,  -1,
                                      -1, 0,  0, 1, 0, 1, -1, 0};
   std::atomic<ButtonState> buttonState_{ButtonState::UP};
@@ -83,13 +81,14 @@ private:
                     PullType pullType);
   bool debounce(bool currentState, unsigned long &lastTime,
                 unsigned long delay);
+  void initGPIOS();
 
 public:
   Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
           gpio_num_t buttonPin = GPIO_NUM_NC,
           PullType encoderPinPull = PullType::EXTERNAL_PULLUP,
           PullType buttonPinPull = PullType::EXTERNAL_PULLDOWN);
-  void initGPIOS(){};
+
   void setBoundaries(long minValue = -100, long maxValue = 100,
                      bool circleValues = false);
 

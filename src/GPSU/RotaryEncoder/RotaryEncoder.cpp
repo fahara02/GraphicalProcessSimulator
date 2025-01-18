@@ -31,20 +31,19 @@ void Encoder::configurePin(gpio_num_t pin, gpio_int_type_t intrType,
     break;
   case PullType::EXTERNAL_PULLUP:
   case PullType::EXTERNAL_PULLDOWN:
-    // Assume external resistors; disable internal ones
+
     ioConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;
     ioConfig.pull_up_en = GPIO_PULLUP_DISABLE;
     break;
   default:
-    // Fallback for unsupported types
-    Serial.println("Unsupported PullType specified.");
+
+    ESP_LOGE(LOG_TAG, "Unsupported PullType specified.");
     return;
   }
 
   gpio_config(&ioConfig);
 }
-
-void Encoder::begin() {
+void Encoder::initGPIOS() {
   configurePin(aPin_, GPIO_INTR_ANYEDGE, encoderPinPull_);
   configurePin(bPin_, GPIO_INTR_ANYEDGE, encoderPinPull_);
   if (buttonPin_ != GPIO_NUM_NC) {
@@ -64,19 +63,19 @@ void Encoder::begin() {
         buttonPin_, [](void *arg) { static_cast<Encoder *>(arg)->buttonISR(); },
         this);
   }
+};
+void Encoder::begin() {
+  initGPIOS();
 
-  encoderQueue = xQueueCreateStatic(QUEUE_SIZE, sizeof(int8_t),
-                                    encoderQueueBuffer, &encoderQueueStorage);
-  buttonQueue = xQueueCreateStatic(QUEUE_SIZE, sizeof(int8_t),
-                                   buttonQueueBuffer, &buttonQueueStorage);
-
-  xTaskCreatePinnedToCore(
-      EncoderMonitorTask, "EncoderMonitor", GPSU_CORE::EncoderTaskStack, this,
-      GPSU_CORE::EncoderTask_Priority, nullptr, GPSU_CORE::EncoderTask_CORE);
+  xTaskCreatePinnedToCore(EncoderMonitorTask, "EncoderMonitor",
+                          GPSU_CORE::EncoderTaskStack, this,
+                          GPSU_CORE::EncoderTask_Priority, &encoderTaskHandle,
+                          GPSU_CORE::EncoderTask_CORE);
   if (buttonPin_ != GPIO_NUM_NC) {
-    xTaskCreatePinnedToCore(
-        ButtonMonitorTask, "ButtonMonitor", GPSU_CORE::BtnTaskStack, this,
-        GPSU_CORE::BtnTask_Priority, nullptr, GPSU_CORE::BtnTask_CORE);
+    xTaskCreatePinnedToCore(ButtonMonitorTask, "ButtonMonitor",
+                            GPSU_CORE::BtnTaskStack, this,
+                            GPSU_CORE::BtnTask_Priority, &buttonTaskHandle,
+                            GPSU_CORE::BtnTask_CORE);
   }
 }
 void Encoder::setup(void (*ISR_callback)(void)) {
@@ -115,91 +114,94 @@ void IRAM_ATTR Encoder::encoderISR() {
 
     return;
   }
-
-  oldAB_ <<= 2;
-  uint8_t state = (gpio_get_level(bPin_) << 1) | gpio_get_level(aPin_);
-  oldAB_ |= (state & 0x03);
-  int8_t currentDirection = encoderStates_[oldAB_ & 0x0F];
-
-  if (currentDirection != 0) {
+  static unsigned long lastInterruptTime = 0;
+  unsigned long currentTime = timeCounter.load(std::memory_order_relaxed);
+  if (currentTime - lastInterruptTime > ENCODER_DEBOUNCE_DELAY) {
+    lastInterruptTime = currentTime;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xQueueSendFromISR(encoderQueue, &currentDirection,
-                      &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(encoderTaskHandle, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 };
 void IRAM_ATTR Encoder::buttonISR() {
-  bool buttonPressed = !gpio_get_level(buttonPin_);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  xQueueSendFromISR(buttonQueue, &buttonPressed, &xHigherPriorityTaskWoken);
+  vTaskNotifyGiveFromISR(buttonTaskHandle, &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 void Encoder::EncoderMonitorTask(void *param) {
-  Encoder *encoder = static_cast<Encoder *>(param); // Cast param
-  int8_t direction;
+  Encoder *encoder = static_cast<Encoder *>(param);
+  int8_t currentDirection;
 
   while (true) {
 
-    if (xQueueReceive(encoder->encoderQueue, &direction, portMAX_DELAY)) {
+    if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
       unsigned long now = timeCounter.load(std::memory_order_relaxed);
 
       if (!encoder->isEnabled_) {
         continue;
       }
-
+      encoder->oldAB_ <<= 2;
+      uint8_t state = (gpio_get_level(encoder->bPin_) << 1) |
+                      gpio_get_level(encoder->aPin_);
+      encoder->oldAB_ |= (state & 0x03);
+      currentDirection = encoder->encoderStates_[encoder->oldAB_ & 0x0F];
       // Update position
-      long prevPosition =
-          encoder->encoderPosition_.load() / encoder->encoderSteps_;
-      encoder->encoderPosition_ += direction;
-      long newPosition =
-          encoder->encoderPosition_.load() / encoder->encoderSteps_;
+      if (currentDirection != 0) {
+        long prevPosition =
+            encoder->encoderPosition_.load() / encoder->encoderSteps_;
+        encoder->encoderPosition_ += currentDirection;
+        long newPosition =
+            encoder->encoderPosition_.load() / encoder->encoderSteps_;
 
-      if (newPosition != prevPosition && encoder->rotaryAccelerationCoef_ > 1) {
+        if (newPosition != prevPosition &&
+            encoder->rotaryAccelerationCoef_ > 1) {
 
-        int8_t lastDirection = encoder->lastMovementDirection_.load();
-        if (direction == lastDirection && direction != 0 &&
-            lastDirection != 0) {
-          unsigned long timeSinceLastMotion =
-              now - encoder->lastMovementTime_.load();
-          if (timeSinceLastMotion < ACCELERATION_LONG_CUTOFF) {
-            unsigned long limitedTime =
-                std::max(ACCELERATION_SHORT_CUTOFF, timeSinceLastMotion);
-            int adjustment = encoder->rotaryAccelerationCoef_ / limitedTime;
-            encoder->encoderPosition_ +=
-                direction > 0 ? adjustment : -adjustment;
+          int8_t lastDirection = encoder->lastMovementDirection_.load();
+          if (currentDirection == lastDirection && currentDirection != 0 &&
+              lastDirection != 0) {
+            unsigned long timeSinceLastMotion =
+                now - encoder->lastMovementTime_.load();
+            if (timeSinceLastMotion < ACCELERATION_LONG_CUTOFF) {
+              unsigned long limitedTime =
+                  std::max(ACCELERATION_SHORT_CUTOFF, timeSinceLastMotion);
+              int adjustment = encoder->rotaryAccelerationCoef_ / limitedTime;
+              encoder->encoderPosition_ +=
+                  currentDirection > 0 ? adjustment : -adjustment;
+            }
+          }
+
+          encoder->lastMovementTime_.store(now);
+          encoder->lastMovementDirection_.store(currentDirection);
+        }
+
+        long adjustedPosition =
+            encoder->encoderPosition_.load() / encoder->encoderSteps_;
+        int maxPosition = encoder->maxEncoderValue_ / encoder->encoderSteps_;
+        int minPosition = encoder->minEncoderValue_ / encoder->encoderSteps_;
+
+        if (adjustedPosition > maxPosition) {
+          if (encoder->circleValues_) {
+            long delta = adjustedPosition - maxPosition;
+            encoder->encoderPosition_.store(encoder->minEncoderValue_ +
+                                            (delta * encoder->encoderSteps_));
+          } else {
+            encoder->encoderPosition_.store(encoder->maxEncoderValue_);
+          }
+        } else if (adjustedPosition < minPosition) {
+          if (encoder->circleValues_) {
+            long delta = adjustedPosition - minPosition;
+            encoder->encoderPosition_.store(encoder->maxEncoderValue_ +
+                                            (delta * encoder->encoderSteps_));
+          } else {
+            encoder->encoderPosition_.store(encoder->minEncoderValue_);
           }
         }
-
-        encoder->lastMovementTime_.store(now);
-        encoder->lastMovementDirection_.store(direction);
       }
-
-      long adjustedPosition =
-          encoder->encoderPosition_.load() / encoder->encoderSteps_;
-      int maxPosition = encoder->maxEncoderValue_ / encoder->encoderSteps_;
-      int minPosition = encoder->minEncoderValue_ / encoder->encoderSteps_;
-
-      if (adjustedPosition > maxPosition) {
-        if (encoder->circleValues_) {
-          long delta = adjustedPosition - maxPosition;
-          encoder->encoderPosition_.store(encoder->minEncoderValue_ +
-                                          (delta * encoder->encoderSteps_));
-        } else {
-          encoder->encoderPosition_.store(encoder->maxEncoderValue_);
-        }
-      } else if (adjustedPosition < minPosition) {
-        if (encoder->circleValues_) {
-          long delta = adjustedPosition - minPosition;
-          encoder->encoderPosition_.store(encoder->maxEncoderValue_ +
-                                          (delta * encoder->encoderSteps_));
-        } else {
-          encoder->encoderPosition_.store(encoder->minEncoderValue_);
-        }
+      if (encoder->encoderCallback_) {
+        encoder->encoderCallback_();
       }
     }
-    if (encoder->encoderCallback_) {
-      encoder->encoderCallback_();
-    }
+
     vTaskDelay(pdMS_TO_TICKS(100));
   }
   vTaskDelete(NULL);
@@ -222,13 +224,13 @@ void Encoder::ButtonMonitorTask(void *param) {
 
   while (true) {
     bool buttonPressed;
-    if (xQueueReceive(encoder->buttonQueue, &buttonPressed, portMAX_DELAY)) {
-      unsigned long currentTime = timeCounter.load(std::memory_order_relaxed);
+    if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
 
       if (!encoder->isEnabled_) {
         encoder->buttonState_.store(ButtonState::BTN_DISABLED);
         continue;
       }
+      bool buttonPressed = !gpio_get_level(encoder->buttonPin_);
       if (encoder->debounce(buttonPressed, lastDebounceTime, DEBOUNCE_DELAY)) {
         ButtonState currentState = encoder->buttonState_.load();
 
