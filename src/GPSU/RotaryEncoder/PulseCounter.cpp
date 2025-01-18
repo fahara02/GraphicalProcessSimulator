@@ -7,13 +7,14 @@ bool PulseCounter::attachedInterrupt = false;
 PulseCounter::PulseCounter(uint16_t max_count, uint16_t min_count,
                            bool intr_enable, enc_isr_cb_t enc_isr_cb,
                            void *enc_isr_cb_data, PullType pull)
-    : maxCount_(max_count), minCount_(min_count),
-      enable_interrupt_(intr_enable), encoder_isr_callback_(enc_isr_cb),
+    : maxCount_(max_count), minCount_(min_count), enableInterrupt_(intr_enable),
+      encoder_isr_callback_(enc_isr_cb),
       encoder_isr_callback_data_(enc_isr_cb_data), encoderPull_(pull) {}
 
 PulseCounter::~PulseCounter() { detach(); }
 
 void PulseCounter::intGPIOs() {
+
   gpio_pad_select_gpio(aPin_);
   gpio_pad_select_gpio(bPin_);
   gpio_set_direction(aPin_, GPIO_MODE_INPUT);
@@ -25,6 +26,11 @@ void PulseCounter::intGPIOs() {
   } else if (encoderPull_ == PullType::INTERNAL_PULLDOWN) {
     gpio_pulldown_en(aPin_);
     gpio_pulldown_en(bPin_);
+  } else if (encoderPull_ == PullType::NONE) {
+    gpio_pullup_dis(aPin_);
+    gpio_pulldown_dis(aPin_);
+    gpio_pullup_dis(bPin_);
+    gpio_pulldown_dis(bPin_);
   }
 }
 

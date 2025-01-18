@@ -32,7 +32,7 @@ private:
   int countsMode_ = 2;
   volatile int64_t count_ = 0;
   enc_isr_cb_t encoder_isr_callback_;
-  bool enable_interrupt_;
+  bool enableInterrupt_;
   void *encoder_isr_callback_data_;
   static uint32_t isrServiceCpuCore;
 
