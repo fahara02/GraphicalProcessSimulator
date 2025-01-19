@@ -27,25 +27,30 @@ using namespace GPSU_CORE;
 class PulseCounter {
 public:
   struct pcnt_evt_t {
-    int unit;        // the PCNT unit that originated an interrupt
-    uint32_t status; // information on the event type that caused the interrupt
-    unsigned long timeStamp; // The time the event occured
+    int unit;
+    uint32_t status;
+    unsigned long timeStamp;
+  };
+
+  struct pcnt_range_t {
+    int minLimit = INT16_MIN;
+    int maxLimit = INT16_MAX;
+    int thresh0 = -50;
+    int thresh1 = 50;
   };
   using EncoderISRCallback = std::function<void(void *)>;
 
   static constexpr uint16_t MAX_ENCODERS = PCNT_UNIT_MAX;
   static constexpr uint16_t PCNT_EVT_QUEUE_SIZE = 10;
 
-  PulseCounter(int max_count = INT16_MAX, int min_count = INT16_MIN,
-               int threshold0 = -50, int threshhold1 = 50,
-               bool interrupt_enable = false,
+  PulseCounter(bool interrupt_enable = false,
                EncoderISRCallback isr_callback = nullptr,
                void *isr_callback_data = nullptr,
                PullType pull_type = PullType::EXTERNAL_PULLUP);
 
   ~PulseCounter();
   static std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_;
-  void attach(int a_pin, int b_pin,
+  void attach(int a_pin, int b_pin, pcnt_range_t range = {},
               EncoderType encoder_type = EncoderType::FULL);
   void detach();
 
@@ -71,15 +76,11 @@ public:
   static std::atomic<unsigned long> time_counter;
 
 private:
-  gpio_num_t a_pin_;
-  gpio_num_t b_pin_;
-  int max_count_;
-  int min_count_;
-  int threshhold0_;
-  int threshhold1_;
-
+  gpio_num_t sig_io_;
+  gpio_num_t cntrl_io_;
   pcnt_unit_t unit_;
   pcnt_config_t pcnt_config_;
+  pcnt_range_t pcnt_range_;
   PullType pull_type_;
   EncoderType encoder_type_;
   int counts_mode_;
@@ -99,7 +100,7 @@ private:
   void setupTimer();
   void init();
   void configureGPIOs();
-  void configurePCNT(EncoderType et);
+  void configurePCNT(EncoderType et, pcnt_range_t range);
   int64_t getRawCount() const;
   bool installInterruptService();
 };

@@ -32,19 +32,15 @@ bool PulseCounter::attached_interrupt_ = false;
 std::array<std::unique_ptr<PulseCounter>, PulseCounter::MAX_ENCODERS>
     PulseCounter::encoders_ = {};
 
-PulseCounter::PulseCounter(int max_count = INT16_MAX, int min_count = INT16_MIN,
-                           int threshold0 = -50, int threshhold1 = 50,
-                           bool interrupt_enable,
+PulseCounter::PulseCounter(bool interrupt_enable,
                            EncoderISRCallback isr_callback,
                            void *isr_callback_data, PullType pull_type)
     : isr_callback_(std::move(isr_callback)),
-      isr_callback_data_(isr_callback_data), a_pin_(GPIO_NUM_NC),
-      b_pin_(GPIO_NUM_NC), max_count_(max_count), min_count_(min_count),
-      threshhold0_(threshold0), threshhold1_(threshhold1),
-      unit_((pcnt_unit_t)-1), pcnt_config_({}), pull_type_(pull_type),
-      encoder_type_(EncoderType::FULL), counts_mode_(2), count_(0),
-      all_pulse_interrupt_enabled_(interrupt_enable), attached_(false),
-      direction_(false), working_(false) {
+      isr_callback_data_(isr_callback_data), sig_io_(GPIO_NUM_NC),
+      cntrl_io_(GPIO_NUM_NC), unit_((pcnt_unit_t)-1), pcnt_config_({}),
+      pull_type_(pull_type), encoder_type_(EncoderType::FULL), counts_mode_(2),
+      count_(0), all_pulse_interrupt_enabled_(interrupt_enable),
+      attached_(false), direction_(false), working_(false) {
   init();
 }
 
@@ -150,8 +146,8 @@ void PulseCounter::pcntmonitorTask(void *param) {
         pcnt_get_counter_value(unit, &raw_count);
         new_count = pc->incrementCount(raw_count);
 
-        pcnt_set_event_value(unit, PCNT_EVT_THRES_0, pc->threshhold0_);
-        pcnt_set_event_value(unit, PCNT_EVT_THRES_1, pc->threshhold1_);
+        pcnt_set_event_value(unit, PCNT_EVT_THRES_0, pc->pcnt_range_.thresh0);
+        pcnt_set_event_value(unit, PCNT_EVT_THRES_1, pc->pcnt_range_.thresh1);
         pcnt_event_enable(unit, PCNT_EVT_THRES_0);
         pcnt_event_enable(unit, PCNT_EVT_THRES_1);
         pcnt_counter_clear(unit);
@@ -173,7 +169,7 @@ void PulseCounter::configureGPIOs() {
   gpio_config_t io_conf = {};
 
   // Set pin configuration for pin A
-  io_conf.pin_bit_mask = (1ULL << a_pin_);
+  io_conf.pin_bit_mask = (1ULL << sig_io_);
   io_conf.mode = GPIO_MODE_INPUT;
   io_conf.pull_down_en = (pull_type_ == PullType::INTERNAL_PULLDOWN)
                              ? GPIO_PULLDOWN_ENABLE
@@ -186,18 +182,19 @@ void PulseCounter::configureGPIOs() {
   gpio_config(&io_conf);
 
   // Set pin configuration for pin B (similar to pin A)
-  io_conf.pin_bit_mask = (1ULL << b_pin_);
+  io_conf.pin_bit_mask = (1ULL << cntrl_io_);
   gpio_config(&io_conf);
 }
 
-void PulseCounter::configurePCNT(EncoderType et) {
+void PulseCounter::configurePCNT(EncoderType et, pcnt_range_t range) {
   ESP_LOGI(TAG_ENCODER, "configuring PCNT");
+
   // Channel 0 configuration
-  pcnt_config_.pulse_gpio_num = a_pin_;
-  pcnt_config_.ctrl_gpio_num = b_pin_;
+  pcnt_config_.pulse_gpio_num = sig_io_;
+  pcnt_config_.ctrl_gpio_num = cntrl_io_;
   pcnt_config_.unit = unit_;
-  pcnt_config_.counter_h_lim = max_count_;
-  pcnt_config_.counter_l_lim = min_count_;
+  pcnt_config_.counter_h_lim = range.maxLimit;
+  pcnt_config_.counter_l_lim = range.minLimit;
 
   if (et == EncoderType::SINGLE) {
     pcnt_config_.channel = PCNT_CHANNEL_0;
@@ -226,8 +223,8 @@ void PulseCounter::configurePCNT(EncoderType et) {
     pcnt_config_.lctrl_mode = PCNT_MODE_DISABLE;
     pcnt_config_.hctrl_mode = PCNT_MODE_DISABLE;
     // then enable again
-    pcnt_config_.pulse_gpio_num = b_pin_;
-    pcnt_config_.ctrl_gpio_num = a_pin_;
+    pcnt_config_.pulse_gpio_num = cntrl_io_;
+    pcnt_config_.ctrl_gpio_num = sig_io_;
     pcnt_config_.channel = PCNT_CHANNEL_1;
     pcnt_config_.pos_mode = PCNT_COUNT_DEC;
     pcnt_config_.neg_mode = PCNT_COUNT_INC;
@@ -253,7 +250,8 @@ void PulseCounter::setFilter(uint16_t value) {
   }
 }
 
-void PulseCounter::attach(int a_pin, int b_pin, EncoderType encoder_type) {
+void PulseCounter::attach(int a_pin, int b_pin, pcnt_range_t range,
+                          EncoderType encoder_type) {
   if (attached_) {
     ESP_LOGE(TAG_ENCODER, "Already attached!");
     return;
@@ -271,14 +269,16 @@ void PulseCounter::attach(int a_pin, int b_pin, EncoderType encoder_type) {
     ESP_LOGE(TAG_ENCODER, "Too many encoders! Attach failed.");
     return;
   }
+
   unit_ = static_cast<pcnt_unit_t>(index);
-  a_pin_ = static_cast<gpio_num_t>(a_pin);
-  b_pin_ = static_cast<gpio_num_t>(b_pin);
+  pcnt_range_ = range;
+  sig_io_ = static_cast<gpio_num_t>(a_pin);
+  cntrl_io_ = static_cast<gpio_num_t>(b_pin);
   encoder_type_ = encoder_type;
 
   // Initialize GPIOs and PCNT
   configureGPIOs();
-  configurePCNT(encoder_type);
+  configurePCNT(encoder_type, range);
   setFilter(250);
   pcnt_event_enable(unit_, PCNT_EVT_H_LIM);
   pcnt_event_enable(unit_, PCNT_EVT_L_LIM);
@@ -293,8 +293,8 @@ void PulseCounter::attach(int a_pin, int b_pin, EncoderType encoder_type) {
              "Encoder install interrupt handler for unit %d failed", unit_);
   }
   if (all_pulse_interrupt_enabled_) {
-    pcnt_set_event_value(unit_, PCNT_EVT_THRES_0, -1);
-    pcnt_set_event_value(unit_, PCNT_EVT_THRES_1, 1);
+    pcnt_set_event_value(unit_, PCNT_EVT_THRES_0, range.thresh0);
+    pcnt_set_event_value(unit_, PCNT_EVT_THRES_1, range.thresh1);
     pcnt_event_enable(unit_, PCNT_EVT_THRES_0);
     pcnt_event_enable(unit_, PCNT_EVT_THRES_1);
   }
@@ -378,46 +378,3 @@ int64_t PulseCounter::getRawCount() const {
 }
 
 }; // namespace COMPONENT
-// static void pcnt_intr_handler(void *arg) {
-
-//   PulseCounter *pc = static_cast<PulseCounter *>(arg);
-//   pcnt_config_t config = pc->getPCNTconfig();
-//   pcnt_unit_t unit = config.unit;
-
-//   _ENTER_CRITICAL();
-//   static volatile int64_t new_count = 0;
-//   // Handle high limit interrupt
-//   if (PCNT.status_unit[unit].COUNTER_H_LIM) {
-//     new_count = pc->incrementCount(config.counter_h_lim);
-//     PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
-//     pcnt_counter_clear(unit);
-//   }
-//   // Handle low limit interrupt
-//   else if (PCNT.status_unit[unit].COUNTER_L_LIM) {
-//     new_count = pc->incrementCount(config.counter_l_lim);
-//     PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
-//     pcnt_counter_clear(unit);
-
-//   }
-//   // Handle threshold interrupts
-
-//   else if (pc->isInterreptForAllPulseEnabled() &&
-//            (PCNT.status_unit[unit].thres0_lat ||
-//             PCNT.status_unit[unit].thres1_lat)) {
-//     int16_t raw_count = 0;
-//     pcnt_get_counter_value(unit, &raw_count);
-//     new_count = pc->incrementCount(raw_count);
-
-//     pcnt_set_event_value(unit, PCNT_EVT_THRES_0, -1);
-//     pcnt_set_event_value(unit, PCNT_EVT_THRES_1, 1);
-//     pcnt_event_enable(unit, PCNT_EVT_THRES_0);
-//     pcnt_event_enable(unit, PCNT_EVT_THRES_1);
-//     pcnt_counter_clear(unit);
-
-//     if (pc->isr_callback_) {
-//       pc->isr_callback_(pc->isr_callback_data_);
-//     }
-//   }
-
-//   _EXIT_CRITICAL();
-// }
