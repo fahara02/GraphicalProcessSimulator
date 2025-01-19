@@ -5,11 +5,20 @@
 #include <atomic>
 #include <climits>
 #include <driver/pcnt.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/portable.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
 #include <functional>
 #include <memory>
+#include <rom/gpio.h>
 #include <soc/pcnt_struct.h>
 
 #define ISR_CORE_USE_DEFAULT (0xffffffff)
+static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
+#define _ENTER_CRITICAL() portENTER_CRITICAL_SAFE(&spinlock)
+#define _EXIT_CRITICAL() portEXIT_CRITICAL_SAFE(&spinlock)
+
 namespace COMPONENT {
 
 enum class PullType {
@@ -44,8 +53,8 @@ public:
   void setCount(int64_t value);
   int64_t clearCount();
 
-  void pauseCount();
-  void resumeCount();
+  int64_t pauseCount();
+  int64_t resumeCount();
 
   void setFilter(uint16_t value);
   bool isAttached() const;

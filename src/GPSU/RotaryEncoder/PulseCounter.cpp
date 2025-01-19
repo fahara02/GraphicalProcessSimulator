@@ -32,7 +32,7 @@ PulseCounter::PulseCounter(uint16_t max_count, uint16_t min_count,
                            EncoderISRCallback isr_callback,
                            void *isr_callback_data, PullType pull_type)
     : a_pin_(GPIO_NUM_NC), b_pin_(GPIO_NUM_NC), max_count_(max_count),
-      min_count_(min_count), unit_(PCNT_UNIT_MAX), pcnt_config_({}),
+      min_count_(min_count), unit_((pcnt_unit_t)-1), pcnt_config_({}),
       pull_type_(pull_type), encoder_type_(EncoderType::FULL), counts_mode_(2),
       count_(0), isr_callback_(std::move(isr_callback)),
       interrupt_enabled_(interrupt_enable),
@@ -113,7 +113,12 @@ void PulseCounter::configurePCNT(EncoderType et) {
     pcnt_unit_config(&pcnt_config_);
   }
 }
-
+void PulseCounter::detach() {
+  pcnt_counter_pause(unit_);
+  pcnt_isr_handler_remove(this->pcnt_config_.unit);
+  PulseCounter::encoders_[unit_] = NULL;
+  attached_ = false;
+}
 void PulseCounter::setFilter(uint16_t value) {
   if (value > 1023)
     value = 1023;
@@ -209,4 +214,44 @@ bool PulseCounter::installInterruptService() {
 #endif
   return isr_installed;
 }
+
+void PulseCounter::setCount(int64_t value) {
+  _ENTER_CRITICAL();
+  count_ = value - getRawCount();
+  _EXIT_CRITICAL();
+}
+int64_t PulseCounter::getCount() const {
+  _ENTER_CRITICAL();
+  int64_t result = count_ + getRawCount();
+  _EXIT_CRITICAL();
+  return result;
+}
+int64_t PulseCounter::clearCount() {
+  _ENTER_CRITICAL();
+  count_ = 0;
+  _EXIT_CRITICAL();
+  return pcnt_counter_clear(unit_);
+}
+
+int64_t PulseCounter::pauseCount() { return pcnt_counter_pause(unit_); }
+int64_t PulseCounter::resumeCount() { return pcnt_counter_resume(unit_); }
+
+int64_t PulseCounter::getRawCount() const {
+  int16_t c;
+  int64_t compensate = 0;
+  _ENTER_CRITICAL();
+  pcnt_get_counter_value(unit_, &c);
+
+  if (PCNT.int_st.val & BIT(unit_)) {
+    pcnt_get_counter_value(unit_, &c);
+    if (PCNT.status_unit[unit_].COUNTER_H_LIM) {
+      compensate = pcnt_config_.counter_h_lim;
+    } else if (PCNT.status_unit[unit_].COUNTER_L_LIM) {
+      compensate = pcnt_config_.counter_l_lim;
+    }
+  }
+  _EXIT_CRITICAL();
+  return compensate + c;
+}
+
 }; // namespace COMPONENT
