@@ -61,10 +61,9 @@ public:
   bool isAttached() const;
 
   pcnt_config_t getPCNTconfig() { return pcnt_config_; }
-  bool isInterreptForAllPulseEnabled() { return interrupt_enabled_all_pulse_; }
+  bool isInterreptForAllPulseEnabled() { return all_pulse_interrupt_enabled_; }
 
   int64_t incrementCount(int64_t delta);
-
   EncoderISRCallback isr_callback_;
   void *isr_callback_data_;
 
@@ -79,7 +78,7 @@ private:
   EncoderType encoder_type_;
   int counts_mode_;
   std::atomic<int64_t> count_;
-  bool interrupt_enabled_all_pulse_;
+  bool all_pulse_interrupt_enabled_;
   bool attached_;
   bool direction_;
   bool working_;

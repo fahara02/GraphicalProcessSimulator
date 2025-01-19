@@ -249,6 +249,7 @@ public:
     Serial.println("........");
     Serial.printf(" updatting data in:%llu ms \n", esp_timer_get_time() / 1000);
     Serial.printf("pollrate is %d ", getPollrate());
+    Serial.println("........");
     updateInputs();
     updateAnalogInputs();
   }

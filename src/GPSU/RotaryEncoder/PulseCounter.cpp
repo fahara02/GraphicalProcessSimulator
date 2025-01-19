@@ -36,7 +36,7 @@ PulseCounter::PulseCounter(uint16_t max_count, uint16_t min_count,
       b_pin_(GPIO_NUM_NC), max_count_(max_count), min_count_(min_count),
       unit_((pcnt_unit_t)-1), pcnt_config_({}), pull_type_(pull_type),
       encoder_type_(EncoderType::FULL), counts_mode_(2), count_(0),
-      interrupt_enabled_all_pulse_(interrupt_enable), attached_(false),
+      all_pulse_interrupt_enabled_(interrupt_enable), attached_(false),
       direction_(false), working_(false) {}
 
 PulseCounter::~PulseCounter() { detach(); }
@@ -115,6 +115,7 @@ void PulseCounter::configureGPIOs() {
 }
 
 void PulseCounter::configurePCNT(EncoderType et) {
+  ESP_LOGI(TAG_ENCODER, "configuring PCNT");
   // Channel 0 configuration
   pcnt_config_.pulse_gpio_num = a_pin_;
   pcnt_config_.ctrl_gpio_num = b_pin_;
@@ -215,7 +216,7 @@ void PulseCounter::attach(int a_pin, int b_pin, EncoderType encoder_type) {
     ESP_LOGE(TAG_ENCODER,
              "Encoder install interrupt handler for unit %d failed", unit_);
   }
-  if (interrupt_enabled_all_pulse_) {
+  if (all_pulse_interrupt_enabled_) {
     pcnt_set_event_value(unit_, PCNT_EVT_THRES_0, -1);
     pcnt_set_event_value(unit_, PCNT_EVT_THRES_1, 1);
     pcnt_event_enable(unit_, PCNT_EVT_THRES_0);

@@ -1,4 +1,5 @@
 #include "IO_Controller.hpp"
+#include "PulseCounter.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
@@ -48,14 +49,18 @@ int tempA = 0;
 int rpmA = 0;
 int percent = 0;
 
-#define rpm_pin 2
-#define fuelgauge_pin 13
-#define temperature_pin 15
-
+int pinA = 15; // GPIO pin for Channel A
+int pinB = 17; // GPIO pin for Channel B
+COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter(100, -100);
 void setup() {
   Serial.begin(9600);
+  tft.init();
+  delay(1000);
   auto &controller = GPSU_CORE::IO_Controller::getInstance(
-      GPSU_CORE::Process::TRAFFIC_LIGHT, 500, 0x48);
+      GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
+
+  delay(1000);
+  encoder.attach(pinA, pinB, COMPONENT::EncoderType::FULL);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -64,7 +69,6 @@ void setup() {
   // ledcAttachPin(5, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);
 
-  tft.init();
   tft.fillScreen(TFT_WHITE);
   img.createSprite(135, 240);
   img.setTextDatum(4);
@@ -155,4 +159,7 @@ void loop() {
   img.pushImage(12, 198, 44, 17, oil);
 
   img.pushSprite(0, 0);
+  Serial.printf("count is %llu \n", encoder.getCount());
+
+  delay(100);
 }
