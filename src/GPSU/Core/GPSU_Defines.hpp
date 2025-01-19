@@ -9,6 +9,10 @@
 namespace GPSU_CORE {
 #define POOL_POLLER_NAME "PZP_Poll"
 #define POLLER_NAME "GPIO_POLLER"
+constexpr uint16_t TIMER_DIVIDER = 80;    // 80 MHz clock divided by 80 = 1 MHz
+constexpr uint16_t TIMER_INTERVAL_MS = 1; // Interval in milliseconds
+
+#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // 1 MHz
 constexpr uint16_t I2C_TIMEOUT = 200;
 constexpr uint16_t GPIO_REFRESH_PERIOD = 800;
 constexpr uint16_t POLLER_PERIOD = GPIO_REFRESH_PERIOD;
@@ -25,6 +29,10 @@ static const BaseType_t EncoderTask_CORE = tskNO_AFFINITY;
 static const uint32_t BtnTaskStack = 4096;
 static const UBaseType_t BtnTask_Priority = 3;
 static const BaseType_t BtnTask_CORE = tskNO_AFFINITY;
+
+static const uint32_t PCNTaskStack = 4096;
+static const UBaseType_t PCNTask_Priority = 3;
+static const BaseType_t PCNTask_CORE = tskNO_AFFINITY;
 
 struct GPIO {
   struct DI {
@@ -50,7 +58,24 @@ struct GPIO {
     static constexpr gpio_num_t EN_Btn = gpio_num_t::GPIO_NUM_32;
   };
 };
+enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
 
+enum class ButtonState {
+  DOWN = 0,
+  PUSHED = 1,
+  UP = 2,
+  RELEASED = 3,
+  BTN_DISABLED = 99,
+};
+enum class PullType {
+  INTERNAL_PULLUP,
+  INTERNAL_PULLDOWN,
+  EXTERNAL_PULLUP,
+  EXTERNAL_PULLDOWN,
+  NONE
+};
+
+enum class EncoderType { SINGLE, HALF, FULL };
 enum class Process {
   TRAFFIC_LIGHT = 0,
   WATER_LEVEL = 1,

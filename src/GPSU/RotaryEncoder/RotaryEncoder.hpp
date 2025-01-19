@@ -12,27 +12,14 @@
 #include <driver/gpio.h>
 
 namespace COMPONENT {
-
+using namespace GPSU_CORE;
 constexpr uint16_t QUEUE_SIZE = 10;
-constexpr uint16_t TIMER_DIVIDER = 80;    // 80 MHz clock divided by 80 = 1 MHz
-constexpr uint16_t TIMER_INTERVAL_MS = 1; // Interval in milliseconds
-
-#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // 1 MHz
 
 static constexpr unsigned long DEBOUNCE_DELAY = 50;
 static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 50;
 static constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
 static constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
 
-enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
-
-enum class ButtonState {
-  DOWN = 0,
-  PUSHED = 1,
-  UP = 2,
-  RELEASED = 3,
-  BTN_DISABLED = 99,
-};
 class Encoder {
 
 private:

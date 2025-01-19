@@ -1,6 +1,8 @@
 #ifndef PULSE_COUNTER_HPP
 #define PULSE_COUNTER_HPP
 
+#include "GPSU_Defines.hpp"
+#include "driver/timer.h"
 #include <array>
 #include <atomic>
 #include <climits>
@@ -20,22 +22,18 @@ static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
 #define _EXIT_CRITICAL() portEXIT_CRITICAL_SAFE(&spinlock)
 
 namespace COMPONENT {
-
-enum class PullType {
-  INTERNAL_PULLUP,
-  INTERNAL_PULLDOWN,
-  EXTERNAL_PULLUP,
-  EXTERNAL_PULLDOWN,
-  NONE
-};
-
-enum class EncoderType { SINGLE, HALF, FULL };
-
+using namespace GPSU_CORE;
 class PulseCounter {
 public:
+  struct pcnt_evt_t {
+    int unit;        // the PCNT unit that originated an interrupt
+    uint32_t status; // information on the event type that caused the interrupt
+    unsigned long timeStamp; // The time the event occured
+  };
   using EncoderISRCallback = std::function<void(void *)>;
 
   static constexpr uint16_t MAX_ENCODERS = PCNT_UNIT_MAX;
+  static constexpr uint16_t PCNT_EVT_QUEUE_SIZE = 10;
 
   PulseCounter(uint16_t max_count = INT16_MAX, uint16_t min_count = INT16_MIN,
                bool interrupt_enable = false,
@@ -66,6 +64,9 @@ public:
   int64_t incrementCount(int64_t delta);
   EncoderISRCallback isr_callback_;
   void *isr_callback_data_;
+  QueueHandle_t pcnt_evt_queue_;
+  TaskHandle_t pcnt_evt_task;
+  static std::atomic<unsigned long> time_counter;
 
 private:
   gpio_num_t a_pin_;
@@ -87,7 +88,12 @@ private:
   static bool attached_interrupt_;
   static std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_;
 
-  void initialize();
+  static uint8_t queue_storage_[PCNT_EVT_QUEUE_SIZE * sizeof(pcnt_evt_t)];
+
+  static void IRAM_ATTR onTimer(void *arg);
+  static void pcntmonitorTask(void *param);
+  void setupTimer();
+  void init();
   void configureGPIOs();
   void configurePCNT(EncoderType et);
   int64_t getRawCount() const;
