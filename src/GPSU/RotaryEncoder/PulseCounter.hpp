@@ -1,71 +1,84 @@
 #ifndef PULSE_COUNTER_HPP
 #define PULSE_COUNTER_HPP
+
+#include <array>
+#include <atomic>
 #include <climits>
 #include <driver/pcnt.h>
+#include <functional>
 #include <memory>
 #include <soc/pcnt_struct.h>
 
+#define ISR_CORE_USE_DEFAULT (0xffffffff)
 namespace COMPONENT {
 
 enum class PullType {
-  INTERNAL_PULLUP = 0,
-  INTERNAL_PULLDOWN = 1,
-  EXTERNAL_PULLUP = 2,
-  EXTERNAL_PULLDOWN = 3,
-  NONE = 4
+  INTERNAL_PULLUP,
+  INTERNAL_PULLDOWN,
+  EXTERNAL_PULLUP,
+  EXTERNAL_PULLDOWN,
+  NONE
 };
 
-enum class EncoderType { SINGLE = 0, HALF = 1, FULL = 2 };
+enum class EncoderType { SINGLE, HALF, FULL };
+
 class PulseCounter {
-  typedef void (*enc_isr_cb_t)(void *);
+public:
+  using EncoderISRCallback = std::function<void(void *)>;
+
   static constexpr uint16_t MAX_ENCODERS = PCNT_UNIT_MAX;
 
-private:
-  gpio_num_t aPin_;
-  gpio_num_t bPin_;
-  uint16_t maxCount_ = INT16_MAX;
-  uint16_t minCount_ = INT16_MIN;
-  pcnt_unit_t unit_;
-  pcnt_config_t encoderConfig_;
-  PullType encoderPull_;
-  EncoderType encoderType_;
-  int countsMode_ = 2;
-  volatile int64_t count_ = 0;
-  enc_isr_cb_t encoder_isr_callback_;
-  bool enableInterrupt_;
-  void *encoder_isr_callback_data_;
-  static uint32_t isrServiceCpuCore;
-
-  std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_ = {};
-
-public:
   PulseCounter(uint16_t max_count = INT16_MAX, uint16_t min_count = INT16_MIN,
-               bool intr_enable = false, enc_isr_cb_t enc_isr_cb = nullptr,
-               void *enc_isr_cb_data = nullptr,
-               PullType pull = PullType::EXTERNAL_PULLUP);
+               bool interrupt_enable = false,
+               EncoderISRCallback isr_callback = nullptr,
+               void *isr_callback_data = nullptr,
+               PullType pull_type = PullType::EXTERNAL_PULLUP);
+
   ~PulseCounter();
 
-  void attach(int aPin, int bPin, EncoderType et = EncoderType::FULL);
-
-  int64_t getCount();
-  int64_t clearCount();
-  int64_t pauseCount();
-  int64_t resumeCount();
+  void attach(int a_pin, int b_pin,
+              EncoderType encoder_type = EncoderType::FULL);
   void detach();
+
+  int64_t getCount() const;
   void setCount(int64_t value);
+  int64_t clearCount();
+
+  void pauseCount();
+  void resumeCount();
+
   void setFilter(uint16_t value);
-  bool isAttached() { return attached; }
+  bool isAttached() const;
 
 private:
-  static bool attachedInterrupt;
-  int64_t getCountRaw();
-  void init();
-  void intGPIOs();
+  gpio_num_t a_pin_;
+  gpio_num_t b_pin_;
+  uint16_t max_count_;
+  uint16_t min_count_;
+  pcnt_unit_t unit_;
+  pcnt_config_t pcnt_config_;
+  PullType pull_type_;
+  EncoderType encoder_type_;
+  int counts_mode_;
+  volatile int64_t count_;
+  EncoderISRCallback isr_callback_;
+  bool interrupt_enabled_;
+  void *isr_callback_data_;
+  bool attached_;
+  bool direction_;
+  bool working_;
+
+  static uint32_t isr_service_cpu_core_;
+  static bool attached_interrupt_;
+  static std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_;
+
+  void initialize();
+  void configureGPIOs();
   void configurePCNT(EncoderType et);
-  bool attached;
-  bool direction;
-  bool working;
+  int64_t getRawCount() const;
+  bool installInterruptService();
 };
 
 } // namespace COMPONENT
-#endif
+
+#endif // PULSE_COUNTER_HPP
