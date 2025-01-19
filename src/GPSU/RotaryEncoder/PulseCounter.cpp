@@ -25,8 +25,6 @@ namespace COMPONENT {
 
 std::atomic<unsigned long> PulseCounter::time_counter = 0; // Initialize to 0
 
-uint8_t PulseCounter::queue_storage_[PulseCounter::PCNT_EVT_QUEUE_SIZE *
-                                     sizeof(PulseCounter::pcnt_evt_t)] = {};
 uint32_t PulseCounter::isr_service_cpu_core_ = 0;
 bool PulseCounter::attached_interrupt_ = false;
 std::array<std::unique_ptr<PulseCounter>, PulseCounter::MAX_ENCODERS>
@@ -86,7 +84,7 @@ static IRAM_ATTR void ipc_install_isr_on_core(void *arg) {
 int64_t PulseCounter::incrementCount(int64_t delta) {
   return count_.fetch_add(delta, std::memory_order_seq_cst) + delta;
 }
-static IRAM_ATTR void pcnt_intr_handler(void *arg) {
+static void pcnt_intr_handler(void *arg) {
   unsigned long now =
       PulseCounter::time_counter.load(std::memory_order_relaxed);
   uint32_t intr_status = PCNT.int_st.val;
@@ -96,7 +94,7 @@ static IRAM_ATTR void pcnt_intr_handler(void *arg) {
     if (intr_status & BIT(i)) {
       auto &encoder = PulseCounter::encoders_[i];
       if (encoder) {
-        PulseCounter::pcnt_evt_t evt;
+        pcnt_evt_t evt;
         evt.unit = i;
         evt.status = PCNT.status_unit[i].val;
         evt.timeStamp = now;
@@ -116,7 +114,7 @@ void PulseCounter::pcntmonitorTask(void *param) {
   pcnt_config_t config = pc->getPCNTconfig();
   pcnt_unit_t unit = config.unit;
 
-  PulseCounter::pcnt_evt_t evt;
+  pcnt_evt_t evt;
   portBASE_TYPE res;
   while (true) {
     res = xQueueReceive(pc->pcnt_evt_queue_, &evt, pdMS_TO_TICKS(1000));
@@ -288,6 +286,7 @@ void PulseCounter::attach(int a_pin, int b_pin, pcnt_range_t range,
   if (!attached_interrupt_) {
     attached_interrupt_ = installInterruptService();
   }
+
   if (pcnt_isr_handler_add(unit_, pcnt_intr_handler, this) != ESP_OK) {
     ESP_LOGE(TAG_ENCODER,
              "Encoder install interrupt handler for unit %d failed", unit_);

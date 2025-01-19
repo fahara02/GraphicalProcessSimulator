@@ -49,9 +49,10 @@ int tempA = 0;
 int rpmA = 0;
 int percent = 0;
 
-int pinA = 15; // GPIO pin for Channel A
-int pinB = 17; // GPIO pin for Channel B
-COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter(100, -100);
+int pinA = 25; // GPIO pin for Channel A
+int pinB = 26; // GPIO pin for Channel B
+COMPONENT::pcnt_range_t ranges = {100, -100, -50, 50};
+COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 void setup() {
   Serial.begin(9600);
   tft.init();
@@ -60,7 +61,7 @@ void setup() {
       GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
   delay(1000);
-  encoder.attach(pinA, pinB, COMPONENT::EncoderType::FULL);
+  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);

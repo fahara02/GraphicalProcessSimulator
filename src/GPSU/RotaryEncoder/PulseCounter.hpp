@@ -24,20 +24,21 @@ static portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
 
 namespace COMPONENT {
 using namespace GPSU_CORE;
+struct pcnt_evt_t {
+  int unit;
+  uint32_t status;
+  unsigned long timeStamp;
+};
+
+struct pcnt_range_t {
+  int minLimit = INT16_MIN;
+  int maxLimit = INT16_MAX;
+  int thresh0 = -50;
+  int thresh1 = 50;
+};
+
 class PulseCounter {
 public:
-  struct pcnt_evt_t {
-    int unit;
-    uint32_t status;
-    unsigned long timeStamp;
-  };
-
-  struct pcnt_range_t {
-    int minLimit = INT16_MIN;
-    int maxLimit = INT16_MAX;
-    int thresh0 = -50;
-    int thresh1 = 50;
-  };
   using EncoderISRCallback = std::function<void(void *)>;
 
   static constexpr uint16_t MAX_ENCODERS = PCNT_UNIT_MAX;
@@ -93,16 +94,16 @@ private:
   static uint32_t isr_service_cpu_core_;
   static bool attached_interrupt_;
 
-  static uint8_t queue_storage_[PCNT_EVT_QUEUE_SIZE * sizeof(pcnt_evt_t)];
-
-  static void IRAM_ATTR onTimer(void *arg);
-  static void pcntmonitorTask(void *param);
   void setupTimer();
   void init();
   void configureGPIOs();
   void configurePCNT(EncoderType et, pcnt_range_t range);
   int64_t getRawCount() const;
   bool installInterruptService();
+
+  static void pcnt_intr_handler(void *arg);
+  static void IRAM_ATTR onTimer(void *arg);
+  static void pcntmonitorTask(void *param);
 };
 
 } // namespace COMPONENT
