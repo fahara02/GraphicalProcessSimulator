@@ -31,12 +31,12 @@ PulseCounter::PulseCounter(uint16_t max_count, uint16_t min_count,
                            bool interrupt_enable,
                            EncoderISRCallback isr_callback,
                            void *isr_callback_data, PullType pull_type)
-    : a_pin_(GPIO_NUM_NC), b_pin_(GPIO_NUM_NC), max_count_(max_count),
-      min_count_(min_count), unit_((pcnt_unit_t)-1), pcnt_config_({}),
-      pull_type_(pull_type), encoder_type_(EncoderType::FULL), counts_mode_(2),
-      count_(0), isr_callback_(std::move(isr_callback)),
-      interrupt_enabled_(interrupt_enable),
-      isr_callback_data_(isr_callback_data), attached_(false),
+    : isr_callback_(std::move(isr_callback)),
+      isr_callback_data_(isr_callback_data), a_pin_(GPIO_NUM_NC),
+      b_pin_(GPIO_NUM_NC), max_count_(max_count), min_count_(min_count),
+      unit_((pcnt_unit_t)-1), pcnt_config_({}), pull_type_(pull_type),
+      encoder_type_(EncoderType::FULL), counts_mode_(2), count_(0),
+      interrupt_enabled_all_pulse_(interrupt_enable), attached_(false),
       direction_(false), working_(false) {}
 
 PulseCounter::~PulseCounter() { detach(); }
@@ -45,7 +45,53 @@ static IRAM_ATTR void ipc_install_isr_on_core(void *arg) {
   esp_err_t *result = (esp_err_t *)arg;
   *result = pcnt_isr_service_install(0);
 }
-static void pcnt_intr_handler(void *arg) {}
+
+int64_t PulseCounter::incrementCount(int64_t delta) {
+  return count_.fetch_add(delta, std::memory_order_seq_cst) + delta;
+}
+
+static void pcnt_intr_handler(void *arg) {
+
+  PulseCounter *pc = static_cast<PulseCounter *>(arg);
+  pcnt_config_t config = pc->getPCNTconfig();
+  pcnt_unit_t unit = config.unit;
+  int64_t new_count = 0;
+  _ENTER_CRITICAL();
+  // Handle high limit interrupt
+  if (PCNT.status_unit[unit].COUNTER_H_LIM) {
+    new_count = pc->incrementCount(config.counter_h_lim);
+    PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
+    pcnt_counter_clear(unit);
+  }
+  // Handle low limit interrupt
+  else if (PCNT.status_unit[unit].COUNTER_L_LIM) {
+    new_count = pc->incrementCount(config.counter_l_lim);
+    PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
+    pcnt_counter_clear(unit);
+
+  }
+  // Handle threshold interrupts
+
+  else if (pc->isInterreptForAllPulseEnabled() &&
+           (PCNT.status_unit[unit].thres0_lat ||
+            PCNT.status_unit[unit].thres1_lat)) {
+    int16_t raw_count = 0;
+    pcnt_get_counter_value(unit, &raw_count);
+    new_count = pc->incrementCount(raw_count);
+
+    pcnt_set_event_value(unit, PCNT_EVT_THRES_0, -1);
+    pcnt_set_event_value(unit, PCNT_EVT_THRES_1, 1);
+    pcnt_event_enable(unit, PCNT_EVT_THRES_0);
+    pcnt_event_enable(unit, PCNT_EVT_THRES_1);
+    pcnt_counter_clear(unit);
+
+    if (pc->isr_callback_) {
+      pc->isr_callback_(pc->isr_callback_data_);
+    }
+  }
+
+  _EXIT_CRITICAL();
+}
 
 void PulseCounter::configureGPIOs() {
 
@@ -169,7 +215,7 @@ void PulseCounter::attach(int a_pin, int b_pin, EncoderType encoder_type) {
     ESP_LOGE(TAG_ENCODER,
              "Encoder install interrupt handler for unit %d failed", unit_);
   }
-  if (interrupt_enabled_) {
+  if (interrupt_enabled_all_pulse_) {
     pcnt_set_event_value(unit_, PCNT_EVT_THRES_0, -1);
     pcnt_set_event_value(unit_, PCNT_EVT_THRES_1, 1);
     pcnt_event_enable(unit_, PCNT_EVT_THRES_0);

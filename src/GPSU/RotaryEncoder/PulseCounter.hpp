@@ -50,6 +50,7 @@ public:
   void detach();
 
   int64_t getCount() const;
+
   void setCount(int64_t value);
   int64_t clearCount();
 
@@ -58,6 +59,14 @@ public:
 
   void setFilter(uint16_t value);
   bool isAttached() const;
+
+  pcnt_config_t getPCNTconfig() { return pcnt_config_; }
+  bool isInterreptForAllPulseEnabled() { return interrupt_enabled_all_pulse_; }
+
+  int64_t incrementCount(int64_t delta);
+
+  EncoderISRCallback isr_callback_;
+  void *isr_callback_data_;
 
 private:
   gpio_num_t a_pin_;
@@ -69,10 +78,8 @@ private:
   PullType pull_type_;
   EncoderType encoder_type_;
   int counts_mode_;
-  volatile int64_t count_;
-  EncoderISRCallback isr_callback_;
-  bool interrupt_enabled_;
-  void *isr_callback_data_;
+  std::atomic<int64_t> count_;
+  bool interrupt_enabled_all_pulse_;
   bool attached_;
   bool direction_;
   bool working_;
