@@ -32,13 +32,15 @@ bool PulseCounter::attached_interrupt_ = false;
 std::array<std::unique_ptr<PulseCounter>, PulseCounter::MAX_ENCODERS>
     PulseCounter::encoders_ = {};
 
-PulseCounter::PulseCounter(uint16_t max_count, uint16_t min_count,
+PulseCounter::PulseCounter(int max_count = INT16_MAX, int min_count = INT16_MIN,
+                           int threshold0 = -50, int threshhold1 = 50,
                            bool interrupt_enable,
                            EncoderISRCallback isr_callback,
                            void *isr_callback_data, PullType pull_type)
     : isr_callback_(std::move(isr_callback)),
       isr_callback_data_(isr_callback_data), a_pin_(GPIO_NUM_NC),
       b_pin_(GPIO_NUM_NC), max_count_(max_count), min_count_(min_count),
+      threshhold0_(threshold0), threshhold1_(threshhold1),
       unit_((pcnt_unit_t)-1), pcnt_config_({}), pull_type_(pull_type),
       encoder_type_(EncoderType::FULL), counts_mode_(2), count_(0),
       all_pulse_interrupt_enabled_(interrupt_enable), attached_(false),
@@ -88,25 +90,28 @@ static IRAM_ATTR void ipc_install_isr_on_core(void *arg) {
 int64_t PulseCounter::incrementCount(int64_t delta) {
   return count_.fetch_add(delta, std::memory_order_seq_cst) + delta;
 }
-static void IRAM_ATTR pcnt_intr_handler(void *arg) {
-  PulseCounter *pc = static_cast<PulseCounter *>(arg);
-  unsigned long now = pc->time_counter.load(std::memory_order_relaxed);
+static IRAM_ATTR void pcnt_intr_handler(void *arg) {
+  unsigned long now =
+      PulseCounter::time_counter.load(std::memory_order_relaxed);
   uint32_t intr_status = PCNT.int_st.val;
-  int i = 0;
-  PulseCounter::pcnt_evt_t evt;
   portBASE_TYPE HPTaskAwoken = pdFALSE;
 
-  for (i = 0; i < PCNT_UNIT_MAX; i++) {
-    if (intr_status & (BIT(i))) {
-      evt.unit = i;
-      evt.status = PCNT.status_unit[i].val;
-      evt.timeStamp = now;
-      PCNT.int_clr.val = BIT(i);
-      xQueueSendFromISR(pc->pcnt_evt_queue_, &evt, &HPTaskAwoken);
-      if (HPTaskAwoken == pdTRUE) {
-        portYIELD_FROM_ISR();
+  for (int i = 0; i < PulseCounter::MAX_ENCODERS; ++i) {
+    if (intr_status & BIT(i)) {
+      auto &encoder = PulseCounter::encoders_[i];
+      if (encoder) {
+        PulseCounter::pcnt_evt_t evt;
+        evt.unit = i;
+        evt.status = PCNT.status_unit[i].val;
+        evt.timeStamp = now;
+        PCNT.int_clr.val = BIT(i);
+        xQueueSendFromISR(encoder->pcnt_evt_queue_, &evt, &HPTaskAwoken);
       }
     }
+  }
+
+  if (HPTaskAwoken == pdTRUE) {
+    portYIELD_FROM_ISR();
   }
 }
 
@@ -115,20 +120,23 @@ void PulseCounter::pcntmonitorTask(void *param) {
   pcnt_config_t config = pc->getPCNTconfig();
   pcnt_unit_t unit = config.unit;
 
-  portBASE_TYPE res;
   PulseCounter::pcnt_evt_t evt;
+  portBASE_TYPE res;
   while (true) {
     res = xQueueReceive(pc->pcnt_evt_queue_, &evt, pdMS_TO_TICKS(1000));
+    auto &encoder = PulseCounter::encoders_[evt.unit];
+    if (!encoder)
+      continue;
     int64_t new_count = 0;
     if (res == pdTRUE) {
 
       // Handle high limit interrupt
-      if (PCNT.status_unit[evt.unit].COUNTER_L_LIM) {
+      if (evt.status & PCNT_EVT_H_LIM) {
         new_count = pc->incrementCount(config.counter_h_lim);
         pcnt_counter_clear(unit);
       }
       // Handle low limit interrupt
-      else if (PCNT.status_unit[evt.unit].COUNTER_L_LIM) {
+      else if (evt.status & PCNT_EVT_L_LIM) {
         new_count = pc->incrementCount(config.counter_l_lim);
         pcnt_counter_clear(unit);
 
@@ -136,14 +144,14 @@ void PulseCounter::pcntmonitorTask(void *param) {
       // Handle threshold interrupts
 
       else if (pc->isInterreptForAllPulseEnabled() &&
-               (PCNT.status_unit[unit].thres0_lat ||
-                PCNT.status_unit[unit].thres1_lat)) {
+               ((evt.status & PCNT_EVT_THRES_0) ||
+                (evt.status & PCNT_EVT_THRES_1))) {
         int16_t raw_count = 0;
         pcnt_get_counter_value(unit, &raw_count);
         new_count = pc->incrementCount(raw_count);
 
-        pcnt_set_event_value(unit, PCNT_EVT_THRES_0, -1);
-        pcnt_set_event_value(unit, PCNT_EVT_THRES_1, 1);
+        pcnt_set_event_value(unit, PCNT_EVT_THRES_0, pc->threshhold0_);
+        pcnt_set_event_value(unit, PCNT_EVT_THRES_1, pc->threshhold1_);
         pcnt_event_enable(unit, PCNT_EVT_THRES_0);
         pcnt_event_enable(unit, PCNT_EVT_THRES_1);
         pcnt_counter_clear(unit);
@@ -157,49 +165,6 @@ void PulseCounter::pcntmonitorTask(void *param) {
   }
   vTaskDelete(NULL);
 }
-// static void pcnt_intr_handler(void *arg) {
-
-//   PulseCounter *pc = static_cast<PulseCounter *>(arg);
-//   pcnt_config_t config = pc->getPCNTconfig();
-//   pcnt_unit_t unit = config.unit;
-
-//   _ENTER_CRITICAL();
-//   static volatile int64_t new_count = 0;
-//   // Handle high limit interrupt
-//   if (PCNT.status_unit[unit].COUNTER_H_LIM) {
-//     new_count = pc->incrementCount(config.counter_h_lim);
-//     PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
-//     pcnt_counter_clear(unit);
-//   }
-//   // Handle low limit interrupt
-//   else if (PCNT.status_unit[unit].COUNTER_L_LIM) {
-//     new_count = pc->incrementCount(config.counter_l_lim);
-//     PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
-//     pcnt_counter_clear(unit);
-
-//   }
-//   // Handle threshold interrupts
-
-//   else if (pc->isInterreptForAllPulseEnabled() &&
-//            (PCNT.status_unit[unit].thres0_lat ||
-//             PCNT.status_unit[unit].thres1_lat)) {
-//     int16_t raw_count = 0;
-//     pcnt_get_counter_value(unit, &raw_count);
-//     new_count = pc->incrementCount(raw_count);
-
-//     pcnt_set_event_value(unit, PCNT_EVT_THRES_0, -1);
-//     pcnt_set_event_value(unit, PCNT_EVT_THRES_1, 1);
-//     pcnt_event_enable(unit, PCNT_EVT_THRES_0);
-//     pcnt_event_enable(unit, PCNT_EVT_THRES_1);
-//     pcnt_counter_clear(unit);
-
-//     if (pc->isr_callback_) {
-//       pc->isr_callback_(pc->isr_callback_data_);
-//     }
-//   }
-
-//   _EXIT_CRITICAL();
-// }
 
 void PulseCounter::configureGPIOs() {
   ESP_LOGI(TAG_ENCODER, "Configuring GPIOs...");
@@ -413,3 +378,46 @@ int64_t PulseCounter::getRawCount() const {
 }
 
 }; // namespace COMPONENT
+// static void pcnt_intr_handler(void *arg) {
+
+//   PulseCounter *pc = static_cast<PulseCounter *>(arg);
+//   pcnt_config_t config = pc->getPCNTconfig();
+//   pcnt_unit_t unit = config.unit;
+
+//   _ENTER_CRITICAL();
+//   static volatile int64_t new_count = 0;
+//   // Handle high limit interrupt
+//   if (PCNT.status_unit[unit].COUNTER_H_LIM) {
+//     new_count = pc->incrementCount(config.counter_h_lim);
+//     PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
+//     pcnt_counter_clear(unit);
+//   }
+//   // Handle low limit interrupt
+//   else if (PCNT.status_unit[unit].COUNTER_L_LIM) {
+//     new_count = pc->incrementCount(config.counter_l_lim);
+//     PCNT.int_clr.val = (1 << unit); // Clear interrupt flag
+//     pcnt_counter_clear(unit);
+
+//   }
+//   // Handle threshold interrupts
+
+//   else if (pc->isInterreptForAllPulseEnabled() &&
+//            (PCNT.status_unit[unit].thres0_lat ||
+//             PCNT.status_unit[unit].thres1_lat)) {
+//     int16_t raw_count = 0;
+//     pcnt_get_counter_value(unit, &raw_count);
+//     new_count = pc->incrementCount(raw_count);
+
+//     pcnt_set_event_value(unit, PCNT_EVT_THRES_0, -1);
+//     pcnt_set_event_value(unit, PCNT_EVT_THRES_1, 1);
+//     pcnt_event_enable(unit, PCNT_EVT_THRES_0);
+//     pcnt_event_enable(unit, PCNT_EVT_THRES_1);
+//     pcnt_counter_clear(unit);
+
+//     if (pc->isr_callback_) {
+//       pc->isr_callback_(pc->isr_callback_data_);
+//     }
+//   }
+
+//   _EXIT_CRITICAL();
+// }

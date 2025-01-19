@@ -2,6 +2,7 @@
 #define PULSE_COUNTER_HPP
 
 #include "GPSU_Defines.hpp"
+
 #include "driver/timer.h"
 #include <array>
 #include <atomic>
@@ -35,14 +36,15 @@ public:
   static constexpr uint16_t MAX_ENCODERS = PCNT_UNIT_MAX;
   static constexpr uint16_t PCNT_EVT_QUEUE_SIZE = 10;
 
-  PulseCounter(uint16_t max_count = INT16_MAX, uint16_t min_count = INT16_MIN,
+  PulseCounter(int max_count = INT16_MAX, int min_count = INT16_MIN,
+               int threshold0 = -50, int threshhold1 = 50,
                bool interrupt_enable = false,
                EncoderISRCallback isr_callback = nullptr,
                void *isr_callback_data = nullptr,
                PullType pull_type = PullType::EXTERNAL_PULLUP);
 
   ~PulseCounter();
-
+  static std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_;
   void attach(int a_pin, int b_pin,
               EncoderType encoder_type = EncoderType::FULL);
   void detach();
@@ -71,8 +73,11 @@ public:
 private:
   gpio_num_t a_pin_;
   gpio_num_t b_pin_;
-  uint16_t max_count_;
-  uint16_t min_count_;
+  int max_count_;
+  int min_count_;
+  int threshhold0_;
+  int threshhold1_;
+
   pcnt_unit_t unit_;
   pcnt_config_t pcnt_config_;
   PullType pull_type_;
@@ -86,7 +91,6 @@ private:
 
   static uint32_t isr_service_cpu_core_;
   static bool attached_interrupt_;
-  static std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_;
 
   static uint8_t queue_storage_[PCNT_EVT_QUEUE_SIZE * sizeof(pcnt_evt_t)];
 
