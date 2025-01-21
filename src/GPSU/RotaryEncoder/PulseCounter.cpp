@@ -30,13 +30,15 @@ std::array<std::unique_ptr<PulseCounter>, PulseCounter::MAX_ENCODERS>
 
 PulseCounter::PulseCounter(bool interrupt_enable,
                            EncoderISRCallback isr_callback,
-                           void *isr_callback_data, PullType pull_type)
+                           void *isr_callback_data, PullType pull_type,
+                           bool circular)
     : isr_callback_(std::move(isr_callback)),
       isr_callback_data_(isr_callback_data), sig_io_(GPIO_NUM_NC),
       cntrl_io_(GPIO_NUM_NC), unit_((pcnt_unit_t)-1), pcnt_config_({}),
       pull_type_(pull_type), encoder_type_(EncoderType::FULL), counts_mode_(2),
       count_(0), all_pulse_interrupt_enabled_(interrupt_enable),
-      attached_(false), direction_(false), working_(false) {
+      attached_(false), direction_(false), working_(false),
+      circular_value_(circular) {
   init();
 }
 
@@ -86,6 +88,7 @@ void PulseCounter::pcnt_intr_handler(void *arg) {
 void PulseCounter::pcntmonitorTask(void *param) {
   PulseCounter *pc = static_cast<PulseCounter *>(param);
   pcnt_config_t config = pc->getPCNTconfig();
+  pcnt_range_t range = pc->gtRange();
   pcnt_unit_t unit = config.unit;
 
   pcnt_evt_t evt;
@@ -100,12 +103,14 @@ void PulseCounter::pcntmonitorTask(void *param) {
 
       // Handle high limit interrupt
       if (evt.status & PCNT_EVT_H_LIM) {
-        new_count = pc->incrementCount(config.counter_h_lim);
+        new_count = pc->incrementCount(range.maxLimit);
+        new_count = pc->wrapCountIfCircular(new_count);
         pcnt_counter_clear(unit);
       }
       // Handle low limit interrupt
       else if (evt.status & PCNT_EVT_L_LIM) {
-        new_count = pc->incrementCount(config.counter_l_lim);
+        new_count = pc->incrementCount(range.minLimit);
+        new_count = pc->wrapCountIfCircular(new_count);
         pcnt_counter_clear(unit);
 
       }
@@ -117,9 +122,10 @@ void PulseCounter::pcntmonitorTask(void *param) {
         int16_t raw_count = 0;
         pcnt_get_counter_value(unit, &raw_count);
         new_count = pc->incrementCount(raw_count);
+        new_count = pc->wrapCountIfCircular(new_count);
 
-        pcnt_set_event_value(unit, PCNT_EVT_THRES_0, pc->pcnt_range_.thresh0);
-        pcnt_set_event_value(unit, PCNT_EVT_THRES_1, pc->pcnt_range_.thresh1);
+        pcnt_set_event_value(unit, PCNT_EVT_THRES_0, range.thresh0);
+        pcnt_set_event_value(unit, PCNT_EVT_THRES_1, range.thresh1);
         pcnt_event_enable(unit, PCNT_EVT_THRES_0);
         pcnt_event_enable(unit, PCNT_EVT_THRES_1);
         pcnt_counter_clear(unit);
@@ -170,10 +176,10 @@ void PulseCounter::configurePCNT(EncoderType et, pcnt_range_t range) {
 
   if (et == EncoderType::SINGLE) {
     pcnt_config_.channel = PCNT_CHANNEL_0;
-    pcnt_config_.pos_mode = PCNT_COUNT_DEC;      // Count Only On Rising-Edges
-    pcnt_config_.neg_mode = PCNT_COUNT_INC;      // Discard Falling-Edge
-    pcnt_config_.lctrl_mode = PCNT_MODE_KEEP;    // Rising A on HIGH B = CW Step
-    pcnt_config_.hctrl_mode = PCNT_MODE_REVERSE; // Rising A on LOW B = CCW Step
+    pcnt_config_.pos_mode = PCNT_COUNT_INC;   // Count Only On Rising-Edges
+    pcnt_config_.neg_mode = PCNT_COUNT_INC;   // Discard Falling-Edge
+    pcnt_config_.lctrl_mode = PCNT_MODE_KEEP; // Rising A on HIGH B = CW Step
+    pcnt_config_.hctrl_mode = PCNT_MODE_KEEP; // Rising A on LOW B = CCW Step
     pcnt_unit_config(&pcnt_config_);
   } else if (et == EncoderType::HALF) {
     pcnt_config_.channel = PCNT_CHANNEL_0;
@@ -189,11 +195,6 @@ void PulseCounter::configurePCNT(EncoderType et, pcnt_range_t range) {
     pcnt_config_.lctrl_mode = PCNT_MODE_KEEP;
     pcnt_config_.hctrl_mode = PCNT_MODE_REVERSE;
     pcnt_unit_config(&pcnt_config_);
-    // diable first
-    pcnt_config_.pos_mode = PCNT_COUNT_DIS;
-    pcnt_config_.neg_mode = PCNT_COUNT_DIS;
-    pcnt_config_.lctrl_mode = PCNT_MODE_DISABLE;
-    pcnt_config_.hctrl_mode = PCNT_MODE_DISABLE;
     // then enable again
     pcnt_config_.pulse_gpio_num = cntrl_io_;
     pcnt_config_.ctrl_gpio_num = sig_io_;
@@ -251,7 +252,7 @@ void PulseCounter::attach(int a_pin, int b_pin, pcnt_range_t range,
   // Initialize GPIOs and PCNT
   configureGPIOs();
   configurePCNT(encoder_type, range);
-  setFilter(250);
+  setFilter(200);
   pcnt_event_enable(unit_, PCNT_EVT_H_LIM);
   pcnt_event_enable(unit_, PCNT_EVT_L_LIM);
   pcnt_counter_pause(unit_);
@@ -319,7 +320,9 @@ void PulseCounter::setCount(int64_t value) {
 int64_t PulseCounter::getCount() const {
   _ENTER_CRITICAL();
   int64_t result = count_ + getRawCount();
+  result = wrapCountIfCircular(result);
   _EXIT_CRITICAL();
+
   return result;
 }
 int64_t PulseCounter::clearCount() {
@@ -333,21 +336,34 @@ int64_t PulseCounter::pauseCount() { return pcnt_counter_pause(unit_); }
 int64_t PulseCounter::resumeCount() { return pcnt_counter_resume(unit_); }
 
 int64_t PulseCounter::getRawCount() const {
-  int16_t c;
+  int16_t raw_count = 0;
   int64_t compensate = 0;
+  auto range = gtRange();
   _ENTER_CRITICAL();
-  pcnt_get_counter_value(unit_, &c);
+  pcnt_get_counter_value(unit_, &raw_count);
 
   if (PCNT.int_st.val & BIT(unit_)) {
-    pcnt_get_counter_value(unit_, &c);
+    pcnt_get_counter_value(unit_, &raw_count);
     if (PCNT.status_unit[unit_].COUNTER_H_LIM) {
-      compensate = pcnt_config_.counter_h_lim;
+      compensate = range.maxLimit;
     } else if (PCNT.status_unit[unit_].COUNTER_L_LIM) {
-      compensate = pcnt_config_.counter_l_lim;
+      compensate = range.minLimit;
     }
   }
   _EXIT_CRITICAL();
-  return compensate + c;
+
+  return compensate + raw_count;
+}
+int64_t PulseCounter::wrapCountIfCircular(int64_t count) const {
+  if (circular_value_) {
+    auto range = gtRange();
+    if (count >= range.maxLimit) {
+      count -= range.maxLimit;
+    } else if (count < 0) {
+      count += range.maxLimit;
+    }
+  }
+  return count;
 }
 
 }; // namespace COMPONENT

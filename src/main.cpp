@@ -55,7 +55,7 @@ gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
 gpio_num_t pinB = GPIO_NUM_38;
 
 // COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
-COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{0, 10};
+COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-10, 10};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 void setup() {
@@ -70,7 +70,7 @@ void setup() {
   //  encoder.setup(readEncoderISR);
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
-  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::SINGLE);
+  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -170,6 +170,7 @@ void loop() {
 
   img.pushSprite(0, 0);
   Serial.printf("count is %llu \n", encoder.getCount());
+  angle = encoder.getCount();
 
   delay(100);
 }

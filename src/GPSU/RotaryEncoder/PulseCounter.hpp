@@ -47,7 +47,8 @@ public:
   PulseCounter(bool interrupt_enable = false,
                EncoderISRCallback isr_callback = nullptr,
                void *isr_callback_data = nullptr,
-               PullType pull_type = PullType::EXTERNAL_PULLUP);
+               PullType pull_type = PullType::EXTERNAL_PULLUP,
+               bool circular = true);
 
   ~PulseCounter();
   static std::array<std::unique_ptr<PulseCounter>, MAX_ENCODERS> encoders_;
@@ -68,7 +69,7 @@ public:
 
   pcnt_config_t getPCNTconfig() { return pcnt_config_; }
   bool isInterreptForAllPulseEnabled() { return all_pulse_interrupt_enabled_; }
-
+  int64_t wrapCountIfCircular(int64_t count) const;
   int64_t incrementCount(int64_t delta);
   EncoderISRCallback isr_callback_;
   void *isr_callback_data_;
@@ -89,6 +90,7 @@ private:
   bool attached_;
   bool direction_;
   bool working_;
+  bool circular_value_;
 
   static uint32_t isr_service_cpu_core_;
   static bool attached_interrupt_;
@@ -96,6 +98,7 @@ private:
   void init();
   void configureGPIOs();
   void configurePCNT(EncoderType et, pcnt_range_t range);
+  pcnt_range_t gtRange() const { return pcnt_range_; }
   int64_t getRawCount() const;
   bool installInterruptService();
 
