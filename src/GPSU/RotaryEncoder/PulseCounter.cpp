@@ -23,8 +23,6 @@
 
 namespace COMPONENT {
 
-std::atomic<unsigned long> PulseCounter::time_counter = 0; // Initialize to 0
-
 uint32_t PulseCounter::isr_service_cpu_core_ = 0;
 bool PulseCounter::attached_interrupt_ = false;
 std::array<std::unique_ptr<PulseCounter>, PulseCounter::MAX_ENCODERS>
@@ -51,29 +49,6 @@ void PulseCounter::init() {
   xTaskCreatePinnedToCore(
       pcntmonitorTask, "PCNTEventMonitor", GPSU_CORE::PCNTaskStack, this,
       GPSU_CORE::PCNTask_Priority, &pcnt_evt_task, GPSU_CORE::PCNTask_CORE);
-  setupTimer();
-}
-
-void IRAM_ATTR PulseCounter::onTimer(void *arg) {
-  time_counter.fetch_add(1, std::memory_order_relaxed);
-}
-void PulseCounter::setupTimer() {
-  timer_config_t config = {.alarm_en = TIMER_ALARM_EN,
-                           .counter_en = TIMER_PAUSE,
-                           .intr_type = TIMER_INTR_LEVEL,
-                           .counter_dir = TIMER_COUNT_UP,
-                           .auto_reload = TIMER_AUTORELOAD_EN,
-                           .divider = TIMER_DIVIDER};
-  timer_init(TIMER_GROUP_0, TIMER_0, &config);
-
-  timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x00000000ULL);
-  timer_set_alarm_value(TIMER_GROUP_0, TIMER_0,
-                        TIMER_SCALE * TIMER_INTERVAL_MS / 1000);
-  timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-  timer_isr_register(TIMER_GROUP_0, TIMER_0, PulseCounter::onTimer, nullptr,
-                     ESP_INTR_FLAG_IRAM, nullptr);
-
-  timer_start(TIMER_GROUP_0, TIMER_0);
 }
 
 static IRAM_ATTR void ipc_install_isr_on_core(void *arg) {
@@ -85,8 +60,7 @@ int64_t PulseCounter::incrementCount(int64_t delta) {
   return count_.fetch_add(delta, std::memory_order_seq_cst) + delta;
 }
 void PulseCounter::pcnt_intr_handler(void *arg) {
-  unsigned long now =
-      PulseCounter::time_counter.load(std::memory_order_relaxed);
+  unsigned long now = esp_timer_get_time();
   uint32_t intr_status = PCNT.int_st.val;
   portBASE_TYPE HPTaskAwoken = pdFALSE;
 

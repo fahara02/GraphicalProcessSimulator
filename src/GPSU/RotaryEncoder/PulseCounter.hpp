@@ -2,7 +2,7 @@
 #define PULSE_COUNTER_HPP
 
 #include "GPSU_Defines.hpp"
-#include "TimerInfo.hpp"
+
 #include "driver/timer.h"
 #include <array>
 #include <atomic>
@@ -74,7 +74,6 @@ public:
   void *isr_callback_data_;
   QueueHandle_t pcnt_evt_queue_;
   TaskHandle_t pcnt_evt_task;
-  static std::atomic<unsigned long> time_counter;
 
 private:
   gpio_num_t sig_io_;
@@ -94,7 +93,6 @@ private:
   static uint32_t isr_service_cpu_core_;
   static bool attached_interrupt_;
 
-  void setupTimer();
   void init();
   void configureGPIOs();
   void configurePCNT(EncoderType et, pcnt_range_t range);
@@ -102,7 +100,7 @@ private:
   bool installInterruptService();
 
   static void pcnt_intr_handler(void *arg);
-  static void IRAM_ATTR onTimer(void *arg);
+
   static void pcntmonitorTask(void *param);
 };
 

@@ -3,8 +3,6 @@
 #define LOG_TAG "RotaryEncoder"
 using namespace COMPONENT;
 static volatile unsigned long lastInterruptTime = 0;
-DRAM_ATTR std::atomic<unsigned long> Encoder::timeCounter = 0;
-timer_isr_handle_t Encoder::timerISRhandle = nullptr;
 
 Encoder::Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
                  gpio_num_t buttonPin, PullType encoderPinPull,
@@ -95,46 +93,6 @@ void Encoder::setup(void (*ISR_callback)(void), void (*ISR_button)(void)) {
                          std::memory_order_release);
   buttonCallback_.store(reinterpret_cast<void *>(ISR_button),
                         std::memory_order_release);
-}
-
-void IRAM_ATTR Encoder::onTimer(void *arg) {
-
-  timeCounter.fetch_add(1, std::memory_order_relaxed);
-}
-void Encoder::setupTimer() {
-
-  timer_config_t config = {.alarm_en = TIMER_ALARM_EN,
-                           .counter_en = TIMER_PAUSE,
-                           .intr_type = TIMER_INTR_LEVEL,
-                           .counter_dir = TIMER_COUNT_UP,
-                           .auto_reload = TIMER_AUTORELOAD_EN,
-                           .divider = TIMER_DIVIDER};
-
-  // Initialize the timer with error handling
-  esp_err_t err = timer_init(TIMER_GROUP, TIMER_INDEX, &config);
-  if (err != ESP_OK) {
-    ESP_LOGE(LOG_TAG, "Failed to initialize timer: %d", err);
-    return;
-  }
-
-  // Set timer counter to 0
-  timer_set_counter_value(TIMER_GROUP, TIMER_INDEX, 0);
-
-  timer_set_alarm_value(TIMER_GROUP, TIMER_INDEX, ALARM_VALUE);
-
-  // Enable timer interrupts
-  timer_enable_intr(TIMER_GROUP, TIMER_INDEX);
-
-  // Register the ISR with error handling
-  err = timer_isr_register(TIMER_GROUP, TIMER_INDEX, Encoder::onTimer, nullptr,
-                           ESP_INTR_FLAG_IRAM, &timerISRhandle);
-  if (err != ESP_OK) {
-    ESP_LOGE(LOG_TAG, "Failed to register timer ISR: %d", err);
-    return;
-  }
-
-  // Start the timer
-  timer_start(TIMER_GROUP, TIMER_INDEX);
 }
 
 int8_t Encoder::updateOldABState() {
@@ -243,7 +201,7 @@ void Encoder::EncoderMonitorTask(void *param) {
 
 bool Encoder::debounce(bool currentState, unsigned long &lastTime,
                        unsigned long delay) {
-  unsigned long now = timeCounter.load(std::memory_order_relaxed);
+  unsigned long now = esp_timer_get_time() / 1000;
   if (now - lastTime > delay) {
     lastTime = now;
     return currentState;
@@ -344,7 +302,7 @@ bool Encoder::isEncoderButtonClicked(unsigned long maximumWaitMilliseconds) {
   case ButtonClickState::IDLE:
     if (buttonPressed) {
       // Start timing when button is first pressed
-      waitStartTime = timeCounter.load(std::memory_order_relaxed);
+      waitStartTime = esp_timer_get_time() / 1000;
       state = ButtonClickState::WAIT_FOR_RELEASE;
     }
     break;
@@ -352,8 +310,7 @@ bool Encoder::isEncoderButtonClicked(unsigned long maximumWaitMilliseconds) {
   case ButtonClickState::WAIT_FOR_RELEASE:
     if (!buttonPressed) {
       // Button released after debounce period
-      if (timeCounter.load(std::memory_order_relaxed) - waitStartTime >
-          DEBOUNCE_DELAY) {
+      if (esp_timer_get_time() / 1000 - waitStartTime > DEBOUNCE_DELAY) {
         wasTimeouted = false;
         state = ButtonClickState::IDLE;
         return true;
@@ -361,7 +318,7 @@ bool Encoder::isEncoderButtonClicked(unsigned long maximumWaitMilliseconds) {
         // Release was too quick; ignore
         state = ButtonClickState::IDLE;
       }
-    } else if (timeCounter.load(std::memory_order_relaxed) - waitStartTime >
+    } else if (esp_timer_get_time() / 1000 - waitStartTime >
                maximumWaitMilliseconds) {
       // Timeout occurred before button was released
       wasTimeouted = true;
@@ -373,7 +330,7 @@ bool Encoder::isEncoderButtonClicked(unsigned long maximumWaitMilliseconds) {
     if (!buttonPressed) {
       // Reset state when button is released after timeout
       state = ButtonClickState::IDLE;
-    } else if (timeCounter.load(std::memory_order_relaxed) - waitStartTime >
+    } else if (esp_timer_get_time() / 1000 - waitStartTime >
                maximumWaitMilliseconds) {
       // Timeout occurred while waiting for release
       wasTimeouted = true;
