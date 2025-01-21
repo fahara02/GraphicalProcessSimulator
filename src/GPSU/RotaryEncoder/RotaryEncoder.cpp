@@ -2,6 +2,9 @@
 #include "esp_log.h"
 #define LOG_TAG "RotaryEncoder"
 using namespace COMPONENT;
+
+std::atomic<unsigned long> Encoder::timeCounter = 0;
+static volatile unsigned long lastInterruptTime = 0;
 Encoder::Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
                  gpio_num_t buttonPin, PullType encoderPinPull,
                  PullType buttonPinPull)
@@ -75,6 +78,10 @@ void Encoder::begin() {
                             GPSU_CORE::BtnTask_Priority, &buttonTaskHandle,
                             GPSU_CORE::BtnTask_CORE);
   }
+  if (encoderTaskHandle == nullptr) {
+    ESP_LOGE(LOG_TAG, "Task handle is null; notification cannot be sent.");
+    return;
+  }
 }
 void Encoder::setup(void (*ISR_callback)(void)) {
   encoderCallback_.store(reinterpret_cast<void *>(ISR_callback),
@@ -121,8 +128,10 @@ int8_t Encoder::updateOldABState() {
 void IRAM_ATTR Encoder::encoderISR() {
   if (!isEnabled_)
     return;
-  static volatile unsigned long lastInterruptTime = 0;
-  unsigned long now = timeCounter.load(std::memory_order_relaxed);
+
+  unsigned long now = esp_timer_get_time();
+  // timeCounter.load(std::memory_order_relaxed);
+  // Serial.printf("encoder interrupt! in %lu\n", now);
   if ((now - lastInterruptTime) < ENCODER_DEBOUNCE_DELAY)
     return;
   lastInterruptTime = now;
@@ -143,11 +152,13 @@ void Encoder::EncoderMonitorTask(void *param) {
   while (true) {
 
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
-      unsigned long now = timeCounter.load(std::memory_order_relaxed);
-
+      unsigned long now = millis();
+      // timeCounter.load(std::memory_order_relaxed);
+      Serial.printf("started encoder monitor %lu\n", now);
       if (!encoder->isEnabled_) {
         continue;
       }
+
       int8_t oldAB = encoder->updateOldABState();
       currentDirection = encoder->encoderStates_[oldAB & 0x0F];
 

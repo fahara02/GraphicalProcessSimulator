@@ -1,5 +1,6 @@
 #include "IO_Controller.hpp"
 #include "PulseCounter.hpp"
+#include "RotaryEncoder.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
@@ -49,19 +50,24 @@ int tempA = 0;
 int rpmA = 0;
 int percent = 0;
 
-int pinA = 25; // GPIO pin for Channel A
-int pinB = 26; // GPIO pin for Channel B
-COMPONENT::pcnt_range_t ranges = {100, -100, -50, 50};
-COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
+gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
+gpio_num_t pinB = GPIO_NUM_38;
+COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
+
+void IRAM_ATTR readEncoderISR() { encoder.encoderISR(); }
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   tft.init();
   delay(1000);
   auto &controller = GPSU_CORE::IO_Controller::getInstance(
       GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
   delay(1000);
-  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
+  encoder.begin();
+  // encoder.setup(readEncoderISR);
+  bool circleValues = false;
+  encoder.setBoundaries(0, 1000, circleValues);
+  // encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -160,7 +166,7 @@ void loop() {
   img.pushImage(12, 198, 44, 17, oil);
 
   img.pushSprite(0, 0);
-  Serial.printf("count is %llu \n", encoder.getCount());
+  Serial.printf("count is %lu \n", encoder.readEncoder());
 
   delay(100);
 }

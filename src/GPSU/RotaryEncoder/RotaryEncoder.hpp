@@ -16,7 +16,7 @@ using namespace GPSU_CORE;
 constexpr uint16_t QUEUE_SIZE = 10;
 
 static constexpr unsigned long DEBOUNCE_DELAY = 50;
-static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 50;
+static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 150;
 static constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
 static constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
 
@@ -63,6 +63,9 @@ private:
                 unsigned long delay);
   void initGPIOS();
   int8_t updateOldABState();
+  static void EncoderMonitorTask(void *param);
+  static void ButtonMonitorTask(void *param);
+  static void IRAM_ATTR onTimer(void *arg);
 
 public:
   Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
@@ -90,9 +93,7 @@ public:
     rotaryAccelerationCoef_ = acceleration;
   }
   void disableAcceleration() { setAcceleration(0); }
-  static void EncoderMonitorTask(void *param);
-  static void ButtonMonitorTask(void *param);
-  static void IRAM_ATTR onTimer(void *arg);
+
   void IRAM_ATTR encoderISR();
   void IRAM_ATTR buttonISR();
 };

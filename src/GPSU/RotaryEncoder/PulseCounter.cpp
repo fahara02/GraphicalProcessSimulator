@@ -84,7 +84,7 @@ static IRAM_ATTR void ipc_install_isr_on_core(void *arg) {
 int64_t PulseCounter::incrementCount(int64_t delta) {
   return count_.fetch_add(delta, std::memory_order_seq_cst) + delta;
 }
-static void pcnt_intr_handler(void *arg) {
+void PulseCounter::pcnt_intr_handler(void *arg) {
   unsigned long now =
       PulseCounter::time_counter.load(std::memory_order_relaxed);
   uint32_t intr_status = PCNT.int_st.val;
