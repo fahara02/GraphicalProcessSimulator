@@ -2,7 +2,7 @@
 #define PULSE_COUNTER_HPP
 
 #include "GPSU_Defines.hpp"
-
+#include "TimerInfo.hpp"
 #include "driver/timer.h"
 #include <array>
 #include <atomic>

@@ -2,9 +2,10 @@
 #include "esp_log.h"
 #define LOG_TAG "RotaryEncoder"
 using namespace COMPONENT;
-
-std::atomic<unsigned long> Encoder::timeCounter = 0;
 static volatile unsigned long lastInterruptTime = 0;
+DRAM_ATTR std::atomic<unsigned long> Encoder::timeCounter = 0;
+timer_isr_handle_t Encoder::timerISRhandle = nullptr;
+
 Encoder::Encoder(uint8_t steps, gpio_num_t aPin, gpio_num_t bPin,
                  gpio_num_t buttonPin, PullType encoderPinPull,
                  PullType buttonPinPull)
@@ -72,6 +73,7 @@ void Encoder::begin() {
                           GPSU_CORE::EncoderTaskStack, this,
                           GPSU_CORE::EncoderTask_Priority, &encoderTaskHandle,
                           GPSU_CORE::EncoderTask_CORE);
+
   if (buttonPin_ != GPIO_NUM_NC) {
     xTaskCreatePinnedToCore(ButtonMonitorTask, "ButtonMonitor",
                             GPSU_CORE::BtnTaskStack, this,
@@ -96,26 +98,45 @@ void Encoder::setup(void (*ISR_callback)(void), void (*ISR_button)(void)) {
 }
 
 void IRAM_ATTR Encoder::onTimer(void *arg) {
+
   timeCounter.fetch_add(1, std::memory_order_relaxed);
 }
 void Encoder::setupTimer() {
+
   timer_config_t config = {.alarm_en = TIMER_ALARM_EN,
                            .counter_en = TIMER_PAUSE,
                            .intr_type = TIMER_INTR_LEVEL,
                            .counter_dir = TIMER_COUNT_UP,
                            .auto_reload = TIMER_AUTORELOAD_EN,
                            .divider = TIMER_DIVIDER};
-  timer_init(TIMER_GROUP_0, TIMER_0, &config);
 
-  timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x00000000ULL);
-  timer_set_alarm_value(TIMER_GROUP_0, TIMER_0,
-                        TIMER_SCALE * TIMER_INTERVAL_MS / 1000);
-  timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-  timer_isr_register(TIMER_GROUP_0, TIMER_0, Encoder::onTimer, nullptr,
-                     ESP_INTR_FLAG_IRAM, nullptr);
+  // Initialize the timer with error handling
+  esp_err_t err = timer_init(TIMER_GROUP, TIMER_INDEX, &config);
+  if (err != ESP_OK) {
+    ESP_LOGE(LOG_TAG, "Failed to initialize timer: %d", err);
+    return;
+  }
 
-  timer_start(TIMER_GROUP_0, TIMER_0);
+  // Set timer counter to 0
+  timer_set_counter_value(TIMER_GROUP, TIMER_INDEX, 0);
+
+  timer_set_alarm_value(TIMER_GROUP, TIMER_INDEX, ALARM_VALUE);
+
+  // Enable timer interrupts
+  timer_enable_intr(TIMER_GROUP, TIMER_INDEX);
+
+  // Register the ISR with error handling
+  err = timer_isr_register(TIMER_GROUP, TIMER_INDEX, Encoder::onTimer, nullptr,
+                           ESP_INTR_FLAG_IRAM, &timerISRhandle);
+  if (err != ESP_OK) {
+    ESP_LOGE(LOG_TAG, "Failed to register timer ISR: %d", err);
+    return;
+  }
+
+  // Start the timer
+  timer_start(TIMER_GROUP, TIMER_INDEX);
 }
+
 int8_t Encoder::updateOldABState() {
   int8_t oldAB = oldAB_.load(std::memory_order_acquire);
   oldAB <<= 2;
@@ -129,9 +150,8 @@ void IRAM_ATTR Encoder::encoderISR() {
   if (!isEnabled_)
     return;
 
-  unsigned long now = esp_timer_get_time();
-  // timeCounter.load(std::memory_order_relaxed);
-  // Serial.printf("encoder interrupt! in %lu\n", now);
+  unsigned long now = esp_timer_get_time() / 1000;
+
   if ((now - lastInterruptTime) < ENCODER_DEBOUNCE_DELAY)
     return;
   lastInterruptTime = now;
@@ -145,6 +165,7 @@ void IRAM_ATTR Encoder::buttonISR() {
   vTaskNotifyGiveFromISR(buttonTaskHandle, &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
+
 void Encoder::EncoderMonitorTask(void *param) {
   Encoder *encoder = static_cast<Encoder *>(param);
   int8_t currentDirection;
@@ -152,9 +173,9 @@ void Encoder::EncoderMonitorTask(void *param) {
   while (true) {
 
     if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
-      unsigned long now = millis();
-      // timeCounter.load(std::memory_order_relaxed);
-      Serial.printf("started encoder monitor %lu\n", now);
+
+      unsigned long now = esp_timer_get_time() / 1000;
+
       if (!encoder->isEnabled_) {
         continue;
       }
@@ -215,7 +236,7 @@ void Encoder::EncoderMonitorTask(void *param) {
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
   vTaskDelete(NULL);
 }
@@ -263,7 +284,7 @@ void Encoder::ButtonMonitorTask(void *param) {
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 
   vTaskDelete(NULL);

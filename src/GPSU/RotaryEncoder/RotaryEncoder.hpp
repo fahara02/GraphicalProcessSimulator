@@ -3,7 +3,7 @@
 #include "Arduino.h"
 #include "GPSU_Defines.hpp"
 #include "PulseCounter.hpp"
-#include "driver/timer.h"
+#include "TimerInfo.hpp"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "stdint.h"
@@ -16,7 +16,7 @@ using namespace GPSU_CORE;
 constexpr uint16_t QUEUE_SIZE = 10;
 
 static constexpr unsigned long DEBOUNCE_DELAY = 50;
-static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 150;
+static constexpr unsigned long ENCODER_DEBOUNCE_DELAY = 10;
 static constexpr unsigned long ACCELERATION_LONG_CUTOFF = 200;
 static constexpr unsigned long ACCELERATION_SHORT_CUTOFF = 4;
 
@@ -32,7 +32,7 @@ private:
   PullType encoderPinPull_ = PullType::NONE;
   PullType buttonPinPull_ = PullType::NONE;
   bool isEnabled_;
-
+  TaskHandle_t timerTaskHandle = nullptr;
   TaskHandle_t encoderTaskHandle = nullptr;
   TaskHandle_t buttonTaskHandle = nullptr;
 
@@ -42,7 +42,9 @@ private:
   std::atomic<long> encoderPosition_{0};
   std::atomic<int8_t> oldDirection_{0};
   std::atomic<unsigned long> lastMovementTime_{0};
-  static std::atomic<unsigned long> timeCounter;
+  static DRAM_ATTR std::atomic<unsigned long> timeCounter;
+  static xQueueHandle timerQueue;
+  static timer_isr_handle_t timerISRhandle;
   long lastReadEncoderPosition_ = 0;
   unsigned long rotaryAccelerationCoef_ = 150;
   bool circleValues_ = false;
@@ -65,6 +67,7 @@ private:
   int8_t updateOldABState();
   static void EncoderMonitorTask(void *param);
   static void ButtonMonitorTask(void *param);
+
   static void IRAM_ATTR onTimer(void *arg);
 
 public:

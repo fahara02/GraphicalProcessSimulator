@@ -1,6 +1,7 @@
 #include "IO_Controller.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
+#include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
@@ -65,8 +66,8 @@ void setup() {
   delay(1000);
   encoder.begin();
   // encoder.setup(readEncoderISR);
-  bool circleValues = false;
-  encoder.setBoundaries(0, 1000, circleValues);
+  bool circleValues = true;
+  encoder.setBoundaries(0, 10, circleValues);
   // encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
   // pinMode(12,OUTPUT);

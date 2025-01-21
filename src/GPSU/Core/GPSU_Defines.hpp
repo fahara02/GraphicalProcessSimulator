@@ -9,10 +9,7 @@
 namespace GPSU_CORE {
 #define POOL_POLLER_NAME "PZP_Poll"
 #define POLLER_NAME "GPIO_POLLER"
-constexpr uint16_t TIMER_DIVIDER = 80;    // 80 MHz clock divided by 80 = 1 MHz
-constexpr uint16_t TIMER_INTERVAL_MS = 1; // Interval in milliseconds
 
-#define TIMER_SCALE (TIMER_BASE_CLK / TIMER_DIVIDER) // 1 MHz
 constexpr uint16_t I2C_TIMEOUT = 200;
 constexpr uint16_t GPIO_REFRESH_PERIOD = 800;
 constexpr uint16_t POLLER_PERIOD = GPIO_REFRESH_PERIOD;
