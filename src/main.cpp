@@ -55,7 +55,7 @@ gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
 gpio_num_t pinB = GPIO_NUM_38;
 
 // COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
-COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100, -50, 50};
+COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{0, 10};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 void setup() {
@@ -70,7 +70,7 @@ void setup() {
   //  encoder.setup(readEncoderISR);
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
-  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
+  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::SINGLE);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
