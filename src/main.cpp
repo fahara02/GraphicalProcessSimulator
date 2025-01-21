@@ -53,9 +53,11 @@ int percent = 0;
 
 gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
 gpio_num_t pinB = GPIO_NUM_38;
-COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
 
-void IRAM_ATTR readEncoderISR() { encoder.encoderISR(); }
+// COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
+COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100, -50, 50};
+COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
+
 void setup() {
   Serial.begin(115200);
   tft.init();
@@ -64,11 +66,11 @@ void setup() {
       GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
   delay(1000);
-  encoder.begin();
-  // encoder.setup(readEncoderISR);
+  // encoder.begin();
+  //  encoder.setup(readEncoderISR);
   bool circleValues = true;
-  encoder.setBoundaries(0, 10, circleValues);
-  // encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
+  // encoder.setBoundaries(0, 10, circleValues);
+  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -167,7 +169,7 @@ void loop() {
   img.pushImage(12, 198, 44, 17, oil);
 
   img.pushSprite(0, 0);
-  Serial.printf("count is %lu \n", encoder.readEncoder());
+  Serial.printf("count is %llu \n", encoder.getCount());
 
   delay(100);
 }

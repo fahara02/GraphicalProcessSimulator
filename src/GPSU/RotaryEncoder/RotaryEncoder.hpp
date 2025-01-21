@@ -32,7 +32,7 @@ private:
   PullType encoderPinPull_ = PullType::NONE;
   PullType buttonPinPull_ = PullType::NONE;
   bool isEnabled_;
-  TaskHandle_t timerTaskHandle = nullptr;
+
   TaskHandle_t encoderTaskHandle = nullptr;
   TaskHandle_t buttonTaskHandle = nullptr;
 
