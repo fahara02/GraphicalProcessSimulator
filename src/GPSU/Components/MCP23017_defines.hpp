@@ -3,14 +3,19 @@
 #include "atomic"
 #include "stdint.h"
 #include <array>
+#include <cassert>
 
 namespace MCP23017 {
 
 static constexpr uint16_t INT_ERR = 255;
+
 static constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x20;
 static constexpr MCP_I2C_CLK DEFAULT_I2C_CLK_FRQ = MCP_I2C_CLK::CLK_STD;
 static constexpr uint16_t I2C_MASTER_TX_BUF_DISABLE = 0;
 static constexpr uint16_t I2C_MASTER_RX_BUF_DISABLE = 0;
+
+static constexpr uint16_t PIN_PER_BANK = 8;
+static constexpr uint16_t MAX_PIN = 2 * PIN_PER_BANK;
 
 class BitUtil {
 public:
@@ -69,6 +74,18 @@ enum class REG {
   OLATB
 
 };
+enum class REG_FUNCTION {
+  CONTROL,       // IOCON
+  GPIO_DATA,     // GPIO
+  GPIO_DIR,      // IODIR
+  GPIO_PULL,     // GPPU
+  GPIO_LATCH,    // OLA
+  GPIO_POLARITY, // IPOLA
+  INTR_ENABLE,   // GPINTEN
+  INTR_CONTROL,  // INT_CON
+  INTR_FLAG,     // INTF
+
+};
 enum class PIN_STATE {
 
   LOW,
@@ -112,12 +129,12 @@ struct Pin {
   const uint8_t mask;
 
 private:
-  GPIO_MODE mode;          // Pin mode (INPUT, OUTPUT, INPUT_PULLUP)
-  PULL_MODE pullMode;      // Pull-up/Pull-down mode
-  INTR_TYPE interruptType; // Interrupt type (CHANGE, FALLING, RISING, NONE)
-  INTR_OUTPUT_TYPE intrOutputType;    // Interrupt output type
-  std::atomic<PIN_STATE> state;       // Atomic pin state (LOW/HIGH)
-  std::atomic<bool> interruptEnabled; // Atomic flag for interrupt enable
+  GPIO_MODE mode;
+  PULL_MODE pullMode;
+  INTR_TYPE interruptType;
+  INTR_OUTPUT_TYPE intrOutputType;
+  std::atomic<PIN_STATE> state;
+  std::atomic<bool> interruptEnabled;
 
 public:
   // Constructor
@@ -128,6 +145,14 @@ public:
         pullMode(PULL_MODE::NONE), interruptType(INTR_TYPE::NONE),
         intrOutputType(INTR_OUTPUT_TYPE::ACTIVE_HIGH), interruptEnabled(false),
         state(PIN_STATE::UNDEFINED) {}
+  // Full copy constructor
+  Pin(const Pin &other)
+      : pinEnum(other.pinEnum), port(other.port), pinNumber(other.pinNumber),
+        mask(other.mask), mode(other.mode), pullMode(other.pullMode),
+        interruptType(other.interruptType),
+        intrOutputType(other.intrOutputType),
+        state(other.state.load()), // Copy atomic state
+        interruptEnabled(other.interruptEnabled.load()) {}
 
   // Core constants getters
   constexpr uint8_t getPinNumber() const { return pinNumber; }
@@ -147,7 +172,7 @@ public:
                     INTR_OUTPUT_TYPE newIntrOutputType) {
     interruptType = newInterruptType;
     intrOutputType = newIntrOutputType;
-    interruptEnabled.store(true); // Set interrupt enabled atomically
+    interruptEnabled.store(true);
   }
 
   INTR_OUTPUT_TYPE getInterruptOutputType() const { return intrOutputType; }
@@ -185,17 +210,142 @@ constexpr Pin GPA5 = Pin(PIN::PIN5);
 constexpr Pin GPA6 = Pin(PIN::PIN6);
 constexpr Pin GPA7 = Pin(PIN::PIN7);
 
-struct GPIO_BANKS {
-  uint8_t mask;  // Bitmask for the pins (e.g., 0xFF for all pins active)
-  REG portReg;   // Register for the port (e.g., GPIOA or GPIOB)
-  REG pullupReg; // Register for pull-up configuration
-  REG dirReg;    // Register for direction (input/output)
+struct Registers {
+  REG regName;
+  REG_FUNCTION function;
 
-  // Constructor to initialize GPIO_BANKS
-  constexpr GPIO_BANKS(REG port, REG pullup, REG dir,
-                       uint8_t initialMask = 0x00)
-      : mask(initialMask), portReg(port), pullupReg(pullup), dirReg(dir) {}
+  constexpr Registers(REG reg, REG_FUNCTION func)
+      : regName(reg), function(func) {}
 };
+
+struct GPIO_BANKS {
+
+  std::array<Registers, 9> regMap;
+  std::array<Pin, PIN_PER_BANK> Pins;
+
+  constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
+      : mask(0xFF), regMap(createRegMap(port, enableInterrupt)),
+        Pins(createPins(port)), ports(0), ddr(0), pull_ups(0) {
+    assert(isValidPort(port) && "Invalid PORT provided!"); // Validate PORT
+    initInternalState(port);
+  }
+
+  // Static function to initialize Pins array based on the given PORT
+
+  // Get the pin state by index
+  PIN_STATE getPinState(uint8_t index) const {
+    if (index >= PIN_PER_BANK) {
+      return PIN_STATE::UNDEFINED; // Invalid index
+    }
+    return Pins[index].getState();
+  }
+  uint8_t getPinStates() const {
+    uint8_t result = 0;
+    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
+      if (mask & (1 << i)) { // Check if pin is selected by the mask
+        result |= (Pins[i].getState() == PIN_STATE::HIGH ? (1 << i) : 0);
+      }
+    }
+    return result;
+  }
+  // Set the pin state by index
+  void setPinState(uint8_t index, PIN_STATE state) {
+    if (index < PIN_PER_BANK) {
+      Pins[index].setState(state);
+    }
+  }
+  void setPinState(PIN_STATE state) {
+    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
+      if (mask & (1 << i)) {
+        Pins[i].setState(state);
+      }
+    }
+  }
+  void setmask(uint8_t new_mask) { mask = new_mask; }
+  uint8_t getmask() const { return mask; }
+
+  // Set pull-up resistor for a pin by index
+  void setPullup(uint8_t index, bool enable) {
+    if (index < PIN_PER_BANK) {
+      Pins[index].setPullMode(enable ? PULL_MODE::INTERNAL_PULLUP
+                                     : PULL_MODE::NONE);
+    }
+  }
+
+  // Set pin direction (INPUT or OUTPUT) by index
+  void setPinDirection(uint8_t index, GPIO_MODE mode) {
+    if (index < PIN_PER_BANK) {
+      Pins[index].setMode(mode);
+    }
+  }
+  // Retrieve a register based on its function
+  constexpr REG getRegister(REG_FUNCTION func) const {
+    for (const auto &reg : regMap) {
+      if (reg.function == func) {
+        return reg.regName;
+      }
+    }
+    return static_cast<REG>(0xFF); // Invalid register
+  }
+
+private:
+  uint8_t mask;
+  uint8_t ports;
+  uint8_t ddr;
+  uint8_t pull_ups;
+  void constexpr initInternalState(PORT port) {
+    if (port == PORT::GPIOA) {
+      ports = 0x01; // Example initialization for GPIOA
+      ddr = 0x02;
+      pull_ups = 0x04;
+    } else if (port == PORT::GPIOB) {
+      ports = 0x08; // Example initialization for GPIOB
+      ddr = 0x10;
+      pull_ups = 0x20;
+    }
+  }
+  static constexpr bool isValidPort(PORT port) {
+    return port == PORT::GPIOA || port == PORT::GPIOB;
+  }
+  static constexpr std::array<Pin, PIN_PER_BANK> createPins(PORT bankPort) {
+    return {Pin(static_cast<PIN>(0 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(1 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(2 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(3 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(4 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(5 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(6 + (bankPort == PORT::GPIOB ? 8 : 0))),
+            Pin(static_cast<PIN>(7 + (bankPort == PORT::GPIOB ? 8 : 0)))};
+  }
+
+  static constexpr std::array<Registers, 9> createRegMap(PORT port,
+                                                         bool enableInterrupt) {
+    return {
+        Registers(port == PORT::GPIOA ? REG::IODIRA : REG::IODIRB,
+                  REG_FUNCTION::GPIO_DIR),
+        Registers(port == PORT::GPIOA ? REG::IPOLA : REG::IPOLB,
+                  REG_FUNCTION::GPIO_POLARITY),
+        Registers(port == PORT::GPIOA ? REG::GPINTENA : REG::GPINTENB,
+                  REG_FUNCTION::INTR_ENABLE),
+        Registers(port == PORT::GPIOA ? REG::DEFVALA : REG::DEFVALB,
+                  REG_FUNCTION::INTR_CONTROL),
+        Registers(port == PORT::GPIOA ? REG::INTCONA : REG::INTCONB,
+                  REG_FUNCTION::INTR_CONTROL),
+        Registers(port == PORT::GPIOA ? REG::GPPUA : REG::GPPUB,
+                  REG_FUNCTION::GPIO_PULL),
+        Registers(port == PORT::GPIOA ? REG::INTFA : REG::INTFB,
+                  REG_FUNCTION::INTR_FLAG),
+        Registers(port == PORT::GPIOA ? REG::GPIOA : REG::GPIOB,
+                  REG_FUNCTION::GPIO_DATA),
+        Registers(port == PORT::GPIOA ? REG::OLATA : REG::OLATB,
+                  REG_FUNCTION::GPIO_LATCH),
+    };
+  }
+};
+
+// Define GPIO Bank instances
+constexpr GPIO_BANKS BANK_A(PORT::GPIOA);
+constexpr GPIO_BANKS BANK_B(PORT::GPIOB);
 
 } // namespace MCP23017
 
