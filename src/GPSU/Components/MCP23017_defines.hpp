@@ -136,11 +136,12 @@ private:
   PULL_MODE pullMode;
   INTR_TYPE interruptType;
   INTR_OUTPUT_TYPE intrOutputType;
-  std::atomic<PIN_STATE> state;
+  PIN_STATE state;
   bool interruptEnabled;
 
 public:
   // Constructor
+
   constexpr Pin(PIN pin)
       : pinEnum(pin), port(getPortFromPin(pin)),
         pinNumber(static_cast<uint8_t>(pin) % 8),
@@ -148,18 +149,36 @@ public:
         pullMode(PULL_MODE::NONE), interruptType(INTR_TYPE::NONE),
         intrOutputType(INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH),
         state(PIN_STATE::UNDEFINED), interruptEnabled(false) {}
+  constexpr Pin() : Pin(PIN::PIN0) {}
   // Full copy constructor
   constexpr Pin(const Pin &other)
       : pinEnum(other.pinEnum), port(other.port), pinNumber(other.pinNumber),
         mask(other.mask), mode(other.mode), pullMode(other.pullMode),
         interruptType(other.interruptType),
         intrOutputType(other.intrOutputType),
-        state(PIN_STATE::UNDEFINED), // Copy atomic state
+        state(other.state), // Copy atomic state
         interruptEnabled(false) {}
+  constexpr Pin &operator=(const Pin &other) {
+    if (this != &other) {
+      mode = other.mode;
+      pullMode = other.pullMode;
+      interruptType = other.interruptType;
+      intrOutputType = other.intrOutputType;
+      interruptEnabled = other.interruptEnabled;
+
+      state = other.state;
+
+      // Note: The const members (pinEnum, port, pinNumber, mask) are not
+      // assignable and cannot be changed once the object is created, which
+      // matches the `const` semantics.
+    }
+    return *this;
+  }
 
   // Core constants getters
   constexpr uint8_t getPinNumber() const { return pinNumber; }
   constexpr uint8_t getMask() const { return mask; }
+  constexpr PORT getPort() const { return port; }
 
   // Pin mode
   GPIO_MODE getMode() const { return mode; }
@@ -181,8 +200,8 @@ public:
   INTR_OUTPUT_TYPE getInterruptOutputType() const { return intrOutputType; }
 
   // State management
-  PIN_STATE getState() const { return state.load(); }
-  void setState(PIN_STATE newState) { state.store(newState); }
+  PIN_STATE getState() const { return state; }
+  void setState(PIN_STATE newState) { state = newState; }
 
   // Interrupt management
   bool isInterruptEnabled() const { return interruptEnabled; }
@@ -328,7 +347,8 @@ struct GPIO_BANKS {
   template <typename IntrType = INTR_TYPE,
             typename IntrOutType = INTR_OUTPUT_TYPE>
   void
-  setupInterrupt(uint8_t pinMask = 0xFF, IntrType intrType = INTR_TYPE::CHANGE,
+  setupInterrupt(uint8_t pinMask = 0xFF,
+                 IntrType intrType = INTR_TYPE::INTR_CHANGE,
                  IntrOutType intrOutType = INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
     uint8_t maskToApply = pinMask & generalMask;
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
