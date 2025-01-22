@@ -46,6 +46,14 @@ enum class PIN {
   PIN14 = 14,
   PIN15 = 15,
 };
+enum class MASK {
+  NONE = 0x00,
+  ALL = 0xFF,
+  EVEN = 0x55,       // 01010101
+  ODD = 0xAA,        // 10101010
+  LOWER_HALF = 0x0F, // 00001111
+  UPPER_HALF = 0xF0  // 11110000
+};
 
 enum class PORT {
   GPIOA = 1,
@@ -114,6 +122,8 @@ enum class INTR_OUTPUT_TYPE {
   OPEN_DRAIN = 2,
   NA = 3
 };
+
+// MCP DEVICE RELATED
 enum class MCP_I2C_CLK {
   CLK_STD = 100000,  // 100KHz
   CLK_HIGH = 400000, // 400 Khz
@@ -121,6 +131,8 @@ enum class MCP_I2C_CLK {
 
 };
 enum class MCP_MODE { BYTE_MODE = 0, SEQUENTIAL_MODE = 1 };
+
+//
 
 struct Pin {
   const PIN pinEnum;
@@ -223,9 +235,11 @@ struct GPIO_BANKS {
   std::array<Registers, 9> regMap;
   std::array<Pin, PIN_PER_BANK> Pins;
 
-  constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
-      : mask(0xFF), regMap(createRegMap(port, enableInterrupt)),
-        Pins(createPins(port)), ports(0), ddr(0), pull_ups(0) {
+  constexpr GPIO_BANKS(PORT port, MASK maskConfig = MASK::ALL,
+                       bool enableInterrupt = false)
+      : generalMask(static_cast<uint8_t>(maskConfig)), interruptMask(0x00),
+        regMap(createRegMap(port, enableInterrupt)), Pins(createPins(port)),
+        ports(0), ddr(0), pull_ups(0) {
     assert(isValidPort(port) && "Invalid PORT provided!"); // Validate PORT
     initInternalState(port);
   }
@@ -242,7 +256,7 @@ struct GPIO_BANKS {
   uint8_t getPinStates() const {
     uint8_t result = 0;
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      if (mask & (1 << i)) { // Check if pin is selected by the mask
+      if (generalMask & (1 << i)) { // Check if pin is selected by the mask
         result |= (Pins[i].getState() == PIN_STATE::HIGH ? (1 << i) : 0);
       }
     }
@@ -256,13 +270,39 @@ struct GPIO_BANKS {
   }
   void setPinState(PIN_STATE state) {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      if (mask & (1 << i)) {
+      if (generalMask & (1 << i)) {
         Pins[i].setState(state);
       }
     }
   }
-  void setmask(uint8_t new_mask) { mask = new_mask; }
-  uint8_t getmask() const { return mask; }
+  template <typename IntrType = INTR_TYPE,
+            typename IntrOutType = INTR_OUTPUT_TYPE>
+  void setupInterrupt(uint8_t pinMask = 0xFF,
+                      IntrType intrType = INTR_TYPE::CHANGE,
+                      IntrOutType intrOutType = INTR_OUTPUT_TYPE::ACTIVE_HIGH) {
+    uint8_t maskToApply = pinMask & generalMask;
+    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
+      if (maskToApply & (1 << i)) {
+        Pins[i].setInterrupt(intrType, intrOutType);
+      }
+    }
+    setInterruptMask(maskToApply);
+  }
+  // Pin masks
+  void setGeneralMask(MASK mask) { generalMask = static_cast<uint8_t>(mask); }
+
+  void setGeneralMask(uint8_t mask) {
+    assert((mask & ~0xFF) == 0 && "Invalid mask: must be an 8-bit value!");
+    generalMask = mask;
+  }
+
+  uint8_t getGeneralMask() const { return generalMask; }
+
+  void setInterruptMask(uint8_t pinMask) {
+    interruptMask = pinMask & 0xFF; // Ensure only 8 bits are saved
+  }
+
+  uint8_t getInterruptMask() const { return interruptMask; }
 
   // Set pull-up resistor for a pin by index
   void setPullup(uint8_t index, bool enable) {
@@ -278,6 +318,7 @@ struct GPIO_BANKS {
       Pins[index].setMode(mode);
     }
   }
+
   // Retrieve a register based on its function
   constexpr REG getRegister(REG_FUNCTION func) const {
     for (const auto &reg : regMap) {
@@ -289,7 +330,8 @@ struct GPIO_BANKS {
   }
 
 private:
-  uint8_t mask;
+  uint8_t generalMask;
+  uint8_t interruptMask;
   uint8_t ports;
   uint8_t ddr;
   uint8_t pull_ups;
