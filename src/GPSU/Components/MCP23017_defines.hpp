@@ -78,7 +78,8 @@ enum class PIN_STATE {
 enum class GPIO_MODE {
   INPUT = 0,
   INPUT_PULLUP = 2,
-  OUTPUT = 3
+  OUTPUT = 3,
+  NA
 
 };
 
@@ -90,7 +91,12 @@ enum class PULL_MODE {
 
 };
 enum class INTR_TYPE { CHANGE, FALLING, RISING, NONE };
-enum class INTR_OUTPUT_TYPE { ACTIVE_HIGH = 0, ACTIVE_LOW = 1, OPEN_DRAIN = 2 };
+enum class INTR_OUTPUT_TYPE {
+  ACTIVE_HIGH = 0,
+  ACTIVE_LOW = 1,
+  OPEN_DRAIN = 2,
+  NA = 3
+};
 enum class MCP_I2C_CLK {
   CLK_STD = 100000,  // 100KHz
   CLK_HIGH = 400000, // 400 Khz
@@ -100,68 +106,63 @@ enum class MCP_I2C_CLK {
 enum class MCP_MODE { BYTE_MODE = 0, SEQUENTIAL_MODE = 1 };
 
 struct Pin {
-  PIN pinEnum;       // The pin (e.g., PIN0, PIN1, etc.)
-  PORT port;         // Associated port (GPIOA or GPIOB)
-  uint8_t pinNumber; // Pin number (0-7 for GPIOA and GPIOB)
-  uint8_t mask;      // Pin bitmask (1 << pin number)
+  const PIN pinEnum;
+  const PORT port;
+  const uint8_t pinNumber;
+  const uint8_t mask;
 
 private:
-  // Pin configuration settings
   GPIO_MODE mode;          // Pin mode (INPUT, OUTPUT, INPUT_PULLUP)
   PULL_MODE pullMode;      // Pull-up/Pull-down mode
   INTR_TYPE interruptType; // Interrupt type (CHANGE, FALLING, RISING, NONE)
-  INTR_OUTPUT_TYPE intrOutputType; // Interrupt output type
-  std::atomic<PIN_STATE> state;    // Atomic pin state (LOW/HIGH)
-  bool interruptEnabled;           // Interrupt enable flag
+  INTR_OUTPUT_TYPE intrOutputType;    // Interrupt output type
+  std::atomic<PIN_STATE> state;       // Atomic pin state (LOW/HIGH)
+  std::atomic<bool> interruptEnabled; // Atomic flag for interrupt enable
 
 public:
   // Constructor
   constexpr Pin(PIN pin)
       : pinEnum(pin), port(getPortFromPin(pin)),
-        pinNumber(static_cast<uint8_t>(pin) % 8),   // Get the pin number (0-7)
-        mask(1 << (static_cast<uint8_t>(pin) % 8)), // Bitmask (1 << pin)
-        mode(GPIO_MODE::INPUT),                     // Default mode is INPUT
-        pullMode(PULL_MODE::NONE),                  // Default pull mode is NONE
-        interruptType(INTR_TYPE::NONE), // Default interrupt type is NONE
-        intrOutputType(
-            INTR_OUTPUT_TYPE::ACTIVE_HIGH), // Default interrupt output type is
-                                            // ACTIVE_HIGH
-        interruptEnabled(false),            // Default interrupt is disabled
-        state(PIN_STATE::UNDEFINED) {}      // Default state is UNDEFINED
+        pinNumber(static_cast<uint8_t>(pin) % 8),
+        mask(1 << (static_cast<uint8_t>(pin) % 8)), mode(GPIO_MODE::INPUT),
+        pullMode(PULL_MODE::NONE), interruptType(INTR_TYPE::NONE),
+        intrOutputType(INTR_OUTPUT_TYPE::ACTIVE_HIGH), interruptEnabled(false),
+        state(PIN_STATE::UNDEFINED) {}
 
-  // Getter and Setter functions
+  // Core constants getters
+  constexpr uint8_t getPinNumber() const { return pinNumber; }
+  constexpr uint8_t getMask() const { return mask; }
+
+  // Pin mode
   GPIO_MODE getMode() const { return mode; }
   void setMode(GPIO_MODE newMode) { mode = newMode; }
 
+  // Pull mode
   PULL_MODE getPullMode() const { return pullMode; }
   void setPullMode(PULL_MODE newPullMode) { pullMode = newPullMode; }
 
+  // Interrupt settings
   INTR_TYPE getInterruptType() const { return interruptType; }
   void setInterrupt(INTR_TYPE newInterruptType,
                     INTR_OUTPUT_TYPE newIntrOutputType) {
     interruptType = newInterruptType;
     intrOutputType = newIntrOutputType;
-    interruptEnabled = true;
+    interruptEnabled.store(true); // Set interrupt enabled atomically
   }
 
   INTR_OUTPUT_TYPE getInterruptOutputType() const { return intrOutputType; }
 
-  PIN_STATE getState() const { return state.load(); } // Read atomic state
-  void setState(PIN_STATE newState) {
-    state.store(newState);
-  } // Write atomic state
+  // State management
+  PIN_STATE getState() const { return state.load(); }
+  void setState(PIN_STATE newState) { state.store(newState); }
 
-  bool isInterruptEnabled() const { return interruptEnabled; }
-  void clearInterrupt() { interruptEnabled = false; }
+  // Interrupt management
+  bool isInterruptEnabled() const { return interruptEnabled.load(); }
+  void clearInterrupt() { interruptEnabled.store(false); }
 
 private:
-  // Helper to determine the port based on the pin number
   constexpr PORT getPortFromPin(PIN pin) const {
-    if (static_cast<uint8_t>(pin) < 8) {
-      return PORT::GPIOA; // Pins 0-7 belong to GPIOA
-    } else {
-      return PORT::GPIOB; // Pins 8-15 belong to GPIOB
-    }
+    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
   }
 };
 
