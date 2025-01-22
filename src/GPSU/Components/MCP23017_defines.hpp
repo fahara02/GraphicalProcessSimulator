@@ -234,17 +234,45 @@ struct GPIO_BANKS {
 
   std::array<Registers, 9> regMap;
   std::array<Pin, PIN_PER_BANK> Pins;
+  std::array<bool, PIN_PER_BANK> pinInterruptState;
 
   constexpr GPIO_BANKS(PORT port, MASK maskConfig = MASK::ALL,
                        bool enableInterrupt = false)
       : generalMask(static_cast<uint8_t>(maskConfig)), interruptMask(0x00),
         regMap(createRegMap(port, enableInterrupt)), Pins(createPins(port)),
-        ports(0), ddr(0), pull_ups(0) {
+        pinInterruptState{false}, interruptEnabled(enableInterrupt), ports(0),
+        ddr(0), pull_ups(0) {
     assert(isValidPort(port) && "Invalid PORT provided!"); // Validate PORT
     initInternalState(port);
+    if (interruptEnabled) {
+      updatePinInterruptState();
+    }
+  }
+  // Pin masks
+  void setGeneralMask(MASK mask) {
+    generalMask = static_cast<uint8_t>(mask);
+    if (interruptEnabled) {
+      updatePinInterruptState();
+    }
   }
 
-  // Static function to initialize Pins array based on the given PORT
+  void setGeneralMask(uint8_t mask) {
+    assert((mask & ~0xFF) == 0 && "Invalid mask: must be an 8-bit value!");
+    generalMask = mask;
+    if (interruptEnabled) {
+      updatePinInterruptState();
+    }
+  }
+  uint8_t getGeneralMask() const { return generalMask; }
+
+  void setInterruptMask(uint8_t pinMask) {
+    interruptMask = pinMask & 0xFF;
+    if (interruptEnabled) {
+      updatePinInterruptState();
+    }
+  }
+
+  uint8_t getInterruptMask() const { return interruptMask; }
 
   // Get the pin state by index
   PIN_STATE getPinState(uint8_t index) const {
@@ -284,25 +312,13 @@ struct GPIO_BANKS {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       if (maskToApply & (1 << i)) {
         Pins[i].setInterrupt(intrType, intrOutType);
+        pinInterruptState[i] = true; // Update interrupt state
+      } else {
+        pinInterruptState[i] = false;
       }
     }
     setInterruptMask(maskToApply);
   }
-  // Pin masks
-  void setGeneralMask(MASK mask) { generalMask = static_cast<uint8_t>(mask); }
-
-  void setGeneralMask(uint8_t mask) {
-    assert((mask & ~0xFF) == 0 && "Invalid mask: must be an 8-bit value!");
-    generalMask = mask;
-  }
-
-  uint8_t getGeneralMask() const { return generalMask; }
-
-  void setInterruptMask(uint8_t pinMask) {
-    interruptMask = pinMask & 0xFF; // Ensure only 8 bits are saved
-  }
-
-  uint8_t getInterruptMask() const { return interruptMask; }
 
   // Set pull-up resistor for a pin by index
   void setPullup(uint8_t index, bool enable) {
@@ -328,8 +344,10 @@ struct GPIO_BANKS {
     }
     return static_cast<REG>(0xFF); // Invalid register
   }
+  bool isInterruptEnabled() const { return interruptEnabled; }
 
 private:
+  bool interruptEnabled;
   uint8_t generalMask;
   uint8_t interruptMask;
   uint8_t ports;
@@ -344,6 +362,12 @@ private:
       ports = 0x08; // Example initialization for GPIOB
       ddr = 0x10;
       pull_ups = 0x20;
+    }
+  }
+  void updatePinInterruptState() {
+    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
+      pinInterruptState[i] = BitUtil::isBitSet(generalMask, i) &&
+                             BitUtil::isBitSet(interruptMask, i);
     }
   }
   static constexpr bool isValidPort(PORT port) {
