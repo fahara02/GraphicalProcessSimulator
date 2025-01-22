@@ -55,7 +55,7 @@ gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
 gpio_num_t pinB = GPIO_NUM_38;
 
 // COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
-COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-10, 10};
+COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 void setup() {
