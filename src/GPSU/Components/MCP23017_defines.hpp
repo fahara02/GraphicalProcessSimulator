@@ -236,14 +236,18 @@ struct GPIO_BANKS {
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
 
-  constexpr GPIO_BANKS(PORT port, MASK maskConfig = MASK::ALL,
-                       bool enableInterrupt = false)
-      : generalMask(static_cast<uint8_t>(maskConfig)), interruptMask(0x00),
+  constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
+      : generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         regMap(createRegMap(port, enableInterrupt)), Pins(createPins(port)),
-        pinInterruptState{false}, interruptEnabled(enableInterrupt), ports(0),
-        ddr(0), pull_ups(0) {
+        pinInterruptState{false}, interruptEnabled(enableInterrupt),
+        port_name(port), ports(0), ddr(0), pull_ups(0),
+        intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
     assert(isValidPort(port) && "Invalid PORT provided!"); // Validate PORT
-    initInternalState(port);
+  }
+
+  void init() {
+    initInternalState();
+    updatePins();
     if (interruptEnabled) {
       updatePinInterruptState();
     }
@@ -251,6 +255,7 @@ struct GPIO_BANKS {
   // Pin masks
   void setGeneralMask(MASK mask) {
     generalMask = static_cast<uint8_t>(mask);
+    updatePins();
     if (interruptEnabled) {
       updatePinInterruptState();
     }
@@ -259,18 +264,12 @@ struct GPIO_BANKS {
   void setGeneralMask(uint8_t mask) {
     assert((mask & ~0xFF) == 0 && "Invalid mask: must be an 8-bit value!");
     generalMask = mask;
+    updatePins();
     if (interruptEnabled) {
       updatePinInterruptState();
     }
   }
   uint8_t getGeneralMask() const { return generalMask; }
-
-  void setInterruptMask(uint8_t pinMask) {
-    interruptMask = pinMask & 0xFF;
-    if (interruptEnabled) {
-      updatePinInterruptState();
-    }
-  }
 
   uint8_t getInterruptMask() const { return interruptMask; }
 
@@ -311,6 +310,8 @@ struct GPIO_BANKS {
     uint8_t maskToApply = pinMask & generalMask;
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       if (maskToApply & (1 << i)) {
+        intr_type = intrType;
+        intr_out_type = intrOutType;
         Pins[i].setInterrupt(intrType, intrOutType);
         pinInterruptState[i] = true; // Update interrupt state
       } else {
@@ -350,38 +351,71 @@ private:
   bool interruptEnabled;
   uint8_t generalMask;
   uint8_t interruptMask;
+  PORT port_name;
   uint8_t ports;
   uint8_t ddr;
   uint8_t pull_ups;
-  void constexpr initInternalState(PORT port) {
-    if (port == PORT::GPIOA) {
-      ports = 0x01; // Example initialization for GPIOA
+  INTR_TYPE intr_type;
+  INTR_OUTPUT_TYPE intr_out_type;
+  void constexpr initInternalState() {
+    if (port_name == PORT::GPIOA) {
+      ports = 0x01;
       ddr = 0x02;
       pull_ups = 0x04;
-    } else if (port == PORT::GPIOB) {
+    } else if (port_name == PORT::GPIOB) {
       ports = 0x08; // Example initialization for GPIOB
       ddr = 0x10;
       pull_ups = 0x20;
     }
   }
-  void updatePinInterruptState() {
-    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      pinInterruptState[i] = BitUtil::isBitSet(generalMask, i) &&
-                             BitUtil::isBitSet(interruptMask, i);
+  void setInterruptMask(uint8_t pinMask) {
+    interruptMask = pinMask & 0xFF;
+    if (interruptEnabled) {
+      updatePinInterruptState();
     }
   }
+  void updatePins() {
+    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
+      bool isGeneralMaskSet = BitUtil::isBitSet(generalMask, i);
+
+      if (!isGeneralMaskSet) {
+        // Reset pin state if excluded by the general mask
+        Pins[i].setMode(GPIO_MODE::NA);
+        Pins[i].setPullMode(PULL_MODE::NONE);
+        Pins[i].clearInterrupt();
+        Pins[i].setState(PIN_STATE::UNDEFINED);
+      }
+    }
+  }
+
+  void updatePinInterruptState() {
+    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
+      bool isGeneralMaskSet = BitUtil::isBitSet(generalMask, i);
+      bool isInterruptMaskSet = BitUtil::isBitSet(interruptMask, i);
+      pinInterruptState[i] = isGeneralMaskSet && isInterruptMaskSet;
+
+      // Update the corresponding pin's interrupt enabled state
+      Pins[i].clearInterrupt(); // Reset first
+      if (pinInterruptState[i]) {
+        Pins[i].setInterrupt(intr_type, intr_out_type);
+      }
+    }
+  }
+
   static constexpr bool isValidPort(PORT port) {
     return port == PORT::GPIOA || port == PORT::GPIOB;
   }
   static constexpr std::array<Pin, PIN_PER_BANK> createPins(PORT bankPort) {
-    return {Pin(static_cast<PIN>(0 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(1 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(2 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(3 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(4 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(5 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(6 + (bankPort == PORT::GPIOB ? 8 : 0))),
-            Pin(static_cast<PIN>(7 + (bankPort == PORT::GPIOB ? 8 : 0)))};
+    return {
+        Pin(static_cast<PIN>(0 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(1 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(2 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(3 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(4 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(5 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(6 + (bankPort == PORT::GPIOB ? 8 : 0))),
+        Pin(static_cast<PIN>(7 + (bankPort == PORT::GPIOB ? 8 : 0))),
+    };
   }
 
   static constexpr std::array<Registers, 9> createRegMap(PORT port,
