@@ -28,8 +28,9 @@ private:
   gpio_num_t cs_;                 // Chip Select GPIO pin
   gpio_num_t reset_;              // Reset GPIO pin
   std::unique_ptr<TwoWire> wire_; // Unique pointer for TwoWire instance
-
+  MCP::register_icon_t config_reg_icon_;
   void init();
+  void setup(MCP::register_icon_t &config);
 };
 
 } // namespace COMPONENT

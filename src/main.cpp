@@ -104,7 +104,11 @@ void setup() {
     if (a == 360)
       a = 0;
   }
-
+  Serial.println("Enum values in hex:");
+  for (uint8_t i = static_cast<uint8_t>(MCP::REG::IODIRA);
+       i <= static_cast<uint8_t>(MCP::REG::OLATB); ++i) {
+    Serial.printf("0x%02X\n", i);
+  }
   // ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
   // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);

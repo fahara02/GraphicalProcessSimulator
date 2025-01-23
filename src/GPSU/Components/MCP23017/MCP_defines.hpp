@@ -18,7 +18,7 @@ public:
   }
 };
 
-struct Registe_ICON {
+struct register_icon_t {
   uint8_t BANK : 1;     //!< Controls how the registers are addressed
   uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
   uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
@@ -37,7 +37,7 @@ struct Registe_ICON {
       MCP_HARDWARE_ADDRESSING haen = MCP_HARDWARE_ADDRESSING::HAEN_DISABLED,
       MCP_OPEN_DRAIN odr = MCP_OPEN_DRAIN::ACTIVE_DRIVER,
       MCP_INT_POL intpol = MCP_INT_POL::MCP_ACTIVE_LOW) {
-    Registe_ICON reg = {
+    register_icon_t reg = {
         static_cast<uint8_t>(bank),
         static_cast<uint8_t>(mirror),
         static_cast<uint8_t>(seqop),
