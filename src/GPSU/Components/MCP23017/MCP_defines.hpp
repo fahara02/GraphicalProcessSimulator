@@ -1,29 +1,11 @@
-#ifndef MCP23017_DEFINES_HPP
-#define MCP23017_DEFINES_HPP
+#ifndef MCP_DEFINES_HPP
+#define MCP_DEFINES_HPP
+#include "MCP_Constants.hpp"
 #include "atomic"
-#include "stdint.h"
 #include <array>
 #include <cassert>
 
-namespace MCP23017 {
-// MCP DEVICE RELATED
-enum class MCP_I2C_CLK {
-  CLK_STD = 100000,  // 100KHz
-  CLK_HIGH = 400000, // 400 Khz
-  CLK_MAX = 17000000 // 1.7 MHZ
-
-};
-enum class MCP_MODE { BYTE_MODE = 0, SEQUENTIAL_MODE = 1 };
-
-static constexpr uint16_t INT_ERR = 255;
-
-static constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x20;
-static constexpr MCP_I2C_CLK DEFAULT_I2C_CLK_FRQ = MCP_I2C_CLK::CLK_STD;
-static constexpr uint16_t I2C_MASTER_TX_BUF_DISABLE = 0;
-static constexpr uint16_t I2C_MASTER_RX_BUF_DISABLE = 0;
-
-static constexpr uint16_t PIN_PER_BANK = 8;
-static constexpr uint16_t MAX_PIN = 2 * PIN_PER_BANK;
+namespace MCP {
 
 class BitUtil {
 public:
@@ -36,94 +18,39 @@ public:
   }
 };
 
-enum class PIN {
-  PIN0 = 0,
-  PIN1 = 1,
-  PIN2 = 2,
-  PIN3 = 3,
-  PIN4 = 4,
-  PIN5 = 5,
-  PIN6 = 6,
-  PIN7 = 7,
-  PIN8 = 8,
-  PIN9 = 9,
-  PIN10 = 10,
-  PIN11 = 11,
-  PIN12 = 12,
-  PIN13 = 13,
-  PIN14 = 14,
-  PIN15 = 15,
-};
-enum class MASK {
-  NONE = 0x00,
-  ALL = 0xFF,
-  EVEN = 0x55,       // 01010101
-  ODD = 0xAA,        // 10101010
-  LOWER_HALF = 0x0F, // 00001111
-  UPPER_HALF = 0xF0  // 11110000
-};
+struct Registe_ICON {
+  uint8_t BANK : 1;     //!< Controls how the registers are addressed
+  uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
+  uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
+  uint8_t DISSLW : 1;   //!< Slew Rate control bit for SDA output
+  uint8_t HAEN : 1;     //!< Enables hardware addressing
+  uint8_t ODR : 1;      //!< Configures the INT pin as an open-drain output
+  uint8_t INTPOL : 1;   //!< Sets the polarity of the INT output pin
+  uint8_t RESERVED : 1; //!< Reserved bit (unused)
 
-enum class PORT {
-  GPIOA = 1,
-  GPIOB = 2,
-};
-enum class REG {
-  IODIRA = 0x00,
-  IODIRB,
-  IPOLA,
-  IPOLB,
-  GPINTENA,
-  GPINTENB,
-  DEFVALA,
-  DEFVALB,
-  INTCONA,
-  INTCONB,
-  GPPUA,
-  GPPUB,
-  INTFA,
-  INTFB,
-  INTCAPA,
-  INTCAPB,
-  GPIOA,
-  GPIOB,
-  OLATA,
-  OLATB
-};
-enum class REG_FUNCTION {
-  CONTROL,       // IOCON
-  GPIO_DATA,     // GPIO
-  GPIO_DIR,      // IODIR
-  GPIO_PULL,     // GPPU
-  GPIO_LATCH,    // OLA
-  GPIO_POLARITY, // IPOLA
-  INTR_ENABLE,   // GPINTEN
-  INTR_CONTROL,  // INT_CON
-  INTR_FLAG,     // INTF
+  // Function to create the configuration byte with default arguments
+  static uint8_t createConfig(
+      MCP_BANK_MODE bank = MCP_BANK_MODE::MERGE_BANK,
+      MCP_MIRROR_MODE mirror = MCP_MIRROR_MODE::INT_DISCONNECTED,
+      MCP_OPERATION_MODE seqop = MCP_OPERATION_MODE::SEQUENTIAL_MODE,
+      MCP_SLEW_RATE disslew = MCP_SLEW_RATE::SLEW_ENABLED,
+      MCP_HARDWARE_ADDRESSING haen = MCP_HARDWARE_ADDRESSING::HAEN_DISABLED,
+      MCP_OPEN_DRAIN odr = MCP_OPEN_DRAIN::ACTIVE_DRIVER,
+      MCP_INT_POL intpol = MCP_INT_POL::MCP_ACTIVE_LOW) {
+    Registe_ICON reg = {
+        static_cast<uint8_t>(bank),
+        static_cast<uint8_t>(mirror),
+        static_cast<uint8_t>(seqop),
+        static_cast<uint8_t>(disslew),
+        static_cast<uint8_t>(haen),
+        static_cast<uint8_t>(odr),
+        static_cast<uint8_t>(intpol),
+        0 // RESERVED
+    };
 
+    return *reinterpret_cast<uint8_t *>(&reg);
+  }
 };
-enum class PIN_STATE { OFF, ON, UNDEFINED };
-enum class GPIO_MODE {
-  GPIO_INPUT = 0,
-  GPIO_INPUT_PULLUP = 1,
-  GPIO_OUTPUT = 2,
-  NA = 3
-};
-
-enum class PULL_MODE { INTERNAL_PULLUP, PULL_DOWN, NONE };
-enum class INTR_TYPE {
-  INTR_CHANGE = 0,
-  INTR_FALLING = 1,
-  INTR_RISING = 2,
-  NONE
-};
-enum class INTR_OUTPUT_TYPE {
-  INTR_ACTIVE_HIGH = 0,
-  INTR_ACTIVE_LOW = 1,
-  INTR_OPEN_DRAIN = 2,
-  NA = 3
-};
-
-//
 
 struct Pin {
   const PIN pinEnum;
@@ -165,12 +92,7 @@ public:
       interruptType = other.interruptType;
       intrOutputType = other.intrOutputType;
       interruptEnabled = other.interruptEnabled;
-
       state = other.state;
-
-      // Note: The const members (pinEnum, port, pinNumber, mask) are not
-      // assignable and cannot be changed once the object is created, which
-      // matches the `const` semantics.
     }
     return *this;
   }
@@ -520,6 +442,6 @@ constexpr GPIO_BANKS BANK_B(PORT::GPIOB);
 // Using the variadic constructor
 // constexpr GPIO_BANKS bankA_custom(PORT::GPIOA, GPA0, GPA1, GPA2);
 
-} // namespace MCP23017
+} // namespace MCP
 
 #endif

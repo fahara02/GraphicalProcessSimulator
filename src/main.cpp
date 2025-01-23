@@ -1,5 +1,5 @@
 #include "IO_Controller.hpp"
-#include "MCP23017.hpp"
+#include "MCP_IO.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
 #include "esp_task_wdt.h"
@@ -60,6 +60,7 @@ COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 void setup() {
+
   Serial.begin(115200);
   tft.init();
   delay(1000);
