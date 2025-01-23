@@ -10,13 +10,8 @@ enum class MCP_MODEL {
 
 };
 
-namespace MCP_23017 {
-enum class MCP_I2C_CLK {
-  CLK_STD = 100000,  // 100KHz
-  CLK_HIGH = 400000, // 400 Khz
-  CLK_MAX = 17000000 // 1.7 MHZ
+namespace MCP_23X17 {
 
-};
 enum class PIN {
   PIN0 = 0,
   PIN1 = 1,
@@ -35,27 +30,20 @@ enum class PIN {
   PIN14 = 14,
   PIN15 = 15,
 };
-}; // namespace MCP_23017
-namespace MCP_23S17 {
-enum class PIN {
-  PIN0 = 0,
-  PIN1 = 1,
-  PIN2 = 2,
-  PIN3 = 3,
-  PIN4 = 4,
-  PIN5 = 5,
-  PIN6 = 6,
-  PIN7 = 7,
-  PIN8 = 8,
-  PIN9 = 9,
-  PIN10 = 10,
-  PIN11 = 11,
-  PIN12 = 12,
-  PIN13 = 13,
-  PIN14 = 14,
-  PIN15 = 15
+
+namespace MCP_23017 {
+enum class I2C_CLK {
+  CLK_STD = 100000,  // 100KHz
+  CLK_HIGH = 400000, // 400 Khz
+  CLK_MAX = 17000000 // 1.7 MHZ
+
 };
-}
+
+}; // namespace MCP_23017
+namespace MCP_23S17 {}
+
+}; // namespace MCP_23X17
+
 // Enums for the configuration options
 enum class MCP_BANK_MODE { MERGE_BANK = 0, SEPARATE_BANK = 1 };
 enum class MCP_MIRROR_MODE { INT_DISCONNECTED = 0, INT_CONNECTED = 1 };
@@ -69,7 +57,7 @@ static constexpr uint16_t INT_ERR = 255;
 
 static constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x20;
 static constexpr uint16_t DEFAULT_I2C_CLK_FRQ =
-    static_cast<uint16_t>(MCP_23017::MCP_I2C_CLK::CLK_STD);
+    static_cast<uint16_t>(MCP_23X17::MCP_23017::I2C_CLK::CLK_STD);
 static constexpr uint16_t I2C_MASTER_TX_BUF_DISABLE = 0;
 static constexpr uint16_t I2C_MASTER_RX_BUF_DISABLE = 0;
 
