@@ -125,8 +125,8 @@ enum class MASK {
 };
 
 enum class PORT {
-  GPIOA = 1,
-  GPIOB = 2,
+  GPIOA = 0,
+  GPIOB = 1,
 };
 
 enum class REG_FUNCTION {

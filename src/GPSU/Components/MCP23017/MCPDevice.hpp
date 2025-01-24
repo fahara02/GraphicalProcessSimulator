@@ -13,36 +13,60 @@
 #define MCP_TAG "MCP_IO"
 
 namespace COMPONENT {
-
+template <typename MCPChip> //
 class MCPDevice {
 
 public:
-  template <typename MCPChip>
+  using RegisterType = typename MCPChip::RegisterType;
   MCPDevice(uint8_t address, MCPChip &mcpChip)
-      : address_(address),                                     //
-        sda_(GPIO_NUM_21),                                     //
-        scl_(GPIO_NUM_22),                                     //
-        cs_(GPIO_NUM_NC),                                      //
-        reset_(GPIO_NUM_33),                                   //
-        wire_(std::make_unique<TwoWire>(0)),                   //
-        iocon_(std::make_unique<typename MCPChip::ICONType>()) //
+      : address_(address),                   //
+        sda_(GPIO_NUM_21),                   //
+        scl_(GPIO_NUM_22),                   //
+        cs_(GPIO_NUM_NC),                    //
+        reset_(GPIO_NUM_33),                 //
+        wire_(std::make_unique<TwoWire>(0)), //
+        iocon_(std::make_unique<typename MCPChip::ICONType>())
+  //
 
   {
+    iocon_->setCallBack([this]() { MCPDevice::updateRegisters(this); });
     model_ = mcpChip.getModel();
-    setupDevice(mcpChip);
+    bankMode_ = iocon_->getBankMode();
+    initializeRegisters<MCPChip>(MCP::PORT::GPIOA, registersPortA, bankMode_);
+    initializeRegisters<MCPChip>(MCP::PORT::GPIOB, registersPortB, bankMode_);
   }
-  void printRegisters() const {
-    printf("Printing Registers for MCP_IO_EXPANDER (Address: 0x%02X):\n",
-           address_);
 
-    printf("PORTA Registers:\n");
-    for (const auto &entry : registersPortA) {
-      printf("Register 0x%02X: 0x%02X\n", entry.first, entry.second);
+  RegisterType *getRegister(typename MCPChip::RegEnumType reg, MCP::PORT port) {
+    auto &registers =
+        (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
+
+    size_t index = static_cast<size_t>(reg);
+    if (index >= MCP::MAX_REG_PER_PORT) {
+      ESP_LOGE(MCP_TAG, "Invalid register index: %d", index);
+      return nullptr;
     }
 
-    printf("PORTB Registers:\n");
-    for (const auto &entry : registersPortB) {
-      printf("Register 0x%02X: 0x%02X\n", entry.first, entry.second);
+    return registers[index].get();
+  }
+  void dumpRegisters() const {
+
+    ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
+             address_);
+
+    // Dump PORTA Registers
+    ESP_LOGI(MCP_TAG, "PORTA Registers:");
+    for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+      const auto &reg = registersPortA[i];
+      ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i,
+               reg->getAddress(), reg->getValue());
+    }
+
+    // Dump PORTB Registers
+    ESP_LOGI(MCP_TAG, "PORTB Registers:");
+    for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+      const auto &reg = registersPortB[i];
+      ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i,
+               reg->getAddress(), reg->getValue());
     }
   }
 
@@ -55,49 +79,44 @@ private:
   gpio_num_t reset_;              // Reset GPIO pin
   std::unique_ptr<TwoWire> wire_; // Unique pointer for TwoWire instance
   std::unique_ptr<MCP::ioconBase> iocon_;
+  bool bankMode_;
 
-  std::array<std::pair<int, uint8_t>, MCP::MAX_REG_PER_PORT> registersPortA{};
-  std::array<std::pair<int, uint8_t>, MCP::MAX_REG_PER_PORT> registersPortB{};
+  std::array<std::unique_ptr<RegisterType>, MCP::MAX_REG_PER_PORT>
+      registersPortA;
+  std::array<std::unique_ptr<RegisterType>, MCP::MAX_REG_PER_PORT>
+      registersPortB;
+
   void init();
-  template <typename MCPChip> void setupDevice(const MCPChip &mcpStruct) {
-
-    updateAddressMap<MCPChip>();
-  }
+  void setupDevice(const MCPChip &mcpStruct);
 
   void configure(const MCP::config_icon_t &config) {
     if (iocon_) {
       iocon_->configure(config.getSettings());
     }
   }
-  template <typename MCPChip>
-  uint8_t getAddress(typename MCPChip::RegEnumType reg, MCP::PORT port) const {
-    const auto &registers =
-        (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
-
-    for (const auto &entry : registers) {
-      if (entry.first == static_cast<int>(reg)) {
-        return entry.second;
+  static void updateRegisters(MCPDevice *device) {
+    if (device) {
+      for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+        device->registersPortA[i]->updateRegisterAddress();
+        device->registersPortB[i]->updateRegisterAddress();
       }
     }
-    return 0xFF;
   }
-  template <typename MCPChip> void updateAddressMap() {
-    uint8_t *addressPortA = iocon_->generateAddress(MCP::PORT::GPIOA);
-    uint8_t *addressPortB = iocon_->generateAddress(MCP::PORT::GPIOB);
 
-    if (addressPortA != nullptr && addressPortB != nullptr) {
-      for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
-        typename MCPChip::RegEnumType reg =
-            static_cast<typename MCPChip::RegEnumType>(i);
+  template <typename Chip>
+  void initializeRegisters(MCP::PORT port, //
+                           std::array<std::unique_ptr<RegisterType>,
+                                      MCP::MAX_REG_PER_PORT> &registers,
+                           bool bankMode) {
 
-        // Populate the registers for PORTA and PORTB
-        registersPortA[i] = {static_cast<int>(reg), addressPortA[i]};
-        registersPortB[i] = {static_cast<int>(reg), addressPortB[i]};
-      }
+    for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+      auto regEnum = static_cast<typename Chip::RegEnumType>(i);
+      registers[i] = std::make_unique<RegisterType>(regEnum, port, bankMode);
+      registers[i]->updateRegisterAddress();
     }
   }
 };
 
 } // namespace COMPONENT
 
-#endif // MCP23017_HPP
+#endif
