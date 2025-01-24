@@ -1,6 +1,7 @@
 #ifndef MCP_DEFINES_HPP
 #define MCP_DEFINES_HPP
 #include "MCP_Constants.hpp"
+
 #include "atomic"
 #include <array>
 #include <cassert>
@@ -15,129 +16,6 @@ public:
 
   static bool isBitSet(const uint32_t &byte, uint8_t bit) {
     return (byte & (1UL << bit)) != 0U;
-  }
-};
-struct register_icon_t {
-private:
-  uint8_t BANK : 1;     //!< Controls how the registers are addressed
-  uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
-  uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
-  uint8_t DISSLW : 1;   //!< Slew Rate control bit for SDA output
-  uint8_t HAEN : 1;     //!< Enables hardware addressing
-  uint8_t ODR : 1;      //!< Configures the INT pin as an open-drain output
-  uint8_t INTPOL : 1;   //!< Sets the polarity of the INT output pin
-  uint8_t RESERVED : 1; //!< Reserved bit (unused)
-
-public:
-  // Setters
-  void setBankMode(MCP_BANK_MODE mode) {
-    BANK = (mode == MCP_BANK_MODE::SEPARATE_BANK);
-  }
-  void setInterruptMode(MCP_MIRROR_MODE mode) {
-    MIRROR = (mode == MCP_MIRROR_MODE::INT_CONNECTED);
-  }
-  void setOperationMode(MCP_OPERATION_MODE mode) {
-    SEQOP = (mode == MCP_OPERATION_MODE::BYTE_MODE);
-  }
-  void setSlewRateMode(MCP_SLEW_RATE mode) {
-    DISSLW = (mode == MCP_SLEW_RATE::SLEW_DISABLED);
-  }
-  void setHardwareAddressingMode(MCP_HARDWARE_ADDRESSING mode) {
-    HAEN = (mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
-  }
-  void setOutputMode(MCP_OPEN_DRAIN mode) {
-    ODR = (mode == MCP_OPEN_DRAIN::ODR);
-  }
-  void setInterruptPolarityMode(MCP_INT_POL mode) {
-    INTPOL = (mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
-  }
-
-  // Enable/Disable helpers for specific features
-  void enableBankMode() { BANK = 1; }
-  void disableBankMode() { BANK = 0; }
-  void enableOpenDrain() {
-    ODR = 1;
-    INTPOL = 0;
-  }
-  void disableOpenDrain() { ODR = 0; }
-  void enableInterruptActiveHigh() {
-    INTPOL = 1;
-    ODR = 0;
-  }
-  void disableInterruptActiveHigh() { INTPOL = 0; }
-
-  // Getters
-  bool getBankMode() const { return BANK; }
-  bool getInterruptMode() const { return MIRROR; }
-  bool getOperationMode() const { return SEQOP; }
-  bool getSlewRateMode() const { return DISSLW; }
-  bool getHardwareAddressingMode() const { return HAEN; }
-  bool getOutputMode() const { return ODR; }
-  bool getInterruptPolarityMode() const { return INTPOL; }
-
-  // Generate the full settings byte
-  uint8_t getSettings() const {
-    return *reinterpret_cast<const uint8_t *>(this);
-  }
-};
-template <typename RegEnum, MCP::MCP_MODEL model> //
-struct MCPDevice {
-private:
-  using RegEnumType = RegEnum;
-
-  RegEnum REG;
-  register_icon_t settings_;
-
-public:
-  constexpr MCPDevice() : settings_() {}
-
-  // Configuration methods that use `register_icon_t`
-  void setBankMode(MCP_BANK_MODE mode) { settings_.setBankMode(mode); }
-  void setInterruptMode(MCP_MIRROR_MODE mode) {
-    settings_.setInterruptMode(mode);
-  }
-  void setOperationMode(MCP_OPERATION_MODE mode) {
-    settings_.setOperationMode(mode);
-  }
-  void setSlewRateMode(MCP_SLEW_RATE mode) { settings_.setSlewRateMode(mode); }
-  bool setHardwareAddressingMode(MCP_HARDWARE_ADDRESSING mode) {
-    if (model == MCP::MCP_MODEL::MCP23S17) {
-      settings_.setHardwareAddressingMode(mode);
-      return true;
-    }
-    return false;
-  }
-  bool setOutputMode(MCP_OPEN_DRAIN mode) {
-    if (!settings_.getInterruptPolarityMode() && mode == MCP_OPEN_DRAIN::ODR) {
-      settings_.enableOpenDrain();
-      return true;
-    } else if (settings_.getInterruptPolarityMode() &&
-               mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
-      settings_.disableOpenDrain();
-      return true;
-    }
-    return false;
-  }
-  bool setInterruptPolarityMode(MCP_INT_POL mode) {
-    if (!settings_.getOutputMode()) {
-      settings_.setInterruptPolarityMode(mode);
-      return true;
-    }
-    return false;
-  }
-
-  uint8_t getSettings() const { return settings_.getSettings(); }
-
-  uint8_t getAddress(RegEnum reg, PORT port) {
-    uint8_t baseAddress = static_cast<uint8_t>(reg);
-
-    if (settings_.getBankMode()) {
-      // BANK = 1: Separate PORTA and PORTB
-      return baseAddress + (port == PORT::GPIOB ? 0x10 : 0x00);
-    } else {
-      // BANK = 0: Paired A/B registers
-      return baseAddress + (port == PORT::GPIOB ? 0x01 : 0x00);
-    }
   }
 };
 
@@ -228,11 +106,9 @@ private:
 
 struct MCP23017 {
   using PinType = Pin<MCP_23X17::PIN>;
-  using DeviceType = MCPDevice<MCP_23X17::REG, MCP_MODEL::MCP23017>;
 };
 struct MCP23S17 {
   using PinType = Pin<MCP_23X17::PIN>;
-  using DeviceType = MCPDevice<MCP_23X17::REG, MCP_MODEL::MCP23S17>;
 };
 using MCP23017Pin = MCP23017::PinType;
 

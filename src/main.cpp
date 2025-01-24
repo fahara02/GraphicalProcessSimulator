@@ -58,6 +58,7 @@ gpio_num_t pinB = GPIO_NUM_38;
 // COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
 COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
+MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 
 void setup() {
 
@@ -105,15 +106,16 @@ void setup() {
       a = 0;
   }
 
-  for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);
-       i <= static_cast<uint8_t>(MCP::MCP_23X17::REG::OLAT); ++i) {
-    MCP::MCP_23X17::REG reg = static_cast<MCP::MCP_23X17::REG>(i);
+  device.printRegisters();
+  // for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);
+  //      i <= static_cast<uint8_t>(MCP::MCP_23X17::REG::OLAT); ++i) {
+  //   MCP::MCP_23X17::REG reg = static_cast<MCP::MCP_23X17::REG>(i);
 
-    Serial.printf("A PORT 0x%02X\n",
-                  MCP::MCP_23X17::getRegisterAddress(reg, true, false));
-    Serial.printf("B PORT 0x%02X\n",
-                  MCP::MCP_23X17::getRegisterAddress(reg, true, true));
-  }
+  //   Serial.printf("A PORT 0x%02X\n",
+  //                 MCP::MCP_23X17::getRegisterAddress(reg, true, false));
+  //   Serial.printf("B PORT 0x%02X\n",
+  //                 MCP::MCP_23X17::getRegisterAddress(reg, true, true));
+  // }
   // ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
   // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);

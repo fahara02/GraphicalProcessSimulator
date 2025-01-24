@@ -7,6 +7,8 @@ namespace MCP {
 enum class MCP_MODEL {
   MCP23017,
   MCP23S17,
+  MCP23018,
+  MCP23S18
 
 };
 
@@ -43,17 +45,7 @@ enum class REG : uint8_t {
   GPIO,         //!< General Purpose I/O Register
   OLAT          //!< Output Latch Register
 };
-uint8_t getRegisterAddress(REG reg, bool bankMode, bool isPortB) {
-  uint8_t baseAddress = static_cast<uint8_t>(reg);
 
-  if (bankMode) {
-    // BANK = 1: Separate PORTA and PORTB
-    return baseAddress + (isPortB ? 0x10 : 0x00);
-  } else {
-    // BANK = 0: Paired A/B registers
-    return baseAddress + (isPortB ? 0x01 : 0x00);
-  }
-}
 namespace MCP_23017 {
 enum class I2C_CLK {
   CLK_STD = 100000,  // 100KHz
@@ -62,10 +54,44 @@ enum class I2C_CLK {
 
 };
 
-}; // namespace MCP_23017
-namespace MCP_23S17 {}
+};                     // namespace MCP_23017
+namespace MCP_23S17 {} // namespace MCP_23S17
 
 }; // namespace MCP_23X17
+
+namespace MCP_23X18 {
+enum class PIN {
+  PIN0 = 0,
+  PIN1 = 1,
+  PIN2 = 2,
+  PIN3 = 3,
+  PIN4 = 4,
+  PIN5 = 5,
+  PIN6 = 6,
+  PIN7 = 7,
+  PIN8 = 8,
+  PIN9 = 9,
+  PIN10 = 10,
+  PIN11 = 11,
+  PIN12 = 12,
+  PIN13 = 13,
+  PIN14 = 14,
+  PIN15 = 15,
+};
+enum class REG : uint8_t {
+  IODIR = 0x00, //!< I/O Direction Register
+  IPOL,         //!< Input Polarity Register
+  GPINTEN,      //!< Interrupt-on-Change Enable Register
+  DEFVAL,       //!< Default Compare Register
+  INTCON,       //!< Interrupt Control Register
+  IOCON,        //!< Configuration Register
+  GPPU,         //!< Pull-Up Resistor Register
+  INTF,         //!< Interrupt Flag Register
+  INTCAP,       //!< Interrupt Captured Value Register
+  GPIO,         //!< General Purpose I/O Register
+  OLAT          //!< Output Latch Register
+};
+}; // namespace MCP_23X18
 
 // Enums for the configuration options
 enum class MCP_BANK_MODE { MERGE_BANK = 0, SEPARATE_BANK = 1 };
@@ -86,6 +112,8 @@ static constexpr uint16_t I2C_MASTER_RX_BUF_DISABLE = 0;
 
 static constexpr uint16_t PIN_PER_BANK = 8;
 static constexpr uint16_t MAX_PIN = 2 * PIN_PER_BANK;
+static constexpr uint16_t MAX_REG_PER_PORT = 11;
+static constexpr uint16_t MAX_REG_PER_DEVICE = 2 * MAX_REG_PER_PORT;
 
 enum class MASK {
   NONE = 0x00,
