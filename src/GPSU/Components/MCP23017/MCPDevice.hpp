@@ -15,8 +15,19 @@
 namespace COMPONENT {
 template <typename MCPChip> //
 class MCPDevice {
+private:
+  MCP::MCP_MODEL model_; // MCP model (e.g., MCP23017)
+  uint8_t address_;
+  gpio_num_t sda_;                // SDA GPIO pin
+  gpio_num_t scl_;                // SCL GPIO pin
+  gpio_num_t cs_;                 // Chip Select GPIO pin
+  gpio_num_t reset_;              // Reset GPIO pin
+  std::unique_ptr<TwoWire> wire_; // Unique pointer for TwoWire instance
+
+  bool bankMode_;
 
 public:
+  std::unique_ptr<MCP::ioconBase> controlRegister;
   using RegisterType = typename MCPChip::RegisterType;
   using RegEnumType = typename MCPChip::RegEnumType;
 
@@ -27,13 +38,14 @@ public:
         cs_(GPIO_NUM_NC),                    //
         reset_(GPIO_NUM_33),                 //
         wire_(std::make_unique<TwoWire>(0)), //
-        iocon_(std::make_unique<typename MCPChip::ICONType>())
+        controlRegister(std::make_unique<typename MCPChip::ICONType>())
   //
 
   {
-    iocon_->setCallBack([this]() { MCPDevice::updateRegisters(this); });
+    controlRegister->setCallBack(
+        [this]() { MCPDevice::updateRegisters(this); });
     model_ = mcpChip.getModel();
-    bankMode_ = iocon_->getBankMode();
+    bankMode_ = controlRegister->getBankMode();
     initializeRegisters<MCPChip>(MCP::PORT::GPIOA, registersPortA, bankMode_);
     initializeRegisters<MCPChip>(MCP::PORT::GPIOB, registersPortB, bankMode_);
   }
@@ -73,16 +85,6 @@ public:
   }
 
 private:
-  MCP::MCP_MODEL model_; // MCP model (e.g., MCP23017)
-  uint8_t address_;
-  gpio_num_t sda_;                // SDA GPIO pin
-  gpio_num_t scl_;                // SCL GPIO pin
-  gpio_num_t cs_;                 // Chip Select GPIO pin
-  gpio_num_t reset_;              // Reset GPIO pin
-  std::unique_ptr<TwoWire> wire_; // Unique pointer for TwoWire instance
-  std::unique_ptr<MCP::ioconBase> iocon_;
-  bool bankMode_;
-
   std::array<std::unique_ptr<RegisterType>, MCP::MAX_REG_PER_PORT>
       registersPortA;
   std::array<std::unique_ptr<RegisterType>, MCP::MAX_REG_PER_PORT>
@@ -92,8 +94,8 @@ private:
   void setupDevice(const MCPChip &mcpStruct);
 
   void configure(const MCP::config_icon_t &config) {
-    if (iocon_) {
-      iocon_->configure(config.getSettings());
+    if (controlRegister) {
+      controlRegister->configure(config.getSettings());
     }
   }
   static void updateRegisters(MCPDevice *device) {
