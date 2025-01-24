@@ -51,22 +51,22 @@ public:
   }
 
   RegisterType *getRegister(RegEnumType reg, MCP::PORT port) {
-    return getRegister(static_cast<int>(reg), port);
-  }
-
-  RegisterType *getRegister(int reg, MCP::PORT port) {
-    RegEnumType enumReg = enumTypeFromValue(reg);
-
     auto &registers =
         (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
 
-    size_t index = static_cast<size_t>(enumReg);
+    size_t index = static_cast<size_t>(reg);
     if (index >= MCP::MAX_REG_PER_PORT) {
       ESP_LOGE(MCP_TAG, "Invalid register index: %d", index);
       return nullptr;
     }
 
     return registers[index].get();
+  }
+
+  RegisterType *getRegister(uint8_t reg, MCP::PORT port) {
+    RegEnumType enumReg = enumTypeFromValue(reg);
+
+    return getRegister(enumReg, port);
   }
   void configure(const MCP::config_icon_t &config) {
     if (controlRegister) {
@@ -126,7 +126,7 @@ private:
     }
   }
 
-  static RegEnumType enumTypeFromValue(int value) {
+  static RegEnumType enumTypeFromValue(uint8_t value) {
     return static_cast<RegEnumType>(value);
   }
 };
