@@ -234,6 +234,7 @@ class RegisterBase {
 protected:
   uint8_t address;
   MCP::REG_FUNCTION function;
+  bool readOnly = false;
 
 public:
   virtual ~RegisterBase() = default;
@@ -245,24 +246,24 @@ public:
     BIT_3,
     BIT_2,
     BIT_1,
-    RESERVED
+    BIT_0,
   };
   virtual void setAddress(uint8_t address) = 0;
+
   virtual uint8_t readRegister() = 0;
+  virtual void setReadonly() { readOnly = true; }
   virtual void setFunction(MCP::REG_FUNCTION fn) { function = fn; };
 
-  virtual void applyMask(uint8_t mask) { value |= mask; }
+  virtual void applyMask(uint8_t mask) {
+    { value |= mask; }
+  }
 
   virtual void clearMask(uint8_t mask) { value &= ~mask; }
 
   virtual bool setValue(uint8_t newValue) {
 
-    const uint8_t RESERVED_MASK = 0x01;
-    if (newValue & RESERVED_MASK) {
-      return false;
-    }
+    value = newValue;
 
-    value = newValue & ~RESERVED_MASK;
     return true;
   }
 
