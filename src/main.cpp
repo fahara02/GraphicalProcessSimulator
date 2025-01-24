@@ -59,7 +59,8 @@ gpio_num_t pinB = GPIO_NUM_38;
 COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
-
+MCP::MCP23017 mcp23017;
+COMPONENT::MCP_IO_EXPANDER expander(0x20, mcp23017);
 void setup() {
 
   Serial.begin(115200);
@@ -74,7 +75,7 @@ void setup() {
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
-
+  expander.printRegisters();
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
 

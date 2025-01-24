@@ -31,6 +31,20 @@ public:
     model_ = mcpChip.getModel();
     setupDevice(mcpChip);
   }
+  void printRegisters() const {
+    printf("Printing Registers for MCP_IO_EXPANDER (Address: 0x%02X):\n",
+           address_);
+
+    printf("PORTA Registers:\n");
+    for (const auto &entry : registersPortA) {
+      printf("Register 0x%02X: 0x%02X\n", entry.first, entry.second);
+    }
+
+    printf("PORTB Registers:\n");
+    for (const auto &entry : registersPortB) {
+      printf("Register 0x%02X: 0x%02X\n", entry.first, entry.second);
+    }
+  }
 
 private:
   MCP::MCP_MODEL model_; // MCP model (e.g., MCP23017)
