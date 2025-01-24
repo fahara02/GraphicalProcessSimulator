@@ -18,6 +18,8 @@ class MCPDevice {
 
 public:
   using RegisterType = typename MCPChip::RegisterType;
+  using RegEnumType = typename MCPChip::RegEnumType;
+
   MCPDevice(uint8_t address, MCPChip &mcpChip)
       : address_(address),                   //
         sda_(GPIO_NUM_21),                   //
@@ -36,7 +38,7 @@ public:
     initializeRegisters<MCPChip>(MCP::PORT::GPIOB, registersPortB, bankMode_);
   }
 
-  RegisterType *getRegister(typename MCPChip::RegEnumType reg, MCP::PORT port) {
+  RegisterType *getRegister(RegEnumType reg, MCP::PORT port) {
     auto &registers =
         (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
 
@@ -110,7 +112,7 @@ private:
                            bool bankMode) {
 
     for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
-      auto regEnum = static_cast<typename Chip::RegEnumType>(i);
+      auto regEnum = static_cast<RegEnumType>(i);
       registers[i] = std::make_unique<RegisterType>(regEnum, port, bankMode);
       registers[i]->updateRegisterAddress();
     }

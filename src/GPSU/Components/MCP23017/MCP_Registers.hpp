@@ -193,14 +193,8 @@ private:
 
 public:
   using RegEnumType = RegEnum;
-  ControlRegister() {
-    setModel(model);
-    updateRegisters();
-  }
-  ControlRegister(void (*cb)()) : callback(cb) {
-    setModel(model);
-    updateRegisters();
-  }
+  ControlRegister() { setModel(model); }
+
   void setCallBack(const std::function<void()> &cb) override { callback = cb; }
   void updateRegisters() override {
     if (callback) {
