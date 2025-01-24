@@ -71,10 +71,12 @@ public:
 //
 class MCPDeviceBase {
 public:
+  uint8_t address[MAX_REG_PER_DEVICE];
   virtual ~MCPDeviceBase() = default;
   using Field = MCP::register_icon_t::Field;
 
   virtual void updateRegisters() = 0;
+  virtual uint8_t *generateAddress(PORT port) = 0;
 
   virtual bool configure(const uint8_t &settings) {
     bool status = settings_.configure(settings);
@@ -169,7 +171,10 @@ public:
     settings_.setBitField(Field::INTPOL, false);
   }
 
-  virtual bool getBankMode() { return settings_.getBitField(Field::BANK); }
+  virtual bool getBankMode() const {
+    return settings_.getBitField(Field::BANK);
+  }
+
   virtual uint8_t getSettings() const { return settings_.getSettings(); }
 
 protected:
@@ -181,12 +186,7 @@ template <typename RegEnum, MCP::MCP_MODEL model> //
 class MCPDevice : public MCPDeviceBase {
 private:
   RegEnum REG;
-  struct regMap {
-    RegEnum reg;
-    uint8_t address;
-  };
-  std::array<regMap, MAX_REG_PER_PORT> registersPortA{};
-  std::array<regMap, MAX_REG_PER_PORT> registersPortB{};
+  void (*callback)() = nullptr;
 
 public:
   using RegEnumType = RegEnum;
@@ -194,49 +194,26 @@ public:
     setModel(model);
     updateRegisters();
   }
+  MCPDevice(void (*cb)()) : callback(cb) {
+    setModel(model);
+    updateRegisters();
+  }
 
   void updateRegisters() override {
-    for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
-      RegEnum reg = static_cast<RegEnum>(i);
-      registersPortA[i] = {reg, generateAddress(reg, PORT::GPIOA)};
-      registersPortB[i] = {reg, generateAddress(reg, PORT::GPIOB)};
+    if (callback) {
+      callback();
     }
   }
+  uint8_t *generateAddress(PORT port) override {
 
-  uint8_t getAddress(RegEnum reg, PORT port) const {
-
-    const auto &registers =
-        (port == PORT::GPIOA) ? registersPortA : registersPortB;
-
-    for (size_t i = 0; i < registers.size(); ++i) {
-      if (registers[i].reg == reg) {
-
-        return registers[i].address;
-      }
+    for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
+      address[i] = generateAddressImpl(static_cast<RegEnum>(i), port);
     }
-    return 0xFF;
+    return address;
   }
 
-  // Configuration methods that use `register_icon_ t`
-
-  void printRegisters() const {
-    printf("=== PORTA Registers ===\n");
-    for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
-      printf("Index: %zu, Register: %d, Address: 0x%02X\n", i,
-             static_cast<int>(registersPortA[i].reg),
-             registersPortA[i].address);
-    }
-
-    printf("\n=== PORTB Registers ===\n");
-    for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
-      printf("Index: %zu, Register: %d, Address: 0x%02X\n", i,
-             static_cast<int>(registersPortB[i].reg),
-             registersPortB[i].address);
-    }
-  }
-
-private:
-  constexpr uint8_t generateAddress(RegEnum reg, PORT port) {
+protected:
+  constexpr uint8_t generateAddressImpl(RegEnum reg, PORT port) const {
     uint8_t baseAddress = static_cast<uint8_t>(reg);
 
     if (getBankMode()) {
@@ -246,8 +223,28 @@ private:
       // BANK = 0: Paired A/B registers
       return baseAddress + (port == PORT::GPIOB ? 0x01 : 0x00);
     }
+    // Redundant return to silence warnings
+    return baseAddress;
   }
 };
 
 } // namespace MCP
 #endif
+
+// Configuration methods that use `register_icon_ t`
+
+//   void printRegisters() const {
+//     printf("=== PORTA Registers ===\n");
+//     for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
+//       printf("Index: %zu, Register: %d, Address: 0x%02X\n", i,
+//              static_cast<int>(registersPortA[i].reg),
+//              registersPortA[i].address);
+//     }
+
+//     printf("\n=== PORTB Registers ===\n");
+//     for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
+//       printf("Index: %zu, Register: %d, Address: 0x%02X\n", i,
+//              static_cast<int>(registersPortB[i].reg),
+//              registersPortB[i].address);
+//     }
+//   }

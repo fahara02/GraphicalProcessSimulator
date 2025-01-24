@@ -57,68 +57,17 @@ private:
                                       MCP::MCP_MODEL::MCP23017>::RegEnumType;
   using regEnumMCP18 = MCP::MCPDevice<MCP::MCP_23X18::REG,
                                       MCP::MCP_MODEL::MCP23018>::RegEnumType;
-  using regEnum = std::variant<regEnumMCP17, regEnumMCP18>;
+  using RegEnum = std::variant<regEnumMCP17, regEnumMCP18>;
+
+  struct regMap {
+    RegEnum reg;
+    uint8_t address;
+  };
+  std::array<regMap, MCP::MAX_REG_PER_PORT> registersPortA{};
+  std::array<regMap, MCP::MAX_REG_PER_PORT> registersPortB{};
+
   void init();
-  void setup(const MCP::register_icon_t &config) {
-    if (device_) {
-      device_->configure(config);
-    }
-  }
-  template <typename RegEnum, MCP::MCP_MODEL Model, typename RetType,
-            typename... Args>
-  RetType
-  invokeMethod(RetType (MCP::MCPDevice<RegEnum, Model>::*method)(Args...),
-               Args &&...args) const {
-    if (!device_) {
-      ESP_LOGE(MCP_TAG, "Device not initialized");
-      return RetType();
-    }
 
-    return invokeMethodImpl<RegEnum, Model>(method,
-                                            std::forward<Args>(args)...);
-  }
-  template <typename RegEnum, MCP::MCP_MODEL Model, typename RetType,
-            typename... Args>
-  RetType
-  invokeMethodImpl(RetType (MCP::MCPDevice<RegEnum, Model>::*method)(Args...),
-                   Args &&...args) const {
-    if constexpr (Model == MCP::MCP_MODEL::MCP23017) {
-      auto derivedDevice = static_cast<
-          const MCP::MCPDevice<RegEnum, MCP::MCP_MODEL::MCP23017> *>(
-          device_.get());
-      return (derivedDevice->*method)(std::forward<Args>(args)...);
-    } else if constexpr (Model == MCP::MCP_MODEL::MCP23S17) {
-      auto derivedDevice = static_cast<
-          const MCP::MCPDevice<RegEnum, MCP::MCP_MODEL::MCP23S17> *>(
-          device_.get());
-      return (derivedDevice->*method)(std::forward<Args>(args)...);
-    } else if constexpr (Model == MCP::MCP_MODEL::MCP23018) {
-      auto derivedDevice = static_cast<
-          const MCP::MCPDevice<RegEnum, MCP::MCP_MODEL::MCP23018> *>(
-          device_.get());
-      return (derivedDevice->*method)(std::forward<Args>(args)...);
-    } else if constexpr (Model == MCP::MCP_MODEL::MCP23S18) {
-      auto derivedDevice = static_cast<
-          const MCP::MCPDevice<RegEnum, MCP::MCP_MODEL::MCP23S18> *>(
-          device_.get());
-      return (derivedDevice->*method)(std::forward<Args>(args)...);
-    } else {
-      ESP_LOGE(MCP_TAG, "Unknown device model");
-      return RetType(); // Return default-constructed value for unknown model
-    }
-  }
-
-  template <typename RegEnum, MCP::MCP_MODEL Model>
-  uint8_t getRegisterAddress(RegEnum reg, MCP::PORT port) const {
-    return invokeMethod<RegEnum, Model, uint8_t>(
-        &MCP::MCPDevice<RegEnum, Model>::getAddress, reg, port);
-  }
-
-  template <typename RegEnum, MCP::MCP_MODEL Model>
-  void configureDevice(const MCP::register_icon_t &config) {
-    invokeMethod<RegEnum, Model, void>(
-        &MCP::MCPDevice<RegEnum, Model>::configure, config);
-  }
   template <typename RegEnum, MCP::MCP_MODEL Model>
   std::unique_ptr<MCP::MCPDeviceBase> createDevice() {
     if constexpr (Model == MCP::MCP_MODEL::MCP23017) {
@@ -136,6 +85,43 @@ private:
     } else {
       ESP_LOGE(MCP_TAG, "Unknown MCP model");
       return nullptr;
+    }
+  }
+  void setup(const MCP::register_icon_t &config) {
+    if (device_) {
+      device_->configure(config.getSettings());
+    }
+  }
+  uint8_t getAddress(RegEnum reg, MCP::PORT port) const {
+
+    const auto &registers =
+        (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
+
+    for (size_t i = 0; i < registers.size(); ++i) {
+      if (registers[i].reg == reg) {
+
+        return registers[i].address;
+      }
+    }
+    return 0xFF;
+  }
+  void updateAddressMap() {
+
+    uint8_t *addressPortA = device_->generateAddress(MCP::PORT::GPIOA);
+    uint8_t *addressPortB = device_->generateAddress(MCP::PORT::GPIOB);
+
+    if (addressPortA != nullptr && addressPortB != nullptr) {
+      for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+
+        RegEnum reg = (model_ == MCP::MCP_MODEL::MCP23017 ||
+                       model_ == MCP::MCP_MODEL::MCP23S17)
+                          ? RegEnum(static_cast<regEnumMCP17>(i))
+                          : RegEnum(static_cast<regEnumMCP18>(i));
+
+        // Populate the registers for PORTA and PORTB
+        registersPortA[i] = {reg, addressPortA[i]};
+        registersPortB[i] = {reg, addressPortB[i]};
+      }
     }
   }
 };

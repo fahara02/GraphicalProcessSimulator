@@ -106,10 +106,10 @@ void setup() {
       a = 0;
   }
 
-  device.printRegisters();
-  // for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);
-  //      i <= static_cast<uint8_t>(MCP::MCP_23X17::REG::OLAT); ++i) {
-  //   MCP::MCP_23X17::REG reg = static_cast<MCP::MCP_23X17::REG>(i);
+  // device.printRegisters();
+  //  for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);
+  //       i <= static_cast<uint8_t>(MCP::MCP_23X17::REG::OLAT); ++i) {
+  //    MCP::MCP_23X17::REG reg = static_cast<MCP::MCP_23X17::REG>(i);
 
   //   Serial.printf("A PORT 0x%02X\n",
   //                 MCP::MCP_23X17::getRegisterAddress(reg, true, false));
