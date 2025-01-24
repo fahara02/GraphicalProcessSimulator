@@ -168,6 +168,17 @@ struct Registers {
 
   constexpr Registers(REG reg, REG_FUNCTION func)
       : regName(reg), function(func) {}
+  uint8_t getAddress(REG reg, bool bankMode, PORT port) {
+    uint8_t baseAddress = static_cast<uint8_t>(reg);
+
+    if (bankMode) {
+      // BANK = 1: Separate PORTA and PORTB
+      return baseAddress + (port == PORT::GPIOB ? 0x10 : 0x00);
+    } else {
+      // BANK = 0: Paired A/B registers
+      return baseAddress + (port == PORT::GPIOB ? 0x01 : 0x00);
+    }
+  }
 };
 template <typename PinType> //
 struct GPIO_BANKS {

@@ -30,7 +30,30 @@ enum class PIN {
   PIN14 = 14,
   PIN15 = 15,
 };
+enum class REG : uint8_t {
+  IODIR = 0x00, //!< I/O Direction Register
+  IPOL,         //!< Input Polarity Register
+  GPINTEN,      //!< Interrupt-on-Change Enable Register
+  DEFVAL,       //!< Default Compare Register
+  INTCON,       //!< Interrupt Control Register
+  IOCON,        //!< Configuration Register
+  GPPU,         //!< Pull-Up Resistor Register
+  INTF,         //!< Interrupt Flag Register
+  INTCAP,       //!< Interrupt Captured Value Register
+  GPIO,         //!< General Purpose I/O Register
+  OLAT          //!< Output Latch Register
+};
+uint8_t getRegisterAddress(REG reg, bool bankMode, bool isPortB) {
+  uint8_t baseAddress = static_cast<uint8_t>(reg);
 
+  if (bankMode) {
+    // BANK = 1: Separate PORTA and PORTB
+    return baseAddress + (isPortB ? 0x10 : 0x00);
+  } else {
+    // BANK = 0: Paired A/B registers
+    return baseAddress + (isPortB ? 0x01 : 0x00);
+  }
+}
 namespace MCP_23017 {
 enum class I2C_CLK {
   CLK_STD = 100000,  // 100KHz
