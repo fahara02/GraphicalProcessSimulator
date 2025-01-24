@@ -1,8 +1,8 @@
-#ifndef MCP_IO_HPP
-#define MCP_IO_HPP
+#ifndef MCP_DEVICE_HPP
+#define MCP_DEVICE_HPP
 
 #include "MCP_Defines.hpp"
-#include "MCP_Device.hpp"
+#include "MCP_Registers.hpp"
 #include "Wire.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -14,18 +14,18 @@
 
 namespace COMPONENT {
 
-class MCP_IO_EXPANDER {
+class MCPDevice {
 
 public:
   template <typename MCPChip>
-  MCP_IO_EXPANDER(uint8_t address, MCPChip &mcpChip)
-      : address_(address),                                        //
-        sda_(GPIO_NUM_21),                                        //
-        scl_(GPIO_NUM_22),                                        //
-        cs_(GPIO_NUM_NC),                                         //
-        reset_(GPIO_NUM_33),                                      //
-        wire_(std::make_unique<TwoWire>(0)),                      //
-        device_(std::make_unique<typename MCPChip::DeviceType>()) //
+  MCPDevice(uint8_t address, MCPChip &mcpChip)
+      : address_(address),                                     //
+        sda_(GPIO_NUM_21),                                     //
+        scl_(GPIO_NUM_22),                                     //
+        cs_(GPIO_NUM_NC),                                      //
+        reset_(GPIO_NUM_33),                                   //
+        wire_(std::make_unique<TwoWire>(0)),                   //
+        iocon_(std::make_unique<typename MCPChip::ICONType>()) //
 
   {
     model_ = mcpChip.getModel();
@@ -54,7 +54,7 @@ private:
   gpio_num_t cs_;                 // Chip Select GPIO pin
   gpio_num_t reset_;              // Reset GPIO pin
   std::unique_ptr<TwoWire> wire_; // Unique pointer for TwoWire instance
-  std::unique_ptr<MCP::MCPDeviceBase> device_;
+  std::unique_ptr<MCP::ioconBase> iocon_;
 
   std::array<std::pair<int, uint8_t>, MCP::MAX_REG_PER_PORT> registersPortA{};
   std::array<std::pair<int, uint8_t>, MCP::MAX_REG_PER_PORT> registersPortB{};
@@ -64,9 +64,9 @@ private:
     updateAddressMap<MCPChip>();
   }
 
-  void configure(const MCP::register_icon_t &config) {
-    if (device_) {
-      device_->configure(config.getSettings());
+  void configure(const MCP::config_icon_t &config) {
+    if (iocon_) {
+      iocon_->configure(config.getSettings());
     }
   }
   template <typename MCPChip>
@@ -82,8 +82,8 @@ private:
     return 0xFF;
   }
   template <typename MCPChip> void updateAddressMap() {
-    uint8_t *addressPortA = device_->generateAddress(MCP::PORT::GPIOA);
-    uint8_t *addressPortB = device_->generateAddress(MCP::PORT::GPIOB);
+    uint8_t *addressPortA = iocon_->generateAddress(MCP::PORT::GPIOA);
+    uint8_t *addressPortB = iocon_->generateAddress(MCP::PORT::GPIOB);
 
     if (addressPortA != nullptr && addressPortB != nullptr) {
       for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {

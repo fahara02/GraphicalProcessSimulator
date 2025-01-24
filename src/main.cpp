@@ -1,5 +1,5 @@
 #include "IO_Controller.hpp"
-#include "MCP_IO.hpp"
+#include "MCPDevice.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
 #include "esp_task_wdt.h"
@@ -58,9 +58,9 @@ gpio_num_t pinB = GPIO_NUM_38;
 // COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
 COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
 COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
-MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
-MCP::MCP23017 mcp23017;
-COMPONENT::MCP_IO_EXPANDER expander(0x20, mcp23017);
+// MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
+MCP::MCP_Chip::MCP23017 mcp23017;
+COMPONENT::MCPDevice expander(0x20, mcp23017);
 void setup() {
 
   Serial.begin(115200);

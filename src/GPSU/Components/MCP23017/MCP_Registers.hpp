@@ -1,10 +1,10 @@
-#ifndef MCP_DEVICE_HPP
-#define MCP_DEVICE_HPP
+#ifndef MCP_Registers_HPP
+#define MCP_Registers_HPP
 #include "MCP_Constants.hpp"
 #include "MCP_defines.hpp"
 namespace MCP {
 
-struct register_icon_t {
+struct config_icon_t {
 public:
 public:
   // Define fields as a public enum for easier reference
@@ -35,8 +35,8 @@ private:
   };
 
 public:
-  register_icon_t() : value(0) {}
-  register_icon_t(uint8_t setting) : value(setting) {}
+  config_icon_t() : value(0) {}
+  config_icon_t(uint8_t setting) : value(setting) {}
 
   void setBitField(Field field, bool value) {
     uint8_t *fields = reinterpret_cast<uint8_t *>(this);
@@ -70,11 +70,11 @@ public:
 };
 
 //
-class MCPDeviceBase {
+class ioconBase {
 public:
   uint8_t address[MAX_REG_PER_DEVICE];
-  virtual ~MCPDeviceBase() = default;
-  using Field = MCP::register_icon_t::Field;
+  virtual ~ioconBase() = default;
+  using Field = MCP::config_icon_t::Field;
 
   virtual void updateRegisters() = 0;
   virtual uint8_t *generateAddress(PORT port) = 0;
@@ -82,7 +82,7 @@ public:
   virtual bool configure(const uint8_t &settings) {
     bool status = settings_.configure(settings);
     if (status) {
-      settings_ = register_icon_t(settings);
+      settings_ = config_icon_t(settings);
     };
     return status;
   };
@@ -179,23 +179,23 @@ public:
   virtual uint8_t getSettings() const { return settings_.getSettings(); }
 
 protected:
-  register_icon_t settings_;
+  config_icon_t settings_;
   MCP::MCP_MODEL model_;
 };
 
 template <typename RegEnum, MCP::MCP_MODEL model> //
-class MCPDevice : public MCPDeviceBase {
+class ControlRegister : public ioconBase {
 private:
   RegEnum REG;
   void (*callback)() = nullptr;
 
 public:
   using RegEnumType = RegEnum;
-  MCPDevice() {
+  ControlRegister() {
     setModel(model);
     updateRegisters();
   }
-  MCPDevice(void (*cb)()) : callback(cb) {
+  ControlRegister(void (*cb)()) : callback(cb) {
     setModel(model);
     updateRegisters();
   }
@@ -228,6 +228,7 @@ protected:
     return baseAddress;
   }
 };
+namespace MCP_Chip {
 
 struct MCPFamily {
   MCP::MCP_MODEL model;
@@ -238,33 +239,37 @@ struct MCP23017 : public MCPFamily {
   using RegEnumType = MCP::MCP_23X17::REG;
   using PinEnumType = MCP::MCP_23X17::PIN;
   using PinType = MCP::Pin<PinEnumType>;
-  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
-  DeviceType device;
+  using ICONType = MCP::ControlRegister<RegEnumType, model>;
+  ICONType iocon;
 };
 struct MCP23S17 : public MCPFamily {
   static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23S17;
   using RegEnumType = MCP::MCP_23X17::REG;
   using PinEnumType = MCP::MCP_23X17::PIN;
   using PinType = MCP::Pin<PinEnumType>;
-  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
-  DeviceType device;
+  using ICONType = MCP::ControlRegister<RegEnumType, model>;
+  ICONType iocon;
 };
 struct MCP23018 : public MCPFamily {
   static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23018;
   using RegEnumType = MCP::MCP_23X18::REG;
   using PinEnumType = MCP::MCP_23X18::PIN;
   using PinType = MCP::Pin<PinEnumType>;
-  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
-  DeviceType device;
+  using ICONType = MCP::ControlRegister<RegEnumType, model>;
+  ICONType iocon;
 };
 struct MCP23S18 : public MCPFamily {
   static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23S18;
   using RegEnumType = MCP::MCP_23X18::REG;
   using PinEnumType = MCP::MCP_23X18::PIN;
   using PinType = MCP::Pin<PinEnumType>;
-  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
-  DeviceType device;
+  using ICONType = MCP::ControlRegister<RegEnumType, model>;
+  ICONType iocon;
 };
+}; // namespace MCP_Chip
+
+using MCP23017Pin = MCP_Chip::MCP23017::PinType;
+constexpr MCP23017Pin GPB0(MCP_23X17::PIN::PIN8);
 
 } // namespace MCP
 #endif
