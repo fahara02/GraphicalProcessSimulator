@@ -203,19 +203,19 @@ public:
     return result;
   }
   // Direct change
-  void setContinousPoll() { continousPoll = true; }
-  void setSequentialOperation() { continousPoll = false; }
+  void enableContinousPoll() { continousPoll = true; }
+  void enableSequentialOperation() { continousPoll = false; }
 
   void enableOpenDrain() {
     openDrainEnabled = true;
     interruptActiveHigh = false;
   }
   void disableOpenDrain() { openDrainEnabled = false; }
-  void setInterruptActiveHigh() {
+  void enableInterruptActiveHigh() {
     openDrainEnabled = false;
     interruptActiveHigh = true;
   }
-  void resetInterruptActiveHigh() { interruptActiveHigh = false; }
+  void disableInterruptActiveHigh() { interruptActiveHigh = false; }
 
   uint8_t getAddress(MCP::MCP_23X17::REG reg, PORT port) {
     uint8_t baseAddress = static_cast<uint8_t>(reg);
@@ -233,7 +233,7 @@ public:
     register_icon_t reg = {
         static_cast<uint8_t>(bankMode),
         static_cast<uint8_t>(combinedInterrupt),
-        static_cast<uint8_t>(!continousPoll), // SEQOP is inverted
+        static_cast<uint8_t>(continousPoll),
         static_cast<uint8_t>(disableSlewRate),
         static_cast<uint8_t>(hardwareAddressingEnabled),
         static_cast<uint8_t>(openDrainEnabled),
