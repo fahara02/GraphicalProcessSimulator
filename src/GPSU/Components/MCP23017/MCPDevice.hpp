@@ -51,16 +51,27 @@ public:
   }
 
   RegisterType *getRegister(RegEnumType reg, MCP::PORT port) {
+    return getRegister(static_cast<int>(reg), port);
+  }
+
+  RegisterType *getRegister(int reg, MCP::PORT port) {
+    RegEnumType enumReg = enumTypeFromValue(reg);
+
     auto &registers =
         (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
 
-    size_t index = static_cast<size_t>(reg);
+    size_t index = static_cast<size_t>(enumReg);
     if (index >= MCP::MAX_REG_PER_PORT) {
       ESP_LOGE(MCP_TAG, "Invalid register index: %d", index);
       return nullptr;
     }
 
     return registers[index].get();
+  }
+  void configure(const MCP::config_icon_t &config) {
+    if (controlRegister) {
+      controlRegister->configure(config.getSettings());
+    }
   }
   void dumpRegisters() const {
 
@@ -93,11 +104,6 @@ private:
   void init();
   void setupDevice(const MCPChip &mcpStruct);
 
-  void configure(const MCP::config_icon_t &config) {
-    if (controlRegister) {
-      controlRegister->configure(config.getSettings());
-    }
-  }
   static void updateRegisters(MCPDevice *device) {
     if (device) {
       for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
@@ -118,6 +124,10 @@ private:
       registers[i] = std::make_unique<RegisterType>(regEnum, port, bankMode);
       registers[i]->updateRegisterAddress();
     }
+  }
+
+  static RegEnumType enumTypeFromValue(int value) {
+    return static_cast<RegEnumType>(value);
   }
 };
 
