@@ -1,7 +1,7 @@
 #ifndef MCP_DEVICE_HPP
 #define MCP_DEVICE_HPP
 
-#include "MCP_Defines.hpp"
+#include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
 #include "Wire.h"
 #include "driver/gpio.h"

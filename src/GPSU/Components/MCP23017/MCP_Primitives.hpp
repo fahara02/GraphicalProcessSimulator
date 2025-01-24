@@ -1,5 +1,5 @@
-#ifndef MCP_DEFINES_HPP
-#define MCP_DEFINES_HPP
+#ifndef MCP_PRIMITIVES_HPP
+#define MCP_PRIMITIVES_HPP
 #include "MCP_Constants.hpp"
 
 #include "atomic"

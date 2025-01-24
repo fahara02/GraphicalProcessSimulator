@@ -1,7 +1,7 @@
-#ifndef MCP_Registers_HPP
-#define MCP_Registers_HPP
+#ifndef MCP_REGISTERS_HPP
+#define MCP_REGISTERS_HPP
 #include "MCP_Constants.hpp"
-#include "MCP_defines.hpp"
+#include "MCP_Primitives.hpp"
 namespace MCP {
 
 struct config_icon_t {
