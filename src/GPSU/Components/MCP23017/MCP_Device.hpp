@@ -35,6 +35,7 @@ private:
 
 public:
   register_icon_t() : value(0) {}
+  register_icon_t(uint8_t setting) : value(setting) {}
 
   void setBitField(Field field, bool value) {
     uint8_t *fields = reinterpret_cast<uint8_t *>(this);
@@ -48,8 +49,23 @@ public:
     const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
     return (*fields & (1 << field)) != 0;
   }
-  bool getBankMode() { return bank; }
-  uint8_t getSettings() const { return static_cast<uint8_t>(value); }
+  uint8_t getSettings() const { return value; }
+  bool configure(uint8_t newSettings) {
+
+    if (newSettings & (1 << Field::RESERVED)) {
+      return false;
+    }
+
+    bool intPol = (newSettings & (1 << Field::INTPOL)) != 0;
+    bool odr = (newSettings & (1 << Field::ODR)) != 0;
+
+    if (intPol && odr) {
+      return false;
+    }
+
+    value = newSettings;
+    return true;
+  }
 };
 
 //
@@ -58,10 +74,18 @@ public:
   virtual ~MCPDeviceBase() = default;
   using Field = MCP::register_icon_t::Field;
 
-  virtual void configure(const MCP::register_icon_t &settings) = 0;
   virtual void updateRegisters() = 0;
+
+  virtual bool configure(const uint8_t &settings) {
+    bool status = settings_.configure(settings);
+    if (status) {
+      settings_ = register_icon_t(settings);
+    };
+    return status;
+  };
   virtual void setModel(MCP::MCP_MODEL model) { model_ = model; }
 
+  // setting methods with safe enums
   virtual void setBankMode(MCP_BANK_MODE mode) {
     settings_.setBitField(Field::BANK, mode == MCP_BANK_MODE::SEPARATE_BANK);
     updateRegisters();
@@ -110,7 +134,42 @@ public:
     }
     return false;
   }
+  // direct setting method
+  virtual void mergeBanks() {
+    settings_.setBitField(Field::BANK, true);
+    updateRegisters();
+  }
+  virtual void separateBanks() {
+    settings_.setBitField(Field::BANK, false);
+    updateRegisters();
+  }
+  virtual void mergeInterrupts() { settings_.setBitField(Field::MIRROR, true); }
+  virtual void separateInterrupts() {
+    settings_.setBitField(Field::MIRROR, false);
+  }
 
+  virtual void enableContinousPoll() {
+    settings_.setBitField(Field::SEQOP, false);
+  }
+  virtual void disableContinousPoll() {
+    settings_.setBitField(Field::SEQOP, true);
+  }
+  virtual void enableSlewRate() { settings_.setBitField(Field::DISSLW, false); }
+  virtual void disableSlewRate() { settings_.setBitField(Field::DISSLW, true); }
+  virtual void enableOpenDrain() {
+    settings_.setBitField(Field::ODR, true);
+    disableIntrruptActiveHigh();
+  }
+  virtual void disableOpenDrain() { settings_.setBitField(Field::ODR, false); }
+  virtual void enableIntrruptActiveHigh() {
+    settings_.setBitField(Field::INTPOL, true);
+    disableOpenDrain();
+  }
+  virtual void disableIntrruptActiveHigh() {
+    settings_.setBitField(Field::INTPOL, false);
+  }
+
+  virtual bool getBankMode() { return settings_.getBitField(Field::BANK); }
   virtual uint8_t getSettings() const { return settings_.getSettings(); }
 
 protected:
@@ -135,9 +194,7 @@ public:
     setModel(model);
     updateRegisters();
   }
-  void configure(const MCP::register_icon_t &settings) override {
-    settings_ = settings;
-  }
+
   void updateRegisters() override {
     for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
       RegEnum reg = static_cast<RegEnum>(i);
@@ -182,7 +239,7 @@ private:
   constexpr uint8_t generateAddress(RegEnum reg, PORT port) {
     uint8_t baseAddress = static_cast<uint8_t>(reg);
 
-    if (settings_.getBankMode()) {
+    if (getBankMode()) {
       // BANK = 1: Separate PORTA and PORTB
       return baseAddress + (port == PORT::GPIOB ? 0x10 : 0x00);
     } else {
