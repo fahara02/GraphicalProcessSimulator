@@ -128,30 +128,6 @@ enum class PORT {
   GPIOA = 1,
   GPIOB = 2,
 };
-enum class REG : uint8_t {
-  IODIRA = 0x00,   //!< I/O Direction Register A
-  IODIRB = 0x01,   //!< I/O Direction Register B
-  IPOLA = 0x02,    //!< Input Polarity Port Register A
-  IPOLB = 0x03,    //!< Input Polarity Port Register B
-  GPINTENA = 0x04, //!< Interrupt-on-Change Enable Register A
-  GPINTENB = 0x05, //!< Interrupt-on-Change Enable Register B
-  DEFVALA = 0x06,  //!< Default Compare Register A
-  DEFVALB = 0x07,  //!< Default Compare Register B
-  INTCONA = 0x08,  //!< Interrupt Control Register A
-  INTCONB = 0x09,  //!< Interrupt Control Register B
-  IOCONA = 0x0A,   //!< Configuration Register A
-  IOCONB = 0x0B,   //!< Configuration Register B
-  GPPUA = 0x0C,    //!< Pull-Up Resistor Configuration Register A
-  GPPUB = 0x0D,    //!< Pull-Up Resistor Configuration Register B
-  INTFA = 0x0E,    //!< Interrupt Flag Register A
-  INTFB = 0x0F,    //!< Interrupt Flag Register B
-  INTCAPA = 0x10,  //!< Interrupt Captured Value Register A
-  INTCAPB = 0x11,  //!< Interrupt Captured Value Register B
-  GPIOA = 0x12,    //!< General Purpose I/O Register A
-  GPIOB = 0x13,    //!< General Purpose I/O Register B
-  OLATA = 0x14,    //!< Output Latch Register A
-  OLATB = 0x15     //!< Output Latch Register B
-};
 
 enum class REG_FUNCTION {
   CONTROL,       // IOCON

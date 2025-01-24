@@ -36,7 +36,8 @@ private:
 
 public:
   config_icon_t() : value(0) {}
-  config_icon_t(uint8_t setting) : value(setting) {}
+  config_icon_t(uint8_t setting)
+      : value(configure(setting) == true ? configure(setting) : 0) {}
 
   void setBitField(Field field, bool value) {
     uint8_t *fields = reinterpret_cast<uint8_t *>(this);
@@ -228,6 +229,81 @@ protected:
     return baseAddress;
   }
 };
+
+class RegisterBase {
+protected:
+  uint8_t address;
+  MCP::REG_FUNCTION function;
+
+public:
+  virtual ~RegisterBase() = default;
+  enum Field : uint8_t {
+    BIT_7 = 0,
+    BIT_6,
+    BIT_5,
+    BIT_4,
+    BIT_3,
+    BIT_2,
+    BIT_1,
+    RESERVED
+  };
+  virtual void setAddress(uint8_t address) = 0;
+  virtual uint8_t readRegister() = 0;
+  virtual void setFunction(MCP::REG_FUNCTION fn) { function = fn; };
+
+  virtual void applyMask(uint8_t mask) { value |= mask; }
+
+  virtual void clearMask(uint8_t mask) { value &= ~mask; }
+
+  virtual bool setValue(uint8_t newValue) {
+
+    const uint8_t RESERVED_MASK = 0x01;
+    if (newValue & RESERVED_MASK) {
+      return false;
+    }
+
+    value = newValue & ~RESERVED_MASK;
+    return true;
+  }
+
+  virtual void setBitField(Field field, bool value) {
+    uint8_t *fields = reinterpret_cast<uint8_t *>(this);
+    if (value)
+      *fields |= (1 << field);
+    else
+      *fields &= ~(1 << field);
+  }
+
+  virtual bool getBitField(Field field) const {
+    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
+    return (*fields & (1 << field)) != 0;
+  }
+  virtual uint8_t getAddress() const { return address; }
+  virtual uint8_t getValue() const { return value; }
+  virtual void dumpState() const {
+    printf("Register Address: 0x%02X\n", address);
+    printf("Register Value: 0x%02X\n", value);
+    for (int i = 7; i >= 0; --i) {
+      printf("Bit %d: %d\n", i, (value >> i) & 1);
+    }
+  }
+
+private:
+  union {
+    uint8_t value; // Full register value
+    struct {
+      uint8_t bit7 : 1;     //!< Controls how the registers are addressed
+      uint8_t bit6 : 1;     //!< INT Pins Mirror bit
+      uint8_t bit5 : 1;     //!< Sequential Operation mode bit
+      uint8_t bit4 : 1;     //!< Slew Rate control bit for SDA output
+      uint8_t bit3 : 1;     //!< Enables hardware addressing
+      uint8_t bit2 : 1;     //!< Configures the INT pin as an open-drain output
+      uint8_t bit1 : 1;     //!< Sets the polarity of the INT output pin
+      uint8_t reserved : 1; //!< Reserved bit (unused)
+    };
+  };
+};
+
 namespace MCP_Chip {
 
 struct MCPFamily {
