@@ -18,40 +18,6 @@ public:
   }
 };
 
-struct register_icon_t {
-  uint8_t BANK : 1;     //!< Controls how the registers are addressed
-  uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
-  uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
-  uint8_t DISSLW : 1;   //!< Slew Rate control bit for SDA output
-  uint8_t HAEN : 1;     //!< Enables hardware addressing
-  uint8_t ODR : 1;      //!< Configures the INT pin as an open-drain output
-  uint8_t INTPOL : 1;   //!< Sets the polarity of the INT output pin
-  uint8_t RESERVED : 1; //!< Reserved bit (unused)
-
-  // Function to create the configuration byte with default arguments
-  static uint8_t createConfig(
-      MCP_BANK_MODE bank = MCP_BANK_MODE::MERGE_BANK,
-      MCP_MIRROR_MODE mirror = MCP_MIRROR_MODE::INT_DISCONNECTED,
-      MCP_OPERATION_MODE seqop = MCP_OPERATION_MODE::SEQUENTIAL_MODE,
-      MCP_SLEW_RATE disslew = MCP_SLEW_RATE::SLEW_ENABLED,
-      MCP_HARDWARE_ADDRESSING haen = MCP_HARDWARE_ADDRESSING::HAEN_DISABLED,
-      MCP_OPEN_DRAIN odr = MCP_OPEN_DRAIN::ACTIVE_DRIVER,
-      MCP_INT_POL intpol = MCP_INT_POL::MCP_ACTIVE_LOW) {
-    register_icon_t reg = {
-        static_cast<uint8_t>(bank),
-        static_cast<uint8_t>(mirror),
-        static_cast<uint8_t>(seqop),
-        static_cast<uint8_t>(disslew),
-        static_cast<uint8_t>(haen),
-        static_cast<uint8_t>(odr),
-        static_cast<uint8_t>(intpol),
-        0 // RESERVED
-    };
-
-    return *reinterpret_cast<uint8_t *>(&reg);
-  }
-};
-
 template <typename PinEnum> //
 struct Pin {
   using PinEnumType = PinEnum;
@@ -162,13 +128,96 @@ constexpr MCP23017Pin GPB1(MCP_23X17::PIN::PIN9);
 // constexpr MCP23017Pin GPA6 = MCP23017Pin(MCP_23017::PIN::PIN6);
 // constexpr MCP23017Pin GPA7 = MCP23017Pin(MCP_23017::PIN::PIN7);
 
+struct register_icon_t {
+  uint8_t BANK : 1;     //!< Controls how the registers are addressed
+  uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
+  uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
+  uint8_t DISSLW : 1;   //!< Slew Rate control bit for SDA output
+  uint8_t HAEN : 1;     //!< Enables hardware addressing
+  uint8_t ODR : 1;      //!< Configures the INT pin as an open-drain output
+  uint8_t INTPOL : 1;   //!< Sets the polarity of the INT output pin
+  uint8_t RESERVED : 1; //!< Reserved bit (unused)
+};
+
 struct Registers {
-  REG regName;
+  MCP::MCP_MODEL model;
+  MCP::MCP_23X17::REG regName;
   REG_FUNCTION function;
 
-  constexpr Registers(REG reg, REG_FUNCTION func)
-      : regName(reg), function(func) {}
-  uint8_t getAddress(REG reg, bool bankMode, PORT port) {
+private:
+  bool bankMode;
+  bool combinedInterrupt;
+  bool continousPoll;
+  bool disableSlewRate;
+  bool hardwareAddressingEnabled;
+  bool openDrainEnabled;
+  bool interruptActiveHigh;
+
+public:
+  constexpr Registers(MCP::MCP_23X17::REG reg, REG_FUNCTION func)
+      : model(MCP::MCP_MODEL::MCP23017), regName(reg), function(func),
+        bankMode(false), combinedInterrupt(false), continousPoll(false),
+        disableSlewRate(false), hardwareAddressingEnabled(false),
+        openDrainEnabled(false), interruptActiveHigh(false) {}
+
+  void setBankMode(MCP_BANK_MODE mode) {
+    bankMode = (mode == MCP_BANK_MODE::SEPARATE_BANK ? true : false);
+  }
+  void setInterruptMode(MCP_MIRROR_MODE mode) {
+    combinedInterrupt = (mode == MCP_MIRROR_MODE::INT_CONNECTED ? true : false);
+  }
+  void setOperationMode(MCP_OPERATION_MODE mode) {
+    continousPoll = (mode == MCP_OPERATION_MODE::BYTE_MODE ? true : false);
+  }
+  void setSlewRateMode(MCP_SLEW_RATE mode) {
+    disableSlewRate = (mode == MCP_SLEW_RATE::SLEW_DISABLED ? true : false);
+  }
+  bool setHardwareAddressingMode(MCP_HARDWARE_ADDRESSING mode) {
+    bool result = false;
+    if (model == MCP::MCP_MODEL::MCP23S17) {
+
+      hardwareAddressingEnabled =
+          (mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED ? true : false);
+      result = true;
+    }
+    return result;
+  }
+  bool setOutPutMode(MCP_OPEN_DRAIN mode) {
+    bool result = false;
+    if (!interruptActiveHigh && mode == MCP_OPEN_DRAIN::ODR) {
+      openDrainEnabled = true;
+      result = true;
+    } else if (interruptActiveHigh && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
+      openDrainEnabled = false;
+      result = true;
+    }
+    return result;
+  }
+  bool setInterruptPolarityMode(MCP_INT_POL mode) {
+    bool result = false;
+    if (!openDrainEnabled) {
+      interruptActiveHigh =
+          (mode == MCP_INT_POL::MCP_ACTIVE_HIGH ? true : false);
+      result = true;
+    }
+    return result;
+  }
+  // Direct change
+  void setContinousPoll() { continousPoll = true; }
+  void setSequentialOperation() { continousPoll = false; }
+
+  void enableOpenDrain() {
+    openDrainEnabled = true;
+    interruptActiveHigh = false;
+  }
+  void disableOpenDrain() { openDrainEnabled = false; }
+  void setInterruptActiveHigh() {
+    openDrainEnabled = false;
+    interruptActiveHigh = true;
+  }
+  void resetInterruptActiveHigh() { interruptActiveHigh = false; }
+
+  uint8_t getAddress(MCP::MCP_23X17::REG reg, PORT port) {
     uint8_t baseAddress = static_cast<uint8_t>(reg);
 
     if (bankMode) {
@@ -179,17 +228,32 @@ struct Registers {
       return baseAddress + (port == PORT::GPIOB ? 0x01 : 0x00);
     }
   }
+
+  uint8_t getSetting() const {
+    register_icon_t reg = {
+        static_cast<uint8_t>(bankMode),
+        static_cast<uint8_t>(combinedInterrupt),
+        static_cast<uint8_t>(!continousPoll), // SEQOP is inverted
+        static_cast<uint8_t>(disableSlewRate),
+        static_cast<uint8_t>(hardwareAddressingEnabled),
+        static_cast<uint8_t>(openDrainEnabled),
+        static_cast<uint8_t>(interruptActiveHigh),
+        0 // RESERVED
+    };
+
+    return *reinterpret_cast<const uint8_t *>(&reg);
+  }
 };
+
 template <typename PinType> //
 struct GPIO_BANKS {
 
-  std::array<Registers, 9> regMap;
   std::array<PinType, PIN_PER_BANK> allPins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
 
   constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
-      : regMap(createRegMap(port, enableInterrupt)), allPins(createPins(port)),
-        pinInterruptState{false}, interruptEnabled(enableInterrupt),
+      : allPins(createPins(port)), pinInterruptState{false},
+        interruptEnabled(enableInterrupt),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), ports(0), ddr(0), pull_ups(0),
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
@@ -197,10 +261,9 @@ struct GPIO_BANKS {
   }
   template <typename... Pins>
   constexpr GPIO_BANKS(PORT port, Pins... pins)
-      : regMap(createRegMap(port, false)), allPins(fillPinsArray(pins...)),
-        pinInterruptState{false}, interruptEnabled(false),
-        generalMask(calculateMask(pins...)), interruptMask(0x00),
-        port_name(port), ports(0), ddr(0), pull_ups(0),
+      : allPins(fillPinsArray(pins...)), pinInterruptState{false},
+        interruptEnabled(false), generalMask(calculateMask(pins...)),
+        interruptMask(0x00), port_name(port), ports(0), ddr(0), pull_ups(0),
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
     // Validate port
     assert(isValidPort(port) && "Invalid PORT provided!");
@@ -399,29 +462,6 @@ private:
     return pins;
   }
 
-  static constexpr std::array<Registers, 9> createRegMap(PORT port,
-                                                         bool enableInterrupt) {
-    return {
-        Registers(port == PORT::GPIOA ? REG::IODIRA : REG::IODIRB,
-                  REG_FUNCTION::GPIO_DIR),
-        Registers(port == PORT::GPIOA ? REG::IPOLA : REG::IPOLB,
-                  REG_FUNCTION::GPIO_POLARITY),
-        Registers(port == PORT::GPIOA ? REG::GPINTENA : REG::GPINTENB,
-                  REG_FUNCTION::INTR_ENABLE),
-        Registers(port == PORT::GPIOA ? REG::DEFVALA : REG::DEFVALB,
-                  REG_FUNCTION::INTR_CONTROL),
-        Registers(port == PORT::GPIOA ? REG::INTCONA : REG::INTCONB,
-                  REG_FUNCTION::INTR_CONTROL),
-        Registers(port == PORT::GPIOA ? REG::GPPUA : REG::GPPUB,
-                  REG_FUNCTION::GPIO_PULL),
-        Registers(port == PORT::GPIOA ? REG::INTFA : REG::INTFB,
-                  REG_FUNCTION::INTR_FLAG),
-        Registers(port == PORT::GPIOA ? REG::GPIOA : REG::GPIOB,
-                  REG_FUNCTION::GPIO_DATA),
-        Registers(port == PORT::GPIOA ? REG::OLATA : REG::OLATB,
-                  REG_FUNCTION::GPIO_LATCH),
-    };
-  }
   // Helper to calculate the general mask
   template <typename... Pins>
   static constexpr uint8_t calculateMask(Pins... pins) {
