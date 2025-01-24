@@ -104,17 +104,9 @@ private:
   }
 };
 
-struct MCP23017 {
-  using PinType = Pin<MCP_23X17::PIN>;
-};
-struct MCP23S17 {
-  using PinType = Pin<MCP_23X17::PIN>;
-};
-using MCP23017Pin = MCP23017::PinType;
-
 // Define pins as constexpr
-constexpr MCP23017Pin GPB0(MCP_23X17::PIN::PIN8);
-constexpr MCP23017Pin GPB1(MCP_23X17::PIN::PIN9);
+// constexpr MCP23017Pin GPB0(MCP_23X17::PIN::PIN8);
+// constexpr MCP23017Pin GPB1(MCP_23X17::PIN::PIN9);
 // constexpr MCP23017Pin GPB2 = MCP23017Pin(MCP_23017::PIN::PIN10);
 // constexpr MCP23017Pin GPB3 = MCP23017Pin(MCP_23017::PIN::PIN11);
 // constexpr MCP23017Pin GPB4 = MCP23017Pin(MCP_23017::PIN::PIN12);
@@ -367,7 +359,7 @@ private:
     return pinArray;
   }
 };
-constexpr GPIO_BANKS<MCP23017Pin> gpioBankA(PORT::GPIOA);
+// constexpr GPIO_BANKS<MCP23017Pin> gpioBankA(PORT::GPIOA);
 // // Define GPIO Bank instances
 // constexpr GPIO_BANKS BANK_A(PORT::GPIOA);
 // constexpr GPIO_BANKS BANK_B(PORT::GPIOB);

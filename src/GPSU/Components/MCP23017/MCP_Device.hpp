@@ -1,6 +1,7 @@
 #ifndef MCP_DEVICE_HPP
 #define MCP_DEVICE_HPP
 #include "MCP_Constants.hpp"
+#include "MCP_defines.hpp"
 namespace MCP {
 
 struct register_icon_t {
@@ -226,6 +227,43 @@ protected:
     // Redundant return to silence warnings
     return baseAddress;
   }
+};
+
+struct MCPFamily {
+  MCP::MCP_MODEL model;
+  MCP::MCP_MODEL getModel() { return model; }
+};
+struct MCP23017 : public MCPFamily {
+  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23017;
+  using RegEnumType = MCP::MCP_23X17::REG;
+  using PinEnumType = MCP::MCP_23X17::PIN;
+  using PinType = MCP::Pin<PinEnumType>;
+  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
+  DeviceType device;
+};
+struct MCP23S17 : public MCPFamily {
+  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23S17;
+  using RegEnumType = MCP::MCP_23X17::REG;
+  using PinEnumType = MCP::MCP_23X17::PIN;
+  using PinType = MCP::Pin<PinEnumType>;
+  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
+  DeviceType device;
+};
+struct MCP23018 : public MCPFamily {
+  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23018;
+  using RegEnumType = MCP::MCP_23X18::REG;
+  using PinEnumType = MCP::MCP_23X18::PIN;
+  using PinType = MCP::Pin<PinEnumType>;
+  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
+  DeviceType device;
+};
+struct MCP23S18 : public MCPFamily {
+  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23S18;
+  using RegEnumType = MCP::MCP_23X18::REG;
+  using PinEnumType = MCP::MCP_23X18::PIN;
+  using PinType = MCP::Pin<PinEnumType>;
+  using DeviceType = MCP::MCPDevice<RegEnumType, model>;
+  DeviceType device;
 };
 
 } // namespace MCP
