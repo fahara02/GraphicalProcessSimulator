@@ -232,7 +232,9 @@ protected:
 
 class RegisterBase {
 protected:
-  uint8_t address;
+  MCP::MCP_MODEL model;
+
+  uint8_t regAddress;
   MCP::REG_FUNCTION function;
   bool readOnly = false;
 
@@ -248,7 +250,10 @@ public:
     BIT_1,
     BIT_0,
   };
+
   virtual void setAddress(uint8_t address) = 0;
+
+  virtual void setModel(MCP::MCP_MODEL m) { model = m; };
 
   virtual uint8_t readRegister() = 0;
   virtual void setReadonly() { readOnly = true; }
@@ -279,10 +284,10 @@ public:
     const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
     return (*fields & (1 << field)) != 0;
   }
-  virtual uint8_t getAddress() const { return address; }
+  virtual uint8_t getAddress() const { return regAddress; }
   virtual uint8_t getValue() const { return value; }
   virtual void dumpState() const {
-    printf("Register Address: 0x%02X\n", address);
+    printf("Register Address: 0x%02X\n", regAddress);
     printf("Register Value: 0x%02X\n", value);
     for (int i = 7; i >= 0; --i) {
       printf("Bit %d: %d\n", i, (value >> i) & 1);

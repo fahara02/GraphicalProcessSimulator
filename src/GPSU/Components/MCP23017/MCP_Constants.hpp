@@ -141,6 +141,11 @@ enum class REG_FUNCTION {
   INTR_FLAG,     // INTF
 
 };
+enum class COM_MODE {
+  I2C_MODE,
+  SPI_MODE
+
+};
 enum class PIN_STATE { OFF, ON, UNDEFINED };
 enum class GPIO_MODE {
   GPIO_INPUT = 0,
