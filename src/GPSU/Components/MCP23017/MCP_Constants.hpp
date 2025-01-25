@@ -12,8 +12,19 @@ enum class MCP_MODEL {
 
 };
 
-namespace MCP_23X17 {
-
+enum class REG : uint8_t {
+  IODIR = 0x00, //!< I/O Direction Register
+  IPOL,         //!< Input Polarity Register
+  GPINTEN,      //!< Interrupt-on-Change Enable Register
+  DEFVAL,       //!< Default Compare Register
+  INTCON,       //!< Interrupt Control Register
+  IOCON,        //!< Configuration Register
+  GPPU,         //!< Pull-Up Resistor Register
+  INTF,         //!< Interrupt Flag Register
+  INTCAP,       //!< Interrupt Captured Value Register
+  GPIO,         //!< General Purpose I/O Register
+  OLAT          //!< Output Latch Register
+};
 enum class PIN {
   PIN0 = 0,
   PIN1 = 1,
@@ -32,19 +43,7 @@ enum class PIN {
   PIN14 = 14,
   PIN15 = 15,
 };
-enum class REG : uint8_t {
-  IODIR = 0x00, //!< I/O Direction Register
-  IPOL,         //!< Input Polarity Register
-  GPINTEN,      //!< Interrupt-on-Change Enable Register
-  DEFVAL,       //!< Default Compare Register
-  INTCON,       //!< Interrupt Control Register
-  IOCON,        //!< Configuration Register
-  GPPU,         //!< Pull-Up Resistor Register
-  INTF,         //!< Interrupt Flag Register
-  INTCAP,       //!< Interrupt Captured Value Register
-  GPIO,         //!< General Purpose I/O Register
-  OLAT          //!< Output Latch Register
-};
+namespace MCP_23X17 {
 
 namespace MCP_23017 {
 enum class I2C_CLK {
@@ -59,39 +58,7 @@ namespace MCP_23S17 {} // namespace MCP_23S17
 
 }; // namespace MCP_23X17
 
-namespace MCP_23X18 {
-enum class PIN {
-  PIN0 = 0,
-  PIN1 = 1,
-  PIN2 = 2,
-  PIN3 = 3,
-  PIN4 = 4,
-  PIN5 = 5,
-  PIN6 = 6,
-  PIN7 = 7,
-  PIN8 = 8,
-  PIN9 = 9,
-  PIN10 = 10,
-  PIN11 = 11,
-  PIN12 = 12,
-  PIN13 = 13,
-  PIN14 = 14,
-  PIN15 = 15,
-};
-enum class REG : uint8_t {
-  IODIR = 0x00, //!< I/O Direction Register
-  IPOL,         //!< Input Polarity Register
-  GPINTEN,      //!< Interrupt-on-Change Enable Register
-  DEFVAL,       //!< Default Compare Register
-  INTCON,       //!< Interrupt Control Register
-  IOCON,        //!< Configuration Register
-  GPPU,         //!< Pull-Up Resistor Register
-  INTF,         //!< Interrupt Flag Register
-  INTCAP,       //!< Interrupt Captured Value Register
-  GPIO,         //!< General Purpose I/O Register
-  OLAT          //!< Output Latch Register
-};
-}; // namespace MCP_23X18
+namespace MCP_23X18 {}; // namespace MCP_23X18
 
 // Enums for the configuration options
 enum class MCP_BANK_MODE { MERGE_BANK = 0, SEPARATE_BANK = 1 };
@@ -129,18 +96,6 @@ enum class PORT {
   GPIOB = 1,
 };
 
-enum class REG_FUNCTION {
-  CONTROL,       // IOCON
-  GPIO_DATA,     // GPIO
-  GPIO_DIR,      // IODIR
-  GPIO_PULL,     // GPPU
-  GPIO_LATCH,    // OLA
-  GPIO_POLARITY, // IPOLA
-  INTR_ENABLE,   // GPINTEN
-  INTR_CONTROL,  // INT_CON
-  INTR_FLAG,     // INTF
-
-};
 enum class COM_MODE {
   I2C_MODE,
   SPI_MODE

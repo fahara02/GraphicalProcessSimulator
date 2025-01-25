@@ -73,12 +73,15 @@ public:
 
 //
 class ioconBase {
-public:
+protected:
   uint8_t address[MAX_REG_PER_DEVICE];
+
+public:
   virtual ~ioconBase() = default;
   using Field = MCP::config_icon_t::Field;
 
   virtual void updateRegisters() = 0;
+
   virtual void setCallBack(const std::function<void()> &cb) = 0;
 
   virtual bool configure(const uint8_t &settings) {
@@ -88,6 +91,7 @@ public:
     };
     return status;
   };
+
   virtual void setModel(MCP::MCP_MODEL model) { model_ = model; }
 
   // setting methods with safe enums
@@ -185,15 +189,13 @@ protected:
   MCP::MCP_MODEL model_;
 };
 
-template <typename RegEnum, MCP::MCP_MODEL model> //
+//
 class ControlRegister : public ioconBase {
 private:
-  RegEnum REG;
   std::function<void()> callback;
 
 public:
-  using RegEnumType = RegEnum;
-  ControlRegister() { setModel(model); }
+  ControlRegister(MCP::MCP_MODEL m) { setModel(m); }
 
   void setCallBack(const std::function<void()> &cb) override { callback = cb; }
   void updateRegisters() override {
@@ -206,9 +208,8 @@ public:
 //
 class RegisterBase {
 protected:
-  MCP::MCP_MODEL model;
+  MCP::MCP_MODEL model_;
   uint8_t enumIndex;
-  MCP::REG_FUNCTION function;
   bool readOnly = false;
 
 public:
@@ -231,7 +232,6 @@ public:
   virtual uint8_t getAddress() const = 0;
 
   virtual void setReadonly() { readOnly = true; }
-  virtual void setFunction(MCP::REG_FUNCTION fn) { function = fn; };
 
   virtual void applyMask(uint8_t mask) {
     { value |= mask; }
@@ -265,28 +265,28 @@ private:
   union {
     uint8_t value; // Full register value
     struct {
-      uint8_t bit7 : 1;     //!< Controls how the registers are addressed
-      uint8_t bit6 : 1;     //!< INT Pins Mirror bit
-      uint8_t bit5 : 1;     //!< Sequential Operation mode bit
-      uint8_t bit4 : 1;     //!< Slew Rate control bit for SDA output
-      uint8_t bit3 : 1;     //!< Enables hardware addressing
-      uint8_t bit2 : 1;     //!< Configures the INT pin as an open-drain output
-      uint8_t bit1 : 1;     //!< Sets the polarity of the INT output pin
-      uint8_t reserved : 1; //!< Reserved bit (unused)
+      uint8_t bit7 : 1; //!< Controls how the registers are addressed
+      uint8_t bit6 : 1; //!< INT Pins Mirror bit
+      uint8_t bit5 : 1; //!< Sequential Operation mode bit
+      uint8_t bit4 : 1; //!< Slew Rate control bit for SDA output
+      uint8_t bit3 : 1; //!< Enables hardware addressing
+      uint8_t bit2 : 1; //!< Configures the INT pin as an open-drain output
+      uint8_t bit1 : 1; //!< Sets the polarity of the INT output pin
+      uint8_t bit0 : 1; //!< Reserved bit (unused)
     };
   };
 };
 
-template <typename RegEnum, MCP::MCP_MODEL model> //
+//
 class MCPRegister : public RegisterBase {
 private:
-  RegEnum reg;
+  REG reg;
   PORT port;
   bool bankMode;
   uint8_t regAddress;
 
 public:
-  MCPRegister(RegEnum r, PORT p, bool bm)
+  MCPRegister(MCP::MCP_MODEL m, REG r, PORT p, bool bm)
       : reg(r), port(p), bankMode(bm), regAddress(calculateAddress(r, p)) {
 
     if (static_cast<uint8_t>(r) == 0) {
@@ -294,12 +294,15 @@ public:
     } else {
       setValue(0);
     }
+
+    setModel(m);
   }
+
   void setenumIndex(uint8_t index) override {
     enumIndex = static_cast<uint8_t>(reg);
     updateRegisterAddress();
   }
-  void setModel(MCP::MCP_MODEL m) override { model = m; }
+  void setModel(MCP::MCP_MODEL m) override { model_ = m; }
   void updateRegisterAddress() override {
     setAddress(calculateAddress(reg, port));
   }
@@ -308,7 +311,7 @@ public:
   uint8_t getAddress() const override { return regAddress; }
 
 private:
-  constexpr uint8_t calculateAddress(RegEnum reg, PORT port) const {
+  constexpr uint8_t calculateAddress(REG reg, PORT port) const {
     uint8_t baseAddress = static_cast<uint8_t>(reg);
 
     if (bankMode) {
@@ -318,75 +321,10 @@ private:
       // BANK = 0: Paired A/B registers
       return (baseAddress * 2) + (port == PORT::GPIOB ? 0x01 : 0x00);
     }
-    // Redundant return to silence warnings
+
     return baseAddress;
   }
 };
 
-namespace MCP_Chip {
-
-struct MCPFamily {
-  MCP::MCP_MODEL model;
-  MCP::MCP_MODEL getModel() { return model; }
-};
-struct MCP23017 : public MCPFamily {
-  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23017;
-  using RegEnumType = MCP::MCP_23X17::REG;
-  using PinEnumType = MCP::MCP_23X17::PIN;
-  using PinType = MCP::Pin<PinEnumType>;
-  using ICONType = MCP::ControlRegister<RegEnumType, model>;
-  using RegisterType = MCP::MCPRegister<RegEnumType, model>;
-  ICONType iocon;
-};
-struct MCP23S17 : public MCPFamily {
-  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23S17;
-  using RegEnumType = MCP::MCP_23X17::REG;
-  using PinEnumType = MCP::MCP_23X17::PIN;
-  using PinType = MCP::Pin<PinEnumType>;
-  using ICONType = MCP::ControlRegister<RegEnumType, model>;
-  using RegisterType = MCP::MCPRegister<RegEnumType, model>;
-  ICONType iocon;
-};
-struct MCP23018 : public MCPFamily {
-  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23018;
-  using RegEnumType = MCP::MCP_23X18::REG;
-  using PinEnumType = MCP::MCP_23X18::PIN;
-  using PinType = MCP::Pin<PinEnumType>;
-  using ICONType = MCP::ControlRegister<RegEnumType, model>;
-  using RegisterType = MCP::MCPRegister<RegEnumType, model>;
-  ICONType iocon;
-};
-struct MCP23S18 : public MCPFamily {
-  static constexpr MCP::MCP_MODEL model = MCP::MCP_MODEL ::MCP23S18;
-  using RegEnumType = MCP::MCP_23X18::REG;
-  using PinEnumType = MCP::MCP_23X18::PIN;
-  using PinType = MCP::Pin<PinEnumType>;
-  using ICONType = MCP::ControlRegister<RegEnumType, model>;
-  using RegisterType = MCP::MCPRegister<RegEnumType, model>;
-  ICONType iocon;
-};
-}; // namespace MCP_Chip
-
-using MCP23017Pin = MCP_Chip::MCP23017::PinType;
-constexpr MCP23017Pin GPB0(MCP_23X17::PIN::PIN8);
-
 } // namespace MCP
 #endif
-
-// Configuration methods that use `register_icon_ t`
-
-//   void printRegisters() const {
-//     printf("=== PORTA Registers ===\n");
-//     for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
-//       printf("Index: %zu, Register: %d, Address: 0x%02X\n", i,
-//              static_cast<int>(registersPortA[i].reg),
-//              registersPortA[i].address);
-//     }
-
-//     printf("\n=== PORTB Registers ===\n");
-//     for (size_t i = 0; i < MAX_REG_PER_PORT; ++i) {
-//       printf("Index: %zu, Register: %d, Address: 0x%02X\n", i,
-//              static_cast<int>(registersPortB[i].reg),
-//              registersPortB[i].address);
-//     }
-//   }

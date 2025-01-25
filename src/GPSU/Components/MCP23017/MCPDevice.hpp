@@ -13,44 +13,40 @@
 #define MCP_TAG "MCP_IO"
 
 namespace COMPONENT {
-template <typename MCPChip> //
+
 class MCPDevice {
 private:
-  MCP::MCP_MODEL model_; // MCP model (e.g., MCP23017)
+  MCP::MCP_MODEL model_;
   uint8_t address_;
-  gpio_num_t sda_;                // SDA GPIO pin
-  gpio_num_t scl_;                // SCL GPIO pin
-  gpio_num_t cs_;                 // Chip Select GPIO pin
-  gpio_num_t reset_;              // Reset GPIO pin
-  std::unique_ptr<TwoWire> wire_; // Unique pointer for TwoWire instance
-
+  gpio_num_t sda_;
+  gpio_num_t scl_;
+  gpio_num_t cs_;
+  gpio_num_t reset_;
+  std::unique_ptr<TwoWire> wire_;
   bool bankMode_;
 
 public:
-  std::unique_ptr<MCP::ioconBase> controlRegister;
-  using RegisterType = typename MCPChip::RegisterType;
-  using RegEnumType = typename MCPChip::RegEnumType;
+  std::unique_ptr<MCP::ControlRegister> controlRegister;
 
-  MCPDevice(uint8_t address, MCPChip &mcpChip)
-      : address_(address),                   //
+  MCPDevice(uint8_t address, MCP::MCP_MODEL model)
+      : model_(model), address_(address),    //
         sda_(GPIO_NUM_21),                   //
         scl_(GPIO_NUM_22),                   //
         cs_(GPIO_NUM_NC),                    //
         reset_(GPIO_NUM_33),                 //
         wire_(std::make_unique<TwoWire>(0)), //
-        controlRegister(std::make_unique<typename MCPChip::ICONType>())
-  //
+        controlRegister(std::make_unique<MCP::ControlRegister>(model))
 
   {
     controlRegister->setCallBack(
         [this]() { MCPDevice::updateRegisters(this); });
-    model_ = mcpChip.getModel();
+
     bankMode_ = controlRegister->getBankMode();
-    initializeRegisters<MCPChip>(MCP::PORT::GPIOA, registersPortA, bankMode_);
-    initializeRegisters<MCPChip>(MCP::PORT::GPIOB, registersPortB, bankMode_);
+    initializeRegisters(MCP::PORT::GPIOA, registersPortA, bankMode_);
+    initializeRegisters(MCP::PORT::GPIOB, registersPortB, bankMode_);
   }
 
-  RegisterType *getRegister(RegEnumType reg, MCP::PORT port) {
+  MCP::MCPRegister *getRegister(MCP::REG reg, MCP::PORT port) {
     auto &registers =
         (port == MCP::PORT::GPIOA) ? registersPortA : registersPortB;
 
@@ -63,8 +59,8 @@ public:
     return registers[index].get();
   }
 
-  RegisterType *getRegister(uint8_t reg, MCP::PORT port) {
-    RegEnumType enumReg = enumTypeFromValue(reg);
+  MCP::MCPRegister *getRegister(uint8_t reg, MCP::PORT port) {
+    MCP::REG enumReg = enumTypeFromValue(reg);
 
     return getRegister(enumReg, port);
   }
@@ -96,13 +92,13 @@ public:
   }
 
 private:
-  std::array<std::unique_ptr<RegisterType>, MCP::MAX_REG_PER_PORT>
+  std::array<std::unique_ptr<MCP::MCPRegister>, MCP::MAX_REG_PER_PORT>
       registersPortA;
-  std::array<std::unique_ptr<RegisterType>, MCP::MAX_REG_PER_PORT>
+  std::array<std::unique_ptr<MCP::MCPRegister>, MCP::MAX_REG_PER_PORT>
       registersPortB;
 
   void init();
-  void setupDevice(const MCPChip &mcpStruct);
+  void setupDevice();
 
   static void updateRegisters(MCPDevice *device) {
     if (device) {
@@ -113,21 +109,20 @@ private:
     }
   }
 
-  template <typename Chip>
   void initializeRegisters(MCP::PORT port, //
-                           std::array<std::unique_ptr<RegisterType>,
+                           std::array<std::unique_ptr<MCP::MCPRegister>,
                                       MCP::MAX_REG_PER_PORT> &registers,
                            bool bankMode) {
 
     for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
-      auto regEnum = static_cast<RegEnumType>(i);
-      registers[i] = std::make_unique<RegisterType>(regEnum, port, bankMode);
-      registers[i]->updateRegisterAddress();
+      auto regEnum = static_cast<MCP::REG>(i);
+      registers[i] =
+          std::make_unique<MCP::MCPRegister>(model_, regEnum, port, bankMode);
     }
   }
 
-  static RegEnumType enumTypeFromValue(uint8_t value) {
-    return static_cast<RegEnumType>(value);
+  static MCP::REG enumTypeFromValue(uint8_t value) {
+    return static_cast<MCP::REG>(value);
   }
 };
 

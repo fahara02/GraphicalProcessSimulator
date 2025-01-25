@@ -18,11 +18,10 @@ public:
     return (byte & (1UL << bit)) != 0U;
   }
 };
-
-template <typename PinEnum> //
+//
 struct Pin {
-  using PinEnumType = PinEnum;
-  const PinEnum pinEnum;
+  ;
+  const PIN pinEnum;
   const PORT port;
   const uint8_t pinNumber;
   const uint8_t mask;
@@ -38,14 +37,14 @@ private:
 public:
   // Constructor
 
-  constexpr Pin(PinEnum pin)
+  constexpr Pin(PIN pin)
       : pinEnum(pin), port(getPortFromPin(pin)),
         pinNumber(static_cast<uint8_t>(pin) % 8),
         mask(1 << (static_cast<uint8_t>(pin) % 8)), mode(GPIO_MODE::GPIO_INPUT),
         pullMode(PULL_MODE::NONE), interruptType(INTR_TYPE::NONE),
         intrOutputType(INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH),
         state(PIN_STATE::UNDEFINED), interruptEnabled(false) {}
-  constexpr Pin() : Pin(static_cast<PinEnum>(0)) {}
+  constexpr Pin() : Pin(static_cast<PIN>(0)) {}
   // Full copy constructor
   constexpr Pin(const Pin &other)
       : pinEnum(other.pinEnum), port(other.port), pinNumber(other.pinNumber),
@@ -99,7 +98,7 @@ public:
   void clearInterrupt() { interruptEnabled = false; }
 
 private:
-  constexpr PORT getPortFromPin(PinEnum pin) const {
+  constexpr PORT getPortFromPin(PIN pin) const {
     return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
   }
 };
@@ -123,23 +122,23 @@ private:
 // constexpr MCP23017Pin GPA6 = MCP23017Pin(MCP_23017::PIN::PIN6);
 // constexpr MCP23017Pin GPA7 = MCP23017Pin(MCP_23017::PIN::PIN7);
 
-template <typename PinType> //
+//
 struct GPIO_BANKS {
 
-  std::array<PinType, PIN_PER_BANK> allPins;
+  std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
 
   constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
-      : allPins(createPins(port)), pinInterruptState{false},
+      : Pins(createPins(port)), pinInterruptState{false},
         interruptEnabled(enableInterrupt),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), ports(0), ddr(0), pull_ups(0),
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
     assert(isValidPort(port) && "Invalid PORT provided!"); // Validate PORT
   }
-  template <typename... Pins>
-  constexpr GPIO_BANKS(PORT port, Pins... pins)
-      : allPins(fillPinsArray(pins...)), pinInterruptState{false},
+  template <typename... PinType>
+  constexpr GPIO_BANKS(PORT port, PinType... pins)
+      : Pins(fillPinsArray(pins...)), pinInterruptState{false},
         interruptEnabled(false), generalMask(calculateMask(pins...)),
         interruptMask(0x00), port_name(port), ports(0), ddr(0), pull_ups(0),
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
@@ -191,13 +190,13 @@ struct GPIO_BANKS {
     if (index >= PIN_PER_BANK) {
       return PIN_STATE::UNDEFINED; // Invalid index
     }
-    return allPins[index].getState();
+    return Pins[index].getState();
   }
   uint8_t getPinStates() const {
     uint8_t result = 0;
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       if (generalMask & (1 << i)) { // Check if pin is selected by the mask
-        result |= (allPins[i].getState() == PIN_STATE::ON ? (1 << i) : 0);
+        result |= (Pins[i].getState() == PIN_STATE::ON ? (1 << i) : 0);
       }
     }
     return result;
@@ -216,13 +215,13 @@ struct GPIO_BANKS {
       return;
     }
 
-    allPins[index].setState(state); // Set the pin state
+    Pins[index].setState(state); // Set the pin state
   }
 
   void setPinState(PIN_STATE state) {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       if (generalMask & (1 << i)) {
-        allPins[i].setState(state);
+        Pins[i].setState(state);
       }
     }
   }
@@ -237,7 +236,7 @@ struct GPIO_BANKS {
       if (maskToApply & (1 << i)) {
         intr_type = intrType;
         intr_out_type = intrOutType;
-        allPins[i].setInterrupt(intrType, intrOutType);
+        Pins[i].setInterrupt(intrType, intrOutType);
         pinInterruptState[i] = true; // Update interrupt state
       } else {
         pinInterruptState[i] = false;
@@ -249,15 +248,15 @@ struct GPIO_BANKS {
   // Set pull-up resistor for a pin by index
   void setPullup(uint8_t index, bool enable) {
     if (index < PIN_PER_BANK) {
-      allPins[index].setPullMode(enable ? PULL_MODE::INTERNAL_PULLUP
-                                        : PULL_MODE::NONE);
+      Pins[index].setPullMode(enable ? PULL_MODE::INTERNAL_PULLUP
+                                     : PULL_MODE::NONE);
     }
   }
 
   // Set pin direction (INPUT or OUTPUT) by index
   void setPinDirection(uint8_t index, GPIO_MODE mode) {
     if (index < PIN_PER_BANK) {
-      allPins[index].setMode(mode);
+      Pins[index].setMode(mode);
     }
   }
 
@@ -296,10 +295,10 @@ private:
 
       if (!isGeneralMaskSet) {
         // Reset pin state if excluded by the general mask
-        allPins[i].setMode(GPIO_MODE::NA);
-        allPins[i].setPullMode(PULL_MODE::NONE);
-        allPins[i].clearInterrupt();
-        allPins[i].setState(PIN_STATE::UNDEFINED);
+        Pins[i].setMode(GPIO_MODE::NA);
+        Pins[i].setPullMode(PULL_MODE::NONE);
+        Pins[i].clearInterrupt();
+        Pins[i].setState(PIN_STATE::UNDEFINED);
       }
     }
   }
@@ -311,9 +310,9 @@ private:
       pinInterruptState[i] = isGeneralMaskSet && isInterruptMaskSet;
 
       // Update the corresponding pin's interrupt enabled state
-      allPins[i].clearInterrupt(); // Reset first
+      Pins[i].clearInterrupt(); // Reset first
       if (pinInterruptState[i]) {
-        allPins[i].setInterrupt(intr_type, intr_out_type);
+        Pins[i].setInterrupt(intr_type, intr_out_type);
       }
     }
   }
@@ -322,30 +321,30 @@ private:
     return port == PORT::GPIOA || port == PORT::GPIOB;
   }
 
-  static constexpr std::array<PinType, PIN_PER_BANK> createPins(PORT port) {
-    std::array<PinType, PIN_PER_BANK> pins{};
+  static constexpr std::array<Pin, PIN_PER_BANK> createPins(PORT port) {
+    std::array<Pin, PIN_PER_BANK> pins{};
     for (size_t i = 0; i < PIN_PER_BANK; ++i) {
-      pins[i] = PinType(static_cast<typename PinType::PinEnumType>(
-          static_cast<uint8_t>(port) * PIN_PER_BANK + i));
+      pins[i] =
+          Pin(static_cast<PIN>(static_cast<uint8_t>(port) * PIN_PER_BANK + i));
     }
     return pins;
   }
 
   // Helper to calculate the general mask
-  template <typename... Pins>
-  static constexpr uint8_t calculateMask(Pins... pins) {
+  template <typename... PinType>
+  static constexpr uint8_t calculateMask(PinType... pins) {
     return (0 | ... | pins.getMask());
   }
 
   // Helper to validate pins belong to the same port
-  template <typename... Pins>
-  static constexpr bool validatePins(PORT port, Pins... pins) {
+  template <typename... PinType>
+  static constexpr bool validatePins(PORT port, PinType... pins) {
     return ((pins.getPort() == port) && ...);
   }
-  template <typename... Pins>
-  static constexpr std::array<PinType, PIN_PER_BANK>
-  fillPinsArray(Pins... pins) {
-    std::array<PinType, PIN_PER_BANK> pinArray = {};
+  template <typename... PinType>
+  static constexpr std::array<Pin, PIN_PER_BANK>
+  fillPinsArray(PinType... pins) {
+    std::array<Pin, PIN_PER_BANK> pinArray = {};
     size_t i = 0;
 
     // Assign provided pins
@@ -353,7 +352,7 @@ private:
 
     // Fill remaining Pins with default
     while (i < PIN_PER_BANK) {
-      pinArray[i++] = PinType();
+      pinArray[i++] = Pin();
     }
 
     return pinArray;
