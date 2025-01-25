@@ -81,6 +81,7 @@ static constexpr uint16_t PIN_PER_BANK = 8;
 static constexpr uint16_t MAX_PIN = 2 * PIN_PER_BANK;
 static constexpr uint16_t MAX_REG_PER_PORT = 11;
 static constexpr uint16_t MAX_REG_PER_DEVICE = 2 * MAX_REG_PER_PORT;
+static constexpr uint16_t MAX_CALLBACK_PER_REG = 2;
 
 enum class MASK {
   NONE = 0x00,
@@ -106,7 +107,7 @@ enum class GPIO_MODE {
   GPIO_OUTPUT = 0,
   GPIO_INPUT = 1,
 };
-enum class GPIO_POLARITY {
+enum class INPUT_POLARITY {
   UNCHANGED = 0,
   INVERTED = 1,
 };
@@ -124,11 +125,11 @@ enum class INTR_TYPE {
   INTR_ON_FALLING = 2, // SAVE 1 ON DEFVAL and COMPARE
   NONE = -1,
 };
-enum class INTR_ON_CHANGE {
+enum class INTR_ON_CHANGE_ENABLE {
   DISABLE_INTR_ON_CHANGE = 0,
   ENABLE_INTR_ON_CHANGE = 1,
 };
-enum class INTR_CONTROL {
+enum class INTR_ON_CHANGE_CONTROL {
   COMPARE_WITH_OLD_VALUE = 0,
   COMPARE_WITH_DEFVAL = 1,
 };
@@ -136,6 +137,10 @@ enum class INTR_OUTPUT_TYPE {
   INTR_ACTIVE_HIGH = 0,
   INTR_ACTIVE_LOW = 1,
   NA = -1,
+};
+enum class DEF_VAL_COMPARE {
+  SAVE_LOGIC_LOW = 0,
+  SAVE_LOGIC_HIGH = 1,
 };
 
 } // namespace MCP
