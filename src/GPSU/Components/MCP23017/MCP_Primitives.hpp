@@ -39,10 +39,6 @@ struct Pin {
   const uint8_t mask;
 
 private:
-  GPIO_MODE mode;
-  PULL_MODE pullMode;
-  INTR_TYPE interruptType;
-  INTR_OUTPUT_TYPE intrOutputType;
   PIN_STATE state;
   bool interruptEnabled;
 
@@ -52,25 +48,20 @@ public:
   constexpr Pin(PIN pin)
       : pinEnum(pin), port(getPortFromPin(pin)),
         pinNumber(static_cast<uint8_t>(pin) % 8),
-        mask(1 << (static_cast<uint8_t>(pin) % 8)), mode(GPIO_MODE::GPIO_INPUT),
-        pullMode(PULL_MODE::NONE), interruptType(INTR_TYPE::NONE),
-        intrOutputType(INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH),
-        state(PIN_STATE::UNDEFINED), interruptEnabled(false) {}
+        mask(1 << (static_cast<uint8_t>(pin) % 8)), state(PIN_STATE::UNDEFINED),
+        interruptEnabled(false) {}
+
   constexpr Pin() : Pin(static_cast<PIN>(0)) {}
+
   // Full copy constructor
   constexpr Pin(const Pin &other)
       : pinEnum(other.pinEnum), port(other.port), pinNumber(other.pinNumber),
-        mask(other.mask), mode(other.mode), pullMode(other.pullMode),
-        interruptType(other.interruptType),
-        intrOutputType(other.intrOutputType),
-        state(other.state), // Copy atomic state
+        mask(other.mask), state(other.state), // Copy atomic state
         interruptEnabled(false) {}
+
   constexpr Pin &operator=(const Pin &other) {
     if (this != &other) {
-      mode = other.mode;
-      pullMode = other.pullMode;
-      interruptType = other.interruptType;
-      intrOutputType = other.intrOutputType;
+
       interruptEnabled = other.interruptEnabled;
       state = other.state;
     }
@@ -81,42 +72,20 @@ public:
   constexpr uint8_t getPinNumber() const { return pinNumber; }
   constexpr uint8_t getMask() const { return mask; }
   constexpr PORT getPort() const { return port; }
-
-  // Pin mode
-  GPIO_MODE getMode() const { return mode; }
-  void setMode(GPIO_MODE newMode) { mode = newMode; }
-
-  // Pull mode
-  PULL_MODE getPullMode() const { return pullMode; }
-  void setPullMode(PULL_MODE newPullMode) { pullMode = newPullMode; }
-
-  // Interrupt settings
-  INTR_TYPE getInterruptType() const { return interruptType; }
-  void setInterrupt(INTR_TYPE newInterruptType,
-                    INTR_OUTPUT_TYPE newIntrOutputType) {
-    interruptType = newInterruptType;
-    intrOutputType = newIntrOutputType;
-    interruptEnabled = true;
-  }
-
-  INTR_OUTPUT_TYPE getInterruptOutputType() const { return intrOutputType; }
-
-  // State management
-  PIN_STATE getState() const { return state; }
-  void setState(PIN_STATE newState) { state = newState; }
-
-  // Interrupt management
-  bool isInterruptEnabled() const { return interruptEnabled; }
-  void clearInterrupt() { interruptEnabled = false; }
-
-  constexpr PORT getPortFromPin(PIN pin) const {
-    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
-  }
   constexpr uint8_t getIndexFromPin(PIN pin) const {
     uint8_t index = 0;
     PORT port = getPortFromPin(pin);
     uint8_t pinEnum = static_cast<uint8_t>(pin);
     return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
+  }
+
+  // State management
+  PIN_STATE getState() const { return state; }
+  void setState(PIN_STATE newState) { state = newState; }
+
+private:
+  constexpr PORT getPortFromPin(PIN pin) const {
+    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
   }
 };
 
@@ -152,7 +121,7 @@ struct GPIO_BANKS {
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), ports(0), ddr(0), pull_ups(0),
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
-    assert(isValidPort(port) && "Invalid PORT provided!"); // Validate PORT
+    assert(isValidPort(port) && "Invalid PORT provided!");
   }
   template <typename... PinType>
   constexpr GPIO_BANKS(PORT port, PinType... pins)
@@ -169,7 +138,7 @@ struct GPIO_BANKS {
   }
 
   void init() {
-    initInternalState();
+
     updatePins();
     if (interruptEnabled) {
       updatePinInterruptState();
@@ -264,19 +233,10 @@ struct GPIO_BANKS {
   }
 
   // Set pull-up resistor for a pin by index
-  void setPullup(uint8_t index, bool enable) {
-    if (index < PIN_PER_BANK) {
-      Pins[index].setPullMode(enable ? PULL_MODE::INTERNAL_PULLUP
-                                     : PULL_MODE::NONE);
-    }
-  }
+  void setPullup(uint8_t index, bool enable) {}
 
   // Set pin direction (INPUT or OUTPUT) by index
-  void setPinDirection(uint8_t index, GPIO_MODE mode) {
-    if (index < PIN_PER_BANK) {
-      Pins[index].setMode(mode);
-    }
-  }
+  void setPinDirection(uint8_t index, GPIO_MODE mode) {}
 
   bool isInterruptEnabled() const { return interruptEnabled; }
 
@@ -290,17 +250,7 @@ private:
   uint8_t pull_ups;
   INTR_TYPE intr_type;
   INTR_OUTPUT_TYPE intr_out_type;
-  void constexpr initInternalState() {
-    if (port_name == PORT::GPIOA) {
-      ports = 0x01;
-      ddr = 0x02;
-      pull_ups = 0x04;
-    } else if (port_name == PORT::GPIOB) {
-      ports = 0x08; // Example initialization for GPIOB
-      ddr = 0x10;
-      pull_ups = 0x20;
-    }
-  }
+
   void setInterruptMask(uint8_t pinMask) {
     interruptMask = pinMask & 0xFF;
     if (interruptEnabled) {
@@ -312,10 +262,7 @@ private:
       bool isGeneralMaskSet = BitUtil::isBitSet(generalMask, i);
 
       if (!isGeneralMaskSet) {
-        // Reset pin state if excluded by the general mask
-        Pins[i].setMode(GPIO_MODE::GPIO_INPUT);
-        Pins[i].setPullMode(PULL_MODE::NONE);
-        Pins[i].clearInterrupt();
+
         Pins[i].setState(PIN_STATE::UNDEFINED);
       }
     }
@@ -326,12 +273,6 @@ private:
       bool isGeneralMaskSet = BitUtil::isBitSet(generalMask, i);
       bool isInterruptMaskSet = BitUtil::isBitSet(interruptMask, i);
       pinInterruptState[i] = isGeneralMaskSet && isInterruptMaskSet;
-
-      // Update the corresponding pin's interrupt enabled state
-      Pins[i].clearInterrupt(); // Reset first
-      if (pinInterruptState[i]) {
-        Pins[i].setInterrupt(intr_type, intr_out_type);
-      }
     }
   }
 
