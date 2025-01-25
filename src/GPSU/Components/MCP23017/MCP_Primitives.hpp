@@ -103,24 +103,25 @@ private:
   }
 };
 
-// Define pins as constexpr
-// constexpr MCP23017Pin GPB0(MCP_23X17::PIN::PIN8);
-// constexpr MCP23017Pin GPB1(MCP_23X17::PIN::PIN9);
-// constexpr MCP23017Pin GPB2 = MCP23017Pin(MCP_23017::PIN::PIN10);
-// constexpr MCP23017Pin GPB3 = MCP23017Pin(MCP_23017::PIN::PIN11);
-// constexpr MCP23017Pin GPB4 = MCP23017Pin(MCP_23017::PIN::PIN12);
-// constexpr MCP23017Pin GPB5 = MCP23017Pin(MCP_23017::PIN::PIN13);
-// constexpr MCP23017Pin GPB6 = MCP23017Pin(MCP_23017::PIN::PIN14);
-// constexpr MCP23017Pin GPB7 = MCP23017Pin(MCP_23017::PIN::PIN15);
+// GPA Pins (PIN0 to PIN7)
+constexpr Pin GPA0(MCP::PIN::PIN0);
+constexpr Pin GPA1(MCP::PIN::PIN1);
+constexpr Pin GPA2(MCP::PIN::PIN2);
+constexpr Pin GPA3(MCP::PIN::PIN3);
+constexpr Pin GPA4(MCP::PIN::PIN4);
+constexpr Pin GPA5(MCP::PIN::PIN5);
+constexpr Pin GPA6(MCP::PIN::PIN6);
+constexpr Pin GPA7(MCP::PIN::PIN7);
 
-// constexpr MCP23017Pin GPA0 = MCP23017Pin(MCP_23017::PIN::PIN0);
-// constexpr MCP23017Pin GPA1 = MCP23017Pin(MCP_23017::PIN::PIN1);
-// constexpr MCP23017Pin GPA2 = MCP23017Pin(MCP_23017::PIN::PIN2);
-// constexpr MCP23017Pin GPA3 = MCP23017Pin(MCP_23017::PIN::PIN3);
-// constexpr MCP23017Pin GPA4 = MCP23017Pin(MCP_23017::PIN::PIN4);
-// constexpr MCP23017Pin GPA5 = MCP23017Pin(MCP_23017::PIN::PIN5);
-// constexpr MCP23017Pin GPA6 = MCP23017Pin(MCP_23017::PIN::PIN6);
-// constexpr MCP23017Pin GPA7 = MCP23017Pin(MCP_23017::PIN::PIN7);
+// GPB Pins (PIN8 to PIN15)
+constexpr Pin GPB0(MCP::PIN::PIN8);
+constexpr Pin GPB1(MCP::PIN::PIN9);
+constexpr Pin GPB2(MCP::PIN::PIN10);
+constexpr Pin GPB3(MCP::PIN::PIN11);
+constexpr Pin GPB4(MCP::PIN::PIN12);
+constexpr Pin GPB5(MCP::PIN::PIN13);
+constexpr Pin GPB6(MCP::PIN::PIN14);
+constexpr Pin GPB7(MCP::PIN::PIN15);
 
 //
 struct GPIO_BANKS {
@@ -146,8 +147,8 @@ struct GPIO_BANKS {
     assert(isValidPort(port) && "Invalid PORT provided!");
 
     // Validate that all pins belong to the same port
-    static_assert(validatePins(port, pins...),
-                  "All pins must belong to the same port!");
+    assert(validatePins(port, pins...) &&
+           "All pins must belong to the same port!");
   }
 
   void init() {
@@ -360,11 +361,10 @@ private:
 };
 // constexpr GPIO_BANKS<MCP23017Pin> gpioBankA(PORT::GPIOA);
 // // Define GPIO Bank instances
-// constexpr GPIO_BANKS BANK_A(PORT::GPIOA);
-// constexpr GPIO_BANKS BANK_B(PORT::GPIOB);
+constexpr GPIO_BANKS BANK_A(PORT::GPIOA);
 
 // Using the variadic constructor
-// constexpr GPIO_BANKS bankA_custom(PORT::GPIOA, GPA0, GPA1, GPA2);
+constexpr GPIO_BANKS bankA_custom(PORT::GPIOA, GPA0, GPA1, GPA2);
 
 } // namespace MCP
 
