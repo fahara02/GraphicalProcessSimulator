@@ -10,17 +10,29 @@ namespace MCP {
 
 class BitUtil {
 public:
-  static void setBit(uint32_t &byte, uint8_t bit) { byte |= (1UL << bit); }
+  static void setBit(uint8_t &byte, uint8_t bit) { byte |= (1UL << bit); }
 
-  static void clearBit(uint32_t &byte, uint8_t bit) { byte &= ~(1UL << bit); }
+  static void clearBit(uint8_t &byte, uint8_t bit) { byte &= ~(1UL << bit); }
+  static bool isBitSet(const uint8_t &byte, uint8_t bit) {
+    return (byte & (1UL << bit)) != 0U; // Returns true if bit is 1
+  }
 
-  static bool isBitSet(const uint32_t &byte, uint8_t bit) {
-    return (byte & (1UL << bit)) != 0U;
+  template <typename T> static void setBit(T &value, uint8_t bit) {
+    value |= (static_cast<T>(1) << bit);
+  }
+
+  template <typename T> static void clearBit(T &value, uint8_t bit) {
+    value &= ~(static_cast<T>(1) << bit);
+  }
+
+  template <typename T> static bool isBitSet(const T &value, uint8_t bit) {
+    return (value & (static_cast<T>(1) << bit)) != 0;
   }
 };
+
 //
 struct Pin {
-  ;
+
   const PIN pinEnum;
   const PORT port;
   const uint8_t pinNumber;
@@ -97,9 +109,14 @@ public:
   bool isInterruptEnabled() const { return interruptEnabled; }
   void clearInterrupt() { interruptEnabled = false; }
 
-private:
   constexpr PORT getPortFromPin(PIN pin) const {
     return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
+  }
+  constexpr uint8_t getIndexFromPin(PIN pin) const {
+    uint8_t index = 0;
+    PORT port = getPortFromPin(pin);
+    uint8_t pinEnum = static_cast<uint8_t>(pin);
+    return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
   }
 };
 
@@ -296,7 +313,7 @@ private:
 
       if (!isGeneralMaskSet) {
         // Reset pin state if excluded by the general mask
-        Pins[i].setMode(GPIO_MODE::NA);
+        Pins[i].setMode(GPIO_MODE::GPIO_INPUT);
         Pins[i].setPullMode(PULL_MODE::NONE);
         Pins[i].clearInterrupt();
         Pins[i].setState(PIN_STATE::UNDEFINED);

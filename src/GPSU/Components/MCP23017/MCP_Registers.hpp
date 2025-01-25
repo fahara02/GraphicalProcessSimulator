@@ -3,6 +3,8 @@
 #include "MCP_Constants.hpp"
 #include "MCP_Primitives.hpp"
 #include <functional>
+#include <type_traits>
+#define REG_TAG "MCP_REGISTERS"
 namespace MCP {
 
 struct config_icon_t {
@@ -278,16 +280,17 @@ private:
 };
 
 //
+
 class MCPRegister : public RegisterBase {
 private:
-  REG reg;
-  PORT port;
-  bool bankMode;
-  uint8_t regAddress;
+  REG reg_;
+  PORT port_;
+  bool bankMode_;
+  uint8_t regAddress_;
 
 public:
   MCPRegister(MCP::MCP_MODEL m, REG r, PORT p, bool bm)
-      : reg(r), port(p), bankMode(bm), regAddress(calculateAddress(r, p)) {
+      : reg_(r), port_(p), bankMode_(bm), regAddress_(calculateAddress(r, p)) {
 
     if (static_cast<uint8_t>(r) == 0) {
       setValue(1);
@@ -299,22 +302,72 @@ public:
   }
 
   void setenumIndex(uint8_t index) override {
-    enumIndex = static_cast<uint8_t>(reg);
+    enumIndex = static_cast<uint8_t>(reg_);
     updateRegisterAddress();
   }
   void setModel(MCP::MCP_MODEL m) override { model_ = m; }
   void updateRegisterAddress() override {
-    setAddress(calculateAddress(reg, port));
+    setAddress(calculateAddress(reg_, port_));
   }
-  void setAddress(uint8_t address) override { regAddress = address; }
+  void setAddress(uint8_t address) override { regAddress_ = address; }
 
-  uint8_t getAddress() const override { return regAddress; }
+  uint8_t getAddress() const override { return regAddress_; }
+
+  template <REG T>
+  typename std::enable_if<T == MCP::REG::IODIR, bool>::type
+  setPinMode(PIN pin, MCP::GPIO_MODE mode) {
+
+    if (port_ != getPortFromPin(pin)) {
+      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
+               static_cast<int>(pin));
+      return false;
+    }
+    uint8_t index = getIndexFromPin(pin);
+    setBitField(static_cast<Field>(index), mode == GPIO_MODE::GPIO_INPUT);
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == MCP::REG::IODIR, bool>::type
+  setPinMode(uint8_t pinmask, PORT port, MCP::GPIO_MODE mode) {
+
+    if (port_ != port) {
+      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
+      return false;
+    }
+
+    if (mode == MCP::GPIO_MODE::GPIO_INPUT) {
+      applyMask(pinmask);
+    } else {
+      clearMask(pinmask);
+    }
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == MCP::REG::IODIR, bool>::type
+  setPinMode(uint8_t pin, MCP::GPIO_MODE mode) {
+    if (pin > 15) {
+      ESP_LOGE(REG_TAG, "Invalid pin number %d. Valid pin numbers are 0-15.",
+               pin);
+      return false;
+    }
+    PIN pinEnum = static_cast<PIN>(pin);
+    return setPinMode(pinEnum, mode);
+  }
+  template <REG T>
+  typename std::enable_if<T == MCP::REG::IODIR, bool>::type
+  setPinMode(Pin pin, MCP::GPIO_MODE mode) {
+
+    uint8_t pinIndex = pin.getPinNumber();
+    return setPinMode(pinIndex, mode);
+  }
 
 private:
   constexpr uint8_t calculateAddress(REG reg, PORT port) const {
     uint8_t baseAddress = static_cast<uint8_t>(reg);
 
-    if (bankMode) {
+    if (bankMode_) {
       // BANK = 1: Separate PORTA and PORTB
       return baseAddress + (port == PORT::GPIOB ? 0x10 : 0x00);
     } else {
@@ -323,6 +376,15 @@ private:
     }
 
     return baseAddress;
+  }
+  constexpr PORT getPortFromPin(PIN pin) const {
+    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
+  }
+  constexpr uint8_t getIndexFromPin(PIN pin) const {
+    uint8_t index = 0;
+    PORT port = getPortFromPin(pin);
+    uint8_t pinEnum = static_cast<uint8_t>(pin);
+    return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
   }
 };
 

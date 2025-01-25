@@ -103,10 +103,9 @@ enum class COM_MODE {
 };
 enum class PIN_STATE { OFF, ON, UNDEFINED };
 enum class GPIO_MODE {
-  GPIO_INPUT = 0,
-  GPIO_INPUT_PULLUP = 1,
-  GPIO_OUTPUT = 2,
-  NA = 3
+  GPIO_OUTPUT = 0,
+  GPIO_INPUT = 1,
+
 };
 
 enum class PULL_MODE { INTERNAL_PULLUP, PULL_DOWN, NONE };
