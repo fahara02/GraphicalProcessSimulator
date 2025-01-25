@@ -212,18 +212,16 @@ struct GPIO_BANKS {
       }
     }
   }
-  template <typename IntrType = INTR_TYPE,
-            typename IntrOutType = INTR_OUTPUT_TYPE>
-  void
-  setupInterrupt(uint8_t pinMask = 0xFF,
-                 IntrType intrType = INTR_TYPE::INTR_CHANGE,
-                 IntrOutType intrOutType = INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
+
+  void setupInterrupt(uint8_t pinMask = 0xFF,
+                      INTR_TYPE intrType = INTR_TYPE::NONE,
+                      INTR_OUTPUT_TYPE intrOutType = INTR_OUTPUT_TYPE::NA) {
     uint8_t maskToApply = pinMask & generalMask;
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       if (maskToApply & (1 << i)) {
         intr_type = intrType;
         intr_out_type = intrOutType;
-        Pins[i].setInterrupt(intrType, intrOutType);
+
         pinInterruptState[i] = true; // Update interrupt state
       } else {
         pinInterruptState[i] = false;

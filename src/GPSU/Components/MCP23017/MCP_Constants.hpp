@@ -105,21 +105,37 @@ enum class PIN_STATE { OFF, ON, UNDEFINED };
 enum class GPIO_MODE {
   GPIO_OUTPUT = 0,
   GPIO_INPUT = 1,
-
+};
+enum class GPIO_POLARITY {
+  UNCHANGED = 0,
+  INVERTED = 1,
 };
 
-enum class PULL_MODE { INTERNAL_PULLUP, PULL_DOWN, NONE };
+enum class PULL_MODE { DISABLE_PULLUP = 0, ENABLE_PULLUP = 1 };
+
+enum class OUTPUT_LATCH {
+  LOGIC_LOW = 0,
+  LOGIC_HIGH = 1,
+};
+
 enum class INTR_TYPE {
-  INTR_CHANGE = 0,
-  INTR_FALLING = 1,
-  INTR_RISING = 2,
-  NONE
+  INTR_ON_CHANGE = 0,
+  INTR_ON_RISING = 1,  // SAVE 0 ON DEFVAL and COMPARE
+  INTR_ON_FALLING = 2, // SAVE 1 ON DEFVAL and COMPARE
+  NONE = -1,
+};
+enum class INTR_ON_CHANGE {
+  DISABLE_INTR_ON_CHANGE = 0,
+  ENABLE_INTR_ON_CHANGE = 1,
+};
+enum class INTR_CONTROL {
+  COMPARE_WITH_OLD_VALUE = 0,
+  COMPARE_WITH_DEFVAL = 1,
 };
 enum class INTR_OUTPUT_TYPE {
   INTR_ACTIVE_HIGH = 0,
   INTR_ACTIVE_LOW = 1,
-  INTR_OPEN_DRAIN = 2,
-  NA = 3
+  NA = -1,
 };
 
 } // namespace MCP

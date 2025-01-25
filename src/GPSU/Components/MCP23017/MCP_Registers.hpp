@@ -315,7 +315,7 @@ public:
 
   template <REG T>
   typename std::enable_if<T == MCP::REG::IODIR, bool>::type
-  setPinMode(PIN pin, MCP::GPIO_MODE mode) {
+  setPinMode(MCP::PIN pin, MCP::GPIO_MODE mode) {
 
     if (port_ != getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
@@ -323,13 +323,13 @@ public:
       return false;
     }
     uint8_t index = getIndexFromPin(pin);
-    setBitField(static_cast<Field>(index), mode == GPIO_MODE::GPIO_INPUT);
+    setBitField(static_cast<Field>(index), mode == MCP::GPIO_MODE::GPIO_INPUT);
 
     return true;
   }
   template <REG T>
   typename std::enable_if<T == MCP::REG::IODIR, bool>::type
-  setPinMode(uint8_t pinmask, PORT port, MCP::GPIO_MODE mode) {
+  setPinMode(uint8_t pinmask, MCP::PORT port, MCP::GPIO_MODE mode) {
 
     if (port_ != port) {
       ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
@@ -344,23 +344,21 @@ public:
 
     return true;
   }
+
   template <REG T>
-  typename std::enable_if<T == MCP::REG::IODIR, bool>::type
-  setPinMode(uint8_t pin, MCP::GPIO_MODE mode) {
-    if (pin > 15) {
-      ESP_LOGE(REG_TAG, "Invalid pin number %d. Valid pin numbers are 0-15.",
-               pin);
+  typename std::enable_if<T == MCP::REG::GPPU, bool>::type
+  setPullType(PIN pin, MCP::PULL_MODE mode) {
+
+    if (port_ != getPortFromPin(pin)) {
+      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
+               static_cast<int>(pin));
       return false;
     }
-    PIN pinEnum = static_cast<PIN>(pin);
-    return setPinMode(pinEnum, mode);
-  }
-  template <REG T>
-  typename std::enable_if<T == MCP::REG::IODIR, bool>::type
-  setPinMode(Pin pin, MCP::GPIO_MODE mode) {
+    uint8_t index = getIndexFromPin(pin);
+    setBitField(static_cast<Field>(index),
+                mode == MCP::PULL_MODE::ENABLE_PULLUP);
 
-    uint8_t pinIndex = pin.getPinNumber();
-    return setPinMode(pinIndex, mode);
+    return true;
   }
 
 private:
@@ -377,14 +375,15 @@ private:
 
     return baseAddress;
   }
-  constexpr PORT getPortFromPin(PIN pin) const {
-    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
+  constexpr MCP::PORT getPortFromPin(MCP::PIN pin) const {
+    return (static_cast<uint8_t>(pin) < 8) ? MCP::PORT::GPIOA
+                                           : MCP::PORT::GPIOB;
   }
-  constexpr uint8_t getIndexFromPin(PIN pin) const {
+  constexpr uint8_t getIndexFromPin(MCP::PIN pin) const {
     uint8_t index = 0;
-    PORT port = getPortFromPin(pin);
+    MCP::PORT port = getPortFromPin(pin);
     uint8_t pinEnum = static_cast<uint8_t>(pin);
-    return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
+    return index = (port == MCP::PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
   }
 };
 
