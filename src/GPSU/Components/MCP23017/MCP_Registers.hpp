@@ -73,6 +73,11 @@ public:
     value = newSettings;
     return true;
   }
+  void applyMask(uint8_t mask) {
+    { value |= mask; }
+  }
+
+  void clearMask(uint8_t mask) { value &= ~mask; }
 };
 
 //
@@ -258,10 +263,21 @@ public:
   }
 
   virtual void applyMask(uint8_t mask) {
-    { value |= mask; }
+
+    if (reg_ == REG::IOCON) {
+      return settings_.applyMask(mask);
+    } else {
+      value |= mask;
+    }
   }
 
-  virtual void clearMask(uint8_t mask) { value &= ~mask; }
+  virtual void clearMask(uint8_t mask) {
+    if (reg_ == REG::IOCON) {
+      return settings_.clearMask(mask);
+    } else {
+      value &= ~mask;
+    }
+  }
 
   bool setValue(uint8_t newValue) {
     if (reg_ == REG::INTF) {

@@ -8,8 +8,9 @@ class GPIO_BANKS {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
-  std::array<std::shared_ptr<MCP::MCPRegister>, MCP::MAX_REG_PER_PORT>
-      registers_;
+
+  std::shared_ptr<MCP::MCPRegister> IODIR;
+  std::shared_ptr<MCP::MCPRegister> GPPU;
 
 public:
   constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
@@ -20,9 +21,7 @@ public:
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
     assert(isValidPort(port) && "Invalid PORT provided!");
   }
-  void setRegisters(
-      std::array<std::shared_ptr<MCP::MCPRegister>, MCP::MAX_REG_PER_PORT>
-          regs) {}
+  void setRegister(std::shared_ptr<MCP::MCPRegister>, REG reg) {}
   void init() {
 
     updatePins();
@@ -129,8 +128,6 @@ private:
   uint8_t generalMask;
   uint8_t interruptMask;
   PORT port_name;
-  
-  std::shared_ptr<MCP::MCPRegister> GPPU;
 
   uint8_t ports;
   uint8_t ddr;
