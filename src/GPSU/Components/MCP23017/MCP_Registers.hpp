@@ -212,12 +212,15 @@ public:
 //
 class RegisterBase {
 protected:
+  REG reg_;
   MCP::MCP_MODEL model_;
+  config_icon_t settings_;
   uint8_t enumIndex;
   bool readOnly = false;
 
 public:
   using Callback = std::function<void(uint8_t)>;
+  using configField = MCP::config_icon_t::Field;
   RegisterBase() { callbacks_.fill(nullptr); }
   virtual ~RegisterBase() = default;
   enum Field : uint8_t {
@@ -233,50 +236,11 @@ public:
 
   virtual void setModel(MCP::MCP_MODEL m) = 0;
   virtual void updateRegisterAddress() = 0;
-  virtual void setenumIndex(uint8_t index) = 0;
+  virtual void setRegEnum(MCP::REG reg) = 0;
   virtual void setAddress(uint8_t address) = 0;
   virtual uint8_t getAddress() const = 0;
 
   virtual void setReadonly() { readOnly = true; }
-
-  virtual void applyMask(uint8_t mask) {
-    { value |= mask; }
-  }
-
-  virtual void clearMask(uint8_t mask) { value &= ~mask; }
-
-  virtual bool setValue(uint8_t newValue) {
-
-    value = newValue;
-
-    return true;
-  }
-
-  virtual void setBitField(Field field, bool value) {
-    uint8_t *fields = reinterpret_cast<uint8_t *>(this);
-    if (value)
-      *fields |= (1 << field);
-    else
-      *fields &= ~(1 << field);
-  }
-
-  virtual bool getBitField(Field field) const {
-    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
-    return (*fields & (1 << field)) != 0;
-  }
-
-  virtual uint8_t getValue() const { return value; }
-  // Add a callback
-  int addCallback(const Callback &callback) {
-    for (size_t i = 0; i < callbacks_.size(); ++i) {
-      if (!callbacks_[i]) {
-
-        callbacks_[i] = callback;
-        return static_cast<int>(i);
-      }
-    }
-    return -1; // No space available
-  }
 
   bool removeCallback(int index) {
     if (index >= 0 && index < static_cast<int>(callbacks_.size())) {
@@ -293,19 +257,221 @@ public:
     }
   }
 
+  virtual void applyMask(uint8_t mask) {
+    { value |= mask; }
+  }
+
+  virtual void clearMask(uint8_t mask) { value &= ~mask; }
+
+  bool setValue(uint8_t newValue) {
+    if (reg_ == REG::INTF) {
+      return false;
+    } else if (reg_ == REG::IOCON) {
+      return settings_.configure(newValue);
+    } else {
+      value = newValue;
+      return true;
+    }
+  }
+
+  void setBitField(Field field, bool value) {
+
+    if ((reg_ == REG::IOCON) || (reg_ == REG::INTF)) {
+      return;
+    } else {
+      uint8_t *fields = reinterpret_cast<uint8_t *>(this);
+      if (value)
+        *fields |= (1 << field);
+      else
+        *fields &= ~(1 << field);
+
+      return;
+    }
+  }
+
+  // bool getBitField(Field field) const {
+
+  //   const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
+  //   return (*fields & (1 << field)) != 0;
+  // }
+
+  uint8_t getValue() const {
+    if (reg_ == REG::IOCON) {
+      return settings_.getSettings();
+    } else {
+      return value;
+    }
+  }
+  // Add a callback
+  int addCallback(const Callback &callback) {
+    for (size_t i = 0; i < callbacks_.size(); ++i) {
+      if (!callbacks_[i]) {
+
+        callbacks_[i] = callback;
+        return static_cast<int>(i);
+      }
+    }
+    return -1; // No space available
+  }
+
+  // IOCON-specific methods
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  setBankMode(MCP_BANK_MODE mode) {
+    settings_.setBitField(configField::BANK,
+                          mode == MCP_BANK_MODE::SEPARATE_BANK);
+    updateRegisterAddress();
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  setInterruptSahring(MCP_MIRROR_MODE mode) {
+    settings_.setBitField(configField::MIRROR,
+                          mode == MCP_MIRROR_MODE::INT_CONNECTED);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  setOperationMode(MCP_OPERATION_MODE mode) {
+    settings_.setBitField(configField::SEQOP,
+                          mode == MCP_OPERATION_MODE::BYTE_MODE);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  setSlewRateMode(MCP_SLEW_RATE mode) {
+    settings_.setBitField(configField::DISSLW,
+                          mode == MCP_SLEW_RATE::SLEW_DISABLED);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type
+  setHardwareAddressing(MCP_HARDWARE_ADDRESSING mode) {
+    if (model_ == MCP::MCP_MODEL::MCP23S17) {
+      settings_.setBitField(configField::HAEN,
+                            mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
+      return true;
+    }
+    return false;
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type
+  setOpenDrain(MCP_OPEN_DRAIN mode) {
+    bool intPolMode = settings_.getBitField(configField::INTPOL);
+
+    if (!intPolMode && mode == MCP_OPEN_DRAIN::ODR) {
+      settings_.setBitField(configField::ODR, true);
+      settings_.setBitField(configField::INTPOL, false);
+      return true;
+    } else if (intPolMode && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
+      settings_.setBitField(configField::ODR, false);
+      return true;
+    }
+    return false;
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type
+  setInterruptPolarity(MCP_INT_POL mode) {
+    bool outputMode = settings_.getBitField(configField::ODR);
+    if (!outputMode) {
+      settings_.setBitField(configField::INTPOL,
+                            mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
+      return true;
+    }
+    return false;
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type mergeBanks() {
+    settings_.setBitField(configField::BANK, true);
+    updateRegisterAddress();
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type separateBanks() {
+    settings_.setBitField(configField::BANK, false);
+    updateRegisterAddress();
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type mergeInterrupts() {
+    settings_.setBitField(configField::MIRROR, true);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type separateInterrupts() {
+    settings_.setBitField(configField::MIRROR, false);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type enableContinuousPoll() {
+    settings_.setBitField(configField::SEQOP, false);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type disableContinuousPoll() {
+    settings_.setBitField(configField::SEQOP, true);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type enableSlewRate() {
+    settings_.setBitField(configField::DISSLW, false);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type disableSlewRate() {
+    settings_.setBitField(configField::DISSLW, true);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type enableOpenDrain() {
+    settings_.setBitField(configField::ODR, true);
+    disableInterruptActiveHigh<T>();
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type disableOpenDrain() {
+    settings_.setBitField(configField::ODR, false);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  enableInterruptActiveHigh() {
+    settings_.setBitField(configField::INTPOL, true);
+    disableOpenDrain<T>();
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  disableInterruptActiveHigh() {
+    settings_.setBitField(configField::INTPOL, false);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type getBankMode() const {
+    return settings_.getBitField(configField::BANK);
+  }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, uint8_t>::type getSettings() const {
+    return settings_.getSettings();
+  }
+
 private:
   std::array<Callback, MAX_CALLBACK_PER_REG> callbacks_;
   union {
     uint8_t value; // Full register value
     struct {
-      uint8_t bit7 : 1; //!< Controls how the registers are addressed
-      uint8_t bit6 : 1; //!< INT Pins Mirror bit
-      uint8_t bit5 : 1; //!< Sequential Operation mode bit
-      uint8_t bit4 : 1; //!< Slew Rate control bit for SDA output
-      uint8_t bit3 : 1; //!< Enables hardware addressing
-      uint8_t bit2 : 1; //!< Configures the INT pin as an open-drain output
-      uint8_t bit1 : 1; //!< Sets the polarity of the INT output pin
-      uint8_t bit0 : 1; //!< Reserved bit (unused)
+      uint8_t bit7 : 1;
+      uint8_t bit6 : 1;
+      uint8_t bit5 : 1;
+      uint8_t bit4 : 1;
+      uint8_t bit3 : 1;
+      uint8_t bit2 : 1;
+      uint8_t bit1 : 1;
+      uint8_t bit0 : 1;
     };
   };
 };
@@ -314,26 +480,22 @@ private:
 
 class MCPRegister : public RegisterBase {
 private:
-  REG reg_;
   PORT port_;
   bool bankMode_;
   uint8_t regAddress_;
 
 public:
-  MCPRegister(MCP::MCP_MODEL m, REG r, PORT p, bool bm)
-      : reg_(r), port_(p), bankMode_(bm), regAddress_(calculateAddress(r, p)) {
+  MCPRegister(MCP::MCP_MODEL m, REG rg, PORT p, bool bm)
+      : port_(p), bankMode_(bm), regAddress_(calculateAddress(rg, p)) {
+    setRegEnum(rg);
 
-    if (static_cast<uint8_t>(r) == 0) {
-      setValue(1);
-    } else {
-      setValue(0);
-    }
+    initialiseValue(rg);
 
     setModel(m);
   }
-
-  void setenumIndex(uint8_t index) override {
-    enumIndex = static_cast<uint8_t>(reg_);
+  void initialiseValue(REG r) {}
+  void setRegEnum(MCP::REG reg) override {
+    reg_ = reg;
     updateRegisterAddress();
   }
   void setModel(MCP::MCP_MODEL m) override { model_ = m; }

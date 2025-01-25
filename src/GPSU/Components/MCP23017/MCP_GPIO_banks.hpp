@@ -2,11 +2,14 @@
 #define MCP_GPIO_BANKS_HPP
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
+#include "memory"
 namespace MCP {
 class GPIO_BANKS {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
+  std::array<std::shared_ptr<MCP::MCPRegister>, MCP::MAX_REG_PER_PORT>
+      registers_;
 
 public:
   constexpr GPIO_BANKS(PORT port, bool enableInterrupt = false)
@@ -17,20 +20,9 @@ public:
         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
     assert(isValidPort(port) && "Invalid PORT provided!");
   }
-  template <typename... PinType>
-  constexpr GPIO_BANKS(PORT port, PinType... pins)
-      : Pins(fillPinsArray(pins...)), pinInterruptState{false},
-        interruptEnabled(false), generalMask(calculateMask(pins...)),
-        interruptMask(0x00), port_name(port), ports(0), ddr(0), pull_ups(0),
-        intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
-    // Validate port
-    assert(isValidPort(port) && "Invalid PORT provided!");
-
-    // Validate that all pins belong to the same port
-    assert(validatePins(port, pins...) &&
-           "All pins must belong to the same port!");
-  }
-
+  void setRegisters(
+      std::array<std::shared_ptr<MCP::MCPRegister>, MCP::MAX_REG_PER_PORT>
+          regs) {}
   void init() {
 
     updatePins();
@@ -137,6 +129,9 @@ private:
   uint8_t generalMask;
   uint8_t interruptMask;
   PORT port_name;
+  
+  std::shared_ptr<MCP::MCPRegister> GPPU;
+
   uint8_t ports;
   uint8_t ddr;
   uint8_t pull_ups;
@@ -180,40 +175,54 @@ private:
     }
     return pins;
   }
-
-  // Helper to calculate the general mask
-  template <typename... PinType>
-  static constexpr uint8_t calculateMask(PinType... pins) {
-    return (0 | ... | pins.getMask());
-  }
-
-  // Helper to validate pins belong to the same port
-  template <typename... PinType>
-  static constexpr bool validatePins(PORT port, PinType... pins) {
-    return ((pins.getPort() == port) && ...);
-  }
-  template <typename... PinType>
-  static constexpr std::array<Pin, PIN_PER_BANK>
-  fillPinsArray(PinType... pins) {
-    std::array<Pin, PIN_PER_BANK> pinArray = {};
-    size_t i = 0;
-
-    // Assign provided pins
-    ((pinArray[i++] = pins), ...);
-
-    // Fill remaining Pins with default
-    while (i < PIN_PER_BANK) {
-      pinArray[i++] = Pin();
-    }
-
-    return pinArray;
-  }
 };
 // constexpr GPIO_BANKS<MCP23017Pin> gpioBankA(PORT::GPIOA);
 // // Define GPIO Bank instances
-constexpr GPIO_BANKS BANK_A(PORT::GPIOA);
+// GPIO_BANKS BANK_A(PORT::GPIOA);
 
-// Using the variadic constructor
-constexpr GPIO_BANKS bankA_custom(PORT::GPIOA, GPA0, GPA1, GPA2);
+// // Using the variadic constructor
+// constexpr GPIO_BANKS bankA_custom(PORT::GPIOA, GPA0, GPA1, GPA2);
 } // namespace MCP
 #endif
+
+//  template <typename... PinType>
+//   constexpr GPIO_BANKS(PORT port, PinType... pins)
+//       : Pins(fillPinsArray(pins...)), pinInterruptState{false},
+//         interruptEnabled(false), generalMask(calculateMask(pins...)),
+//         interruptMask(0x00), port_name(port), ports(0), ddr(0), pull_ups(0),
+//         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
+//     // Validate port
+//     assert(isValidPort(port) && "Invalid PORT provided!");
+
+//     // Validate that all pins belong to the same port
+//     assert(validatePins(port, pins...) &&
+//            "All pins must belong to the same port!");
+//   }
+
+// // Helper to calculate the general mask
+// template <typename... PinType>
+// static constexpr uint8_t calculateMask(PinType... pins) {
+//   return (0 | ... | pins.getMask());
+// }
+
+// // Helper to validate pins belong to the same port
+// template <typename... PinType>
+// static constexpr bool validatePins(PORT port, PinType... pins) {
+//   return ((pins.getPort() == port) && ...);
+// }
+// template <typename... PinType>
+// static constexpr std::array<Pin, PIN_PER_BANK> fillPinsArray(PinType... pins)
+// {
+//   std::array<Pin, PIN_PER_BANK> pinArray = {};
+//   size_t i = 0;
+
+//   // Assign provided pins
+//   ((pinArray[i++] = pins), ...);
+
+//   // Fill remaining Pins with default
+//   while (i < PIN_PER_BANK) {
+//     pinArray[i++] = Pin();
+//   }
+
+//   return pinArray;
+// }
