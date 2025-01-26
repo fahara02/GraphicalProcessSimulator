@@ -99,7 +99,22 @@ private:
 
   void init();
   void setupDevice();
+  uint8_t read_mcp_register(const uint8_t reg) {
+    wire_->beginTransmission(address_);
+    wire_->write(reg);
+    wire_->endTransmission(false);
+    wire_->requestFrom((uint8_t)address_, (uint8_t)1, (uint8_t) true);
+    while (wire_->available() == 0)
+      ;
 
+    return wire_->read();
+  }
+  void write_mcp_register(const uint8_t reg, uint8_t value) {
+    wire_->beginTransmission(address_);
+    wire_->write(reg);
+    wire_->write(value);
+    wire_->endTransmission(true);
+  }
   static void updateRegisters(MCPDevice *device) {
     if (device) {
       for (size_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {

@@ -2,6 +2,7 @@
 #define MCP_REGISTERS_HPP
 #include "MCP_Constants.hpp"
 #include "MCP_Primitives.hpp"
+#include "RegisterEvents.hpp"
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -269,6 +270,7 @@ public:
     } else {
       value |= mask;
     }
+    EventManager::setBits(RegisterEvent::WRITE_REQUEST);
   }
 
   virtual void clearMask(uint8_t mask) {
@@ -277,15 +279,20 @@ public:
     } else {
       value &= ~mask;
     }
+    EventManager::setBits(RegisterEvent::WRITE_REQUEST);
   }
 
   bool setValue(uint8_t newValue) {
     if (reg_ == REG::INTF) {
       return false;
     } else if (reg_ == REG::IOCON) {
+
+      EventManager::setBits(RegisterEvent::SETTINGS_CHANGED);
       return settings_.configure(newValue);
+
     } else {
       value = newValue;
+      EventManager::setBits(RegisterEvent::WRITE_REQUEST);
       return true;
     }
   }
@@ -300,17 +307,22 @@ public:
         *fields |= (1 << field);
       else
         *fields &= ~(1 << field);
+      EventManager::setBits(RegisterEvent::WRITE_REQUEST);
 
       return;
     }
   }
 
-  // bool getBitField(Field field) const {
+  bool getBitField(Field field) const {
+    EventManager::setBits(RegisterEvent::READ_REQUEST);
+    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
+    return (*fields & (1 << field)) != 0;
+  }
+  bool getBitField(configField field) const {
 
-  //   const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
-  //   return (*fields & (1 << field)) != 0;
-  // }
-
+    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
+    return (*fields & (1 << field)) != 0;
+  }
   uint8_t getValue() const {
     if (reg_ == REG::IOCON) {
       return settings_.getSettings();
@@ -521,6 +533,42 @@ public:
   void setAddress(uint8_t address) override { regAddress_ = address; }
 
   uint8_t getAddress() const override { return regAddress_; }
+
+  template <REG T>
+  typename std::enable_if<T == REG::GPIO, bool>::type //
+  readPin(PIN pin) {
+    uint8_t index = getIndexFromPin(pin);
+    if (reg_ == REG::INTCON) {
+      return getBitField(static_cast<configField>(index));
+    } else {
+      return getBitField(static_cast<Field>(index));
+    }
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::GPIO, uint8_t>::type //
+  readPins() {
+
+    if (reg_ == REG::INTCON) {
+      return settings_.getSettings();
+    } else {
+      return getValue();
+    }
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::GPIO, uint8_t>::type //
+  readPins(uint8_t pinmask) {
+    uint8_t result = 0;
+
+    if (reg_ == REG::INTCON) {
+
+      result = settings_.getSettings() & pinmask;
+    } else {
+
+      result = getValue() & pinmask;
+    }
+
+    return result;
+  }
 
   template <REG T>
   typename std::enable_if<T == REG::IODIR, bool>::type
