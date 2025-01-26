@@ -459,12 +459,14 @@ public:
   typename std::enable_if<T == REG::IOCON, void>::type mergeBanks() {
     settings_.setBitField(configField::BANK, true);
     updateRegisterAddress();
+    current_event = createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type separateBanks() {
     settings_.setBitField(configField::BANK, false);
     updateRegisterAddress();
+    current_event = createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED);
   }
 
   template <REG T>
@@ -539,6 +541,12 @@ public:
     return settings_.getSettings();
   }
 
+  template <REG T>
+  typename std::enable_if<T == REG::INTF, uint8_t>::type
+  getInterruptFlag() const {
+    return getValue();
+  }
+
 private:
   std::array<Callback, MAX_CALLBACK_PER_REG> callbacks_;
   union {
@@ -585,6 +593,10 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::GPIO, bool>::type //
   readPin(PIN pin) {
+    if (port_ != getPortFromPin(pin)) {
+      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
+      return false;
+    }
     uint8_t index = getIndexFromPin(pin);
     if (reg_ == REG::INTCON) {
       return getBitField(static_cast<configField>(index));
@@ -596,24 +608,14 @@ public:
   typename std::enable_if<T == REG::GPIO, uint8_t>::type //
   readPins() {
 
-    if (reg_ == REG::INTCON) {
-      return settings_.getSettings();
-    } else {
-      return getValue();
-    }
+    return getValue();
   }
   template <REG T>
   typename std::enable_if<T == REG::GPIO, uint8_t>::type //
   readPins(uint8_t pinmask) {
     uint8_t result = 0;
 
-    if (reg_ == REG::INTCON) {
-
-      result = settings_.getSettings() & pinmask;
-    } else {
-
-      result = getValue() & pinmask;
-    }
+    result = getValue() & pinmask;
 
     return result;
   }
@@ -634,12 +636,7 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::IODIR, bool>::type
-  setPinMode(uint8_t pinmask, PORT port, GPIO_MODE mode) {
-
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
+  setPinMode(uint8_t pinmask, GPIO_MODE mode) {
 
     if (mode == GPIO_MODE::GPIO_INPUT) {
       applyMask(pinmask);
@@ -666,12 +663,7 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::GPPU, bool>::type
-  setPullType(uint8_t pinmask, PORT port, PULL_MODE mode) {
-
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
+  setPullType(uint8_t pinmask, PULL_MODE mode) {
 
     if (mode == PULL_MODE::ENABLE_PULLUP) {
       applyMask(pinmask);
@@ -697,12 +689,8 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::IPOL, bool>::type
-  setInputPolarity(uint8_t pinmask, PORT port, INPUT_POLARITY pol) {
+  setInputPolarity(uint8_t pinmask, INPUT_POLARITY pol) {
 
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
     if (pol == INPUT_POLARITY::INVERTED) {
       applyMask(pinmask);
     } else {
@@ -726,12 +714,8 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::OLAT, bool>::type
-  setOutputLatch(uint8_t pinmask, PORT port, OUTPUT_LATCH lat) {
+  setOutputLatch(uint8_t pinmask, OUTPUT_LATCH lat) {
 
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
     if (lat == OUTPUT_LATCH ::LOGIC_HIGH) {
       applyMask(pinmask);
     } else {
@@ -758,12 +742,8 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::GPINTEN, bool>::type
-  setInterruptOnChange(uint8_t pinmask, PORT port, INTR_ON_CHANGE_ENABLE en) {
+  setInterruptOnChange(uint8_t pinmask, INTR_ON_CHANGE_ENABLE en) {
 
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
     if (en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE) {
       applyMask(pinmask);
     } else {
@@ -788,12 +768,8 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::INTCON, bool>::type
-  setInterruptType(uint8_t pinmask, PORT port, INTR_ON_CHANGE_CONTROL cntrl) {
+  setInterruptType(uint8_t pinmask, INTR_ON_CHANGE_CONTROL cntrl) {
 
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
     if (cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL) {
       applyMask(pinmask);
     } else {
@@ -806,10 +782,8 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::DEFVAL, bool>::type
   saveCompareValue(PIN pin, DEF_VAL_COMPARE cmp) {
-
     if (port_ != getPortFromPin(pin)) {
-      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
-               static_cast<int>(pin));
+      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
       return false;
     }
     uint8_t index = getIndexFromPin(pin);
@@ -820,12 +794,8 @@ public:
   }
   template <REG T>
   typename std::enable_if<T == REG::DEFVAL, bool>::type
-  saveCompareValue(uint8_t pinmask, PORT port, DEF_VAL_COMPARE cmp) {
+  saveCompareValue(uint8_t pinmask, DEF_VAL_COMPARE cmp) {
 
-    if (port_ != port) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
     if (cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH) {
       applyMask(pinmask);
     } else {

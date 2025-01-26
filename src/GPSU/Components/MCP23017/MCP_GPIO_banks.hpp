@@ -97,16 +97,11 @@ public:
   uint8_t getInterruptMask() const { return interruptMask; }
 
   // Get the pin state by index
-  PIN_STATE getPinState(uint8_t index) const {
-    if (index >= PIN_PER_BANK) {
-      return PIN_STATE::UNDEFINED; // Invalid index
-    }
-    return Pins[index].getState();
-  }
+  PIN_STATE getPinState(PIN pin) const { return gpio->readPin(pin); }
   uint8_t getPinStates() const {
-    uint8_t result = 0;
+    uint8_t mask = static_cast<MCP::MASK::ALL>;
 
-    return result;
+    return gpio->readPins(mask);
   }
   // Set the pin state by index
   void setPinState(uint8_t index, PIN_STATE state) {
