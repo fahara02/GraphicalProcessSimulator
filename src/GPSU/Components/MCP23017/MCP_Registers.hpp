@@ -84,140 +84,6 @@ public:
 };
 
 //
-class ioconBase {
-protected:
-  uint8_t address[MAX_REG_PER_DEVICE];
-
-public:
-  virtual ~ioconBase() = default;
-  using Field = MCP::config_icon_t::Field;
-
-  virtual void updateRegisters() = 0;
-
-  virtual void setCallBack(const std::function<void()> &cb) = 0;
-
-  virtual bool configure(const uint8_t &settings) {
-    bool status = settings_.configure(settings);
-    if (status) {
-      settings_ = config_icon_t(settings);
-    };
-    return status;
-  };
-
-  virtual void setModel(MCP::MCP_MODEL model) { model_ = model; }
-
-  // setting methods with safe enums
-  virtual void setBankMode(MCP_BANK_MODE mode) {
-    settings_.setBitField(Field::BANK, mode == MCP_BANK_MODE::SEPARATE_BANK);
-    updateRegisters();
-  }
-
-  virtual void setInterruptMode(MCP_MIRROR_MODE mode) {
-    settings_.setBitField(Field::MIRROR,
-                          mode == MCP_MIRROR_MODE::INT_CONNECTED);
-  }
-
-  virtual void setOperationMode(MCP_OPERATION_MODE mode) {
-    settings_.setBitField(Field::SEQOP, mode == MCP_OPERATION_MODE::BYTE_MODE);
-  }
-
-  virtual void setSlewRateMode(MCP_SLEW_RATE mode) {
-    settings_.setBitField(Field::DISSLW, mode == MCP_SLEW_RATE::SLEW_DISABLED);
-  }
-
-  virtual bool setHardwareAddressingMode(MCP_HARDWARE_ADDRESSING mode) {
-    if (model_ == MCP::MCP_MODEL::MCP23S17) {
-      settings_.setBitField(Field::HAEN,
-                            mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
-      return true;
-    }
-    return false;
-  }
-  virtual bool setOutputMode(MCP_OPEN_DRAIN mode) {
-    bool IntpolMode = settings_.getBitField(Field::INTPOL);
-
-    if (!IntpolMode && mode == MCP_OPEN_DRAIN::ODR) {
-      settings_.setBitField(Field::ODR, true);
-      settings_.setBitField(Field::INTPOL, false);
-      return true;
-    } else if (IntpolMode && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
-      settings_.setBitField(Field::ODR, false);
-      return true;
-    }
-    return false;
-  }
-  virtual bool setInterruptPolarityMode(MCP_INT_POL mode) {
-    bool outputMode = settings_.getBitField(Field::ODR);
-    if (!outputMode) {
-      settings_.setBitField(Field::INTPOL,
-                            mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
-      return true;
-    }
-    return false;
-  }
-  // direct setting method
-  virtual void mergeBanks() {
-    settings_.setBitField(Field::BANK, true);
-    updateRegisters();
-  }
-  virtual void separateBanks() {
-    settings_.setBitField(Field::BANK, false);
-    updateRegisters();
-  }
-  virtual void mergeInterrupts() { settings_.setBitField(Field::MIRROR, true); }
-  virtual void separateInterrupts() {
-    settings_.setBitField(Field::MIRROR, false);
-  }
-
-  virtual void enableContinousPoll() {
-    settings_.setBitField(Field::SEQOP, false);
-  }
-  virtual void disableContinousPoll() {
-    settings_.setBitField(Field::SEQOP, true);
-  }
-  virtual void enableSlewRate() { settings_.setBitField(Field::DISSLW, false); }
-  virtual void disableSlewRate() { settings_.setBitField(Field::DISSLW, true); }
-  virtual void enableOpenDrain() {
-    settings_.setBitField(Field::ODR, true);
-    disableIntrruptActiveHigh();
-  }
-  virtual void disableOpenDrain() { settings_.setBitField(Field::ODR, false); }
-  virtual void enableIntrruptActiveHigh() {
-    settings_.setBitField(Field::INTPOL, true);
-    disableOpenDrain();
-  }
-  virtual void disableIntrruptActiveHigh() {
-    settings_.setBitField(Field::INTPOL, false);
-  }
-
-  virtual bool getBankMode() const {
-    return settings_.getBitField(Field::BANK);
-  }
-
-  virtual uint8_t getSettings() const { return settings_.getSettings(); }
-
-protected:
-  config_icon_t settings_;
-  MCP::MCP_MODEL model_;
-};
-
-//
-class ControlRegister : public ioconBase {
-private:
-  std::function<void()> callback;
-
-public:
-  ControlRegister(MCP::MCP_MODEL m) { setModel(m); }
-
-  void setCallBack(const std::function<void()> &cb) override { callback = cb; }
-  void updateRegisters() override {
-    if (callback) {
-      callback();
-    }
-  }
-};
-
-//
 class RegisterBase {
 protected:
   REG reg_;
@@ -228,8 +94,6 @@ protected:
   config_icon_t settings_;
   uint8_t enumIndex;
   bool readOnly = false;
-
-  SemaphoreHandle_t regRWmutex = nullptr;
 
 public:
   using Callback = std::function<void(uint8_t)>;
@@ -368,6 +232,15 @@ public:
   }
 
   // IOCON-specific methods
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type
+  configure(const uint8_t &settings) {
+    bool status = settings_.configure(settings);
+    if (status) {
+      settings_ = config_icon_t(settings);
+    };
+    return status;
+  };
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
   setBankMode(MCP_BANK_MODE mode) {
@@ -513,7 +386,8 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableOpenDrain() {
     settings_.setBitField(configField::ODR, true);
-    disableInterruptActiveHigh<T>();
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -527,7 +401,8 @@ public:
   typename std::enable_if<T == REG::IOCON, void>::type
   enableInterruptActiveHigh() {
     settings_.setBitField(configField::INTPOL, true);
-    disableOpenDrain<T>();
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>

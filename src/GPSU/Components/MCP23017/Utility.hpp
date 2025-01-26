@@ -20,6 +20,7 @@ public:
   }
 
   class BIT {
+  public:
     static void set(uint8_t &byte, uint8_t bit) { byte |= (1UL << bit); }
     static void clear(uint8_t &byte, uint8_t bit) { byte &= ~(1UL << bit); }
     static bool isSet(const uint8_t &byte, uint8_t bit) {

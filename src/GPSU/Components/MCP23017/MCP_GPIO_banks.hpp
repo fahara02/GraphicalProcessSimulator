@@ -7,7 +7,7 @@
 
 #define BANK_TAG "GPIO_BANK"
 namespace MCP {
-class GPIO_BANKS {
+class GPIO_BANK {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
@@ -15,21 +15,21 @@ private:
   // Control Register
   std::shared_ptr<MCP::MCPRegister> iocon;
   // Basic GPIO Read & Write
-  std::shared_ptr<MCP::MCPRegister> iodir;
-  std::shared_ptr<MCP::MCPRegister> gppu;
-  std::shared_ptr<MCP::MCPRegister> ipol;
-  std::shared_ptr<MCP::MCPRegister> gpio;
-  std::shared_ptr<MCP::MCPRegister> olat;
+  std::unique_ptr<MCP::MCPRegister> iodir;
+  std::unique_ptr<MCP::MCPRegister> gppu;
+  std::unique_ptr<MCP::MCPRegister> ipol;
+  std::unique_ptr<MCP::MCPRegister> gpio;
+  std::unique_ptr<MCP::MCPRegister> olat;
   // Interrupt
-  std::shared_ptr<MCP::MCPRegister> gpinten;
-  std::shared_ptr<MCP::MCPRegister> intcon;
-  std::shared_ptr<MCP::MCPRegister> defval;
-  std::shared_ptr<MCP::MCPRegister> intf;
-  std::shared_ptr<MCP::MCPRegister> intcap;
+  std::unique_ptr<MCP::MCPRegister> gpinten;
+  std::unique_ptr<MCP::MCPRegister> intcon;
+  std::unique_ptr<MCP::MCPRegister> defval;
+  std::unique_ptr<MCP::MCPRegister> intf;
+  std::unique_ptr<MCP::MCPRegister> intcap;
 
 public:
-  constexpr GPIO_BANKS(PORT port, MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017,
-                       bool bankMerged = false, bool enableInterrupt = false)
+  constexpr GPIO_BANK(PORT port, MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017,
+                      bool bankMerged = false, bool enableInterrupt = false)
       : Pins(createPins(port)), pinInterruptState{false}, model(m),
         bankMode(bankMerged), interruptEnabled(enableInterrupt),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
@@ -38,31 +38,31 @@ public:
     assert(isValidPort(port) && "Invalid PORT provided!");
     init();
   }
-
-  std::shared_ptr<MCP::MCPRegister> const getRegister(MCP::REG regType) {
+  std::shared_ptr<MCP::MCPRegister> const getControlRegister() { return iocon; }
+  MCPRegister *const getRegister(MCP::REG regType) {
     switch (regType) {
     case MCP::REG::IOCON:
-      return iocon;
+      return nullptr;
     case MCP::REG::IODIR:
-      return iodir;
+      return iodir.get();
     case MCP::REG::GPPU:
-      return gppu;
+      return gppu.get();
     case MCP::REG::IPOL:
-      return ipol;
+      return ipol.get();
     case MCP::REG::GPIO:
-      return gpio;
+      return gpio.get();
     case MCP::REG::OLAT:
-      return olat;
+      return olat.get();
     case MCP::REG::GPINTEN:
-      return gpinten;
+      return gpinten.get();
     case MCP::REG::INTCON:
-      return intcon;
+      return intcon.get();
     case MCP::REG::DEFVAL:
-      return defval;
+      return defval.get();
     case MCP::REG::INTF:
-      return intf;
+      return intf.get();
     case MCP::REG::INTCAP:
-      return intcap;
+      return intcap.get();
     default:
       ESP_LOGE(BANK_TAG, "Invalid register type requested!");
     }
@@ -97,19 +97,14 @@ public:
   uint8_t getInterruptMask() const { return interruptMask; }
 
   // Get the pin state by index
-  bool getPinState(PIN pin) const { return gpio->readPin(pin); }
-  uint8_t getPinStates() const {
-    uint8_t mask = static_cast<MCP::MASK::ALL>;
-
-    return gpio->readPins(mask);
-  }
+  bool getPinState(MCP::PIN p) const { return gpio->readPin<REG::GPIO>(p); }
+  uint8_t getPinStates() const { return gpio->readPins<REG::GPIO>(); }
 
   void setPinState(PIN pin, bool state) {
 
-    assert(Utility::getPortFromPin(pin) == port_name && "Invalid pin ");
+    assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
 
-    Pins[index].setState(state);
-    return olat->setOutputLatch(pin, state);
+    olat->setOutputLatch<REG::OLAT>(pin, state);
   }
 
   void setPinState(bool state) {
@@ -165,25 +160,25 @@ private:
 
     iocon = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IOCON,
                                                port_name, bankMode);
-    iodir = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IODIR,
+    iodir = std::make_unique<MCP::MCPRegister>(model, MCP::REG::IODIR,
                                                port_name, bankMode);
-    gppu = std::make_shared<MCP::MCPRegister>(model, MCP::REG::GPPU, port_name,
+    gppu = std::make_unique<MCP::MCPRegister>(model, MCP::REG::GPPU, port_name,
                                               bankMode);
-    ipol = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IPOL, port_name,
+    ipol = std::make_unique<MCP::MCPRegister>(model, MCP::REG::IPOL, port_name,
                                               bankMode);
-    gpio = std::make_shared<MCP::MCPRegister>(model, MCP::REG::GPIO, port_name,
+    gpio = std::make_unique<MCP::MCPRegister>(model, MCP::REG::GPIO, port_name,
                                               bankMode);
-    olat = std::make_shared<MCP::MCPRegister>(model, MCP::REG::OLAT, port_name,
+    olat = std::make_unique<MCP::MCPRegister>(model, MCP::REG::OLAT, port_name,
                                               bankMode);
-    gpinten = std::make_shared<MCP::MCPRegister>(model, MCP::REG::GPINTEN,
+    gpinten = std::make_unique<MCP::MCPRegister>(model, MCP::REG::GPINTEN,
                                                  port_name, bankMode);
-    intcon = std::make_shared<MCP::MCPRegister>(model, MCP::REG::INTCON,
+    intcon = std::make_unique<MCP::MCPRegister>(model, MCP::REG::INTCON,
                                                 port_name, bankMode);
-    defval = std::make_shared<MCP::MCPRegister>(model, MCP::REG::DEFVAL,
+    defval = std::make_unique<MCP::MCPRegister>(model, MCP::REG::DEFVAL,
                                                 port_name, bankMode);
-    intf = std::make_shared<MCP::MCPRegister>(model, MCP::REG::INTF, port_name,
+    intf = std::make_unique<MCP::MCPRegister>(model, MCP::REG::INTF, port_name,
                                               bankMode);
-    intcap = std::make_shared<MCP::MCPRegister>(model, MCP::REG::INTCAP,
+    intcap = std::make_unique<MCP::MCPRegister>(model, MCP::REG::INTCAP,
                                                 port_name, bankMode);
   }
   void setInterruptMask(uint8_t pinMask) {
@@ -194,19 +189,19 @@ private:
   }
   void updatePins() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      bool isGeneralMaskSet = Utility::BIT::isSet(generalMask, i);
+      bool isGeneralMaskSet = Util::BIT::isSet(generalMask, i);
 
       if (!isGeneralMaskSet) {
 
-        Pins[i].setState(PIN_STATE::UNDEFINED);
+        Pins[i].setState(false);
       }
     }
   }
 
   void updatePinInterruptState() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      bool isGeneralMaskSet = Utility::BIT::isSet(generalMask, i);
-      bool isInterruptMaskSet = Utility::BIT::isSet(interruptMask, i);
+      bool isGeneralMaskSet = Util::BIT::isSet(generalMask, i);
+      bool isInterruptMaskSet = Util::BIT::isSet(interruptMask, i);
       pinInterruptState[i] = isGeneralMaskSet && isInterruptMaskSet;
     }
   }
