@@ -3,6 +3,8 @@
 #include "MCP_Constants.hpp"
 #include "MCP_Primitives.hpp"
 #include "RegisterEvents.hpp"
+#include "Utility.hpp"
+#include "freertos/semphr.h"
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -214,12 +216,7 @@ public:
     }
   }
 };
-struct currentEvent {
-  RegisterEvent event;
-  uint8_t regAddress;
-  uint8_t value = 0;
-  uint8_t setting = 0;
-};
+
 //
 class RegisterBase {
 protected:
@@ -231,7 +228,8 @@ protected:
   config_icon_t settings_;
   uint8_t enumIndex;
   bool readOnly = false;
-  currentEvent current_event;
+
+  SemaphoreHandle_t regRWmutex = nullptr;
 
 public:
   using Callback = std::function<void(uint8_t)>;
@@ -257,22 +255,11 @@ public:
 
   virtual void setReadonly() { readOnly = true; }
 
-  currentEvent &createEvent(uint8_t addr, RegisterEvent e) const {
-    currentEvent ev;
-    ev.regAddress = addr;
-    ev.event = e;
-    ev.value = value;
-    ev.setting = settings_.getSettings();
-    EventManager::setBits(e);
-    return ev;
-  }
-  currentEvent &getEvent() { return current_event; }
-
   void updateState(currentEvent &ev) {
     if (ev.regAddress == regAddress_) {
       setValue(ev.value);
       if (reg_ == REG::IOCON) {
-        settings_.configure(ev.setting);
+        settings_.configure(ev.settings);
       }
     }
   }
@@ -299,7 +286,7 @@ public:
     } else {
       value |= mask;
     }
-    current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
+    EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST, value);
   }
 
   virtual void clearMask(uint8_t mask) {
@@ -308,7 +295,7 @@ public:
     } else {
       value &= ~mask;
     }
-    current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
+    EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST, value);
   }
 
   bool setValue(uint8_t newValue) {
@@ -318,15 +305,16 @@ public:
 
       bool success = settings_.configure(newValue);
       if (success) {
-        current_event =
-            createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+        EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
+                                  0, newValue);
       }
 
       return success;
 
     } else {
       value = newValue;
-      current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
+      EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST,
+                                value);
       return true;
     }
   }
@@ -341,7 +329,8 @@ public:
         *fields |= (1 << field);
       else
         *fields &= ~(1 << field);
-      current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
+      EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST,
+                                getValue());
 
       return;
     }
@@ -349,17 +338,17 @@ public:
 
   bool getBitField(Field field) const {
 
-    createEvent(regAddress_, RegisterEvent::READ_REQUEST);
+    EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST);
     const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
     return (*fields & (1 << field)) != 0;
   }
   bool getBitField(configField field) const {
-    createEvent(regAddress_, RegisterEvent::READ_REQUEST);
+    EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST);
     const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
     return (*fields & (1 << field)) != 0;
   }
   uint8_t getValue() const {
-    createEvent(regAddress_, RegisterEvent::READ_REQUEST);
+    EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST);
     if (reg_ == REG::IOCON) {
       return settings_.getSettings();
     } else {
@@ -385,7 +374,8 @@ public:
     settings_.setBitField(configField::BANK,
                           mode == MCP_BANK_MODE::SEPARATE_BANK);
     updateRegisterAddress();
-    current_event = createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -393,7 +383,8 @@ public:
   setInterruptSahring(MCP_MIRROR_MODE mode) {
     settings_.setBitField(configField::MIRROR,
                           mode == MCP_MIRROR_MODE::INT_CONNECTED);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -401,7 +392,8 @@ public:
   setOperationMode(MCP_OPERATION_MODE mode) {
     settings_.setBitField(configField::SEQOP,
                           mode == MCP_OPERATION_MODE::BYTE_MODE);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -409,7 +401,8 @@ public:
   setSlewRateMode(MCP_SLEW_RATE mode) {
     settings_.setBitField(configField::DISSLW,
                           mode == MCP_SLEW_RATE::SLEW_DISABLED);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -418,7 +411,8 @@ public:
     if (model_ == MCP::MCP_MODEL::MCP23S17) {
       settings_.setBitField(configField::HAEN,
                             mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
-      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                                settings_.getSettings());
       return true;
     }
     return false;
@@ -432,11 +426,13 @@ public:
     if (!intPolMode && mode == MCP_OPEN_DRAIN::ODR) {
       settings_.setBitField(configField::ODR, true);
       settings_.setBitField(configField::INTPOL, false);
-      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                                settings_.getSettings());
       return true;
     } else if (intPolMode && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
       settings_.setBitField(configField::ODR, false);
-      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                                settings_.getSettings());
       return true;
     }
     return false;
@@ -449,7 +445,8 @@ public:
     if (!outputMode) {
       settings_.setBitField(configField::INTPOL,
                             mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
-      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                                settings_.getSettings());
       return true;
     }
     return false;
@@ -459,50 +456,58 @@ public:
   typename std::enable_if<T == REG::IOCON, void>::type mergeBanks() {
     settings_.setBitField(configField::BANK, true);
     updateRegisterAddress();
-    current_event = createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type separateBanks() {
     settings_.setBitField(configField::BANK, false);
     updateRegisterAddress();
-    current_event = createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type mergeInterrupts() {
     settings_.setBitField(configField::MIRROR, true);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type separateInterrupts() {
     settings_.setBitField(configField::MIRROR, false);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableContinuousPoll() {
     settings_.setBitField(configField::SEQOP, false);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableContinuousPoll() {
     settings_.setBitField(configField::SEQOP, true);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableSlewRate() {
     settings_.setBitField(configField::DISSLW, false);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableSlewRate() {
     settings_.setBitField(configField::DISSLW, true);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -514,7 +519,8 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableOpenDrain() {
     settings_.setBitField(configField::ODR, false);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -528,7 +534,8 @@ public:
   typename std::enable_if<T == REG::IOCON, void>::type
   disableInterruptActiveHigh() {
     settings_.setBitField(configField::INTPOL, false);
-    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED, 0,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -593,11 +600,11 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::GPIO, bool>::type //
   readPin(PIN pin) {
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     if (reg_ == REG::INTCON) {
       return getBitField(static_cast<configField>(index));
     } else {
@@ -624,12 +631,12 @@ public:
   typename std::enable_if<T == REG::IODIR, bool>::type
   setPinMode(PIN pin, GPIO_MODE mode) {
 
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
                static_cast<int>(pin));
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     setBitField(static_cast<Field>(index), mode == GPIO_MODE::GPIO_INPUT);
 
     return true;
@@ -651,12 +658,12 @@ public:
   typename std::enable_if<T == REG::GPPU, bool>::type
   setPullType(PIN pin, PULL_MODE mode) {
 
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
                static_cast<int>(pin));
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     setBitField(static_cast<Field>(index), mode == PULL_MODE::ENABLE_PULLUP);
 
     return true;
@@ -677,12 +684,12 @@ public:
   typename std::enable_if<T == REG::IPOL, bool>::type
   setInputPolarity(PIN pin, INPUT_POLARITY pol) {
 
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
                static_cast<int>(pin));
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     setBitField(static_cast<Field>(index), pol == INPUT_POLARITY::INVERTED);
 
     return true;
@@ -699,24 +706,24 @@ public:
     return true;
   }
   template <REG T>
-  typename std::enable_if<T == REG::OLAT, bool>::type
-  setOutputLatch(PIN pin, OUTPUT_LATCH lat) {
+  typename std::enable_if<T == REG::OLAT, bool>::type //
+  setOutputLatch(PIN pin, bool lat) {
 
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
                static_cast<int>(pin));
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
-    setBitField(static_cast<Field>(index), lat == OUTPUT_LATCH ::LOGIC_HIGH);
+    uint8_t index = Util::getPinIndex(pin);
+    setBitField(static_cast<Field>(index), lat);
 
     return true;
   }
   template <REG T>
   typename std::enable_if<T == REG::OLAT, bool>::type
-  setOutputLatch(uint8_t pinmask, OUTPUT_LATCH lat) {
+  setOutputLatch(uint8_t pinmask, bool lat) {
 
-    if (lat == OUTPUT_LATCH ::LOGIC_HIGH) {
+    if (lat) {
       applyMask(pinmask);
     } else {
       clearMask(pinmask);
@@ -729,12 +736,12 @@ public:
   typename std::enable_if<T == REG::GPINTEN, bool>::type
   setInterruptOnChange(PIN pin, INTR_ON_CHANGE_ENABLE en) {
 
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
                static_cast<int>(pin));
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     setBitField(static_cast<Field>(index),
                 en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE);
 
@@ -755,12 +762,12 @@ public:
   typename std::enable_if<T == REG::INTCON, bool>::type
   setInterruptType(PIN pin, INTR_ON_CHANGE_CONTROL cntrl) {
 
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
                static_cast<int>(pin));
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     setBitField(static_cast<Field>(index),
                 cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL);
 
@@ -782,11 +789,11 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::DEFVAL, bool>::type
   saveCompareValue(PIN pin, DEF_VAL_COMPARE cmp) {
-    if (port_ != getPortFromPin(pin)) {
+    if (port_ != Util::getPortFromPin(pin)) {
       ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
       return false;
     }
-    uint8_t index = getIndexFromPin(pin);
+    uint8_t index = Util::getPinIndex(pin);
     setBitField(static_cast<Field>(index),
                 cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH);
 
@@ -827,15 +834,6 @@ private:
     }
 
     return baseAddress;
-  }
-  constexpr PORT getPortFromPin(PIN pin) const {
-    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
-  }
-  constexpr uint8_t getIndexFromPin(PIN pin) const {
-    uint8_t index = 0;
-    PORT port = getPortFromPin(pin);
-    uint8_t pinEnum = static_cast<uint8_t>(pin);
-    return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
   }
 };
 

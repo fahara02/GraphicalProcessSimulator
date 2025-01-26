@@ -2,6 +2,7 @@
 #define MCP_PRIMITIVES_HPP
 #include "MCP_Constants.hpp"
 
+#include "Utility.hpp"
 #include "atomic"
 #include <array>
 #include <cassert>
@@ -10,46 +11,26 @@ namespace MCP {
 
 class BitUtil {
 public:
-  static void setBit(uint8_t &byte, uint8_t bit) { byte |= (1UL << bit); }
-
-  static void clearBit(uint8_t &byte, uint8_t bit) { byte &= ~(1UL << bit); }
-  static bool isBitSet(const uint8_t &byte, uint8_t bit) {
-    return (byte & (1UL << bit)) != 0U; // Returns true if bit is 1
-  }
-
-  template <typename T> static void setBit(T &value, uint8_t bit) {
-    value |= (static_cast<T>(1) << bit);
-  }
-
-  template <typename T> static void clearBit(T &value, uint8_t bit) {
-    value &= ~(static_cast<T>(1) << bit);
-  }
-
-  template <typename T> static bool isBitSet(const T &value, uint8_t bit) {
-    return (value & (static_cast<T>(1) << bit)) != 0;
-  }
 };
 
 //
 struct Pin {
-
+private:
   const PIN pinEnum;
   const PORT port;
   const uint8_t pinNumber;
   const uint8_t mask;
 
-private:
-  PIN_STATE state;
+  bool state;
   bool interruptEnabled;
 
 public:
   // Constructor
 
   constexpr Pin(PIN pin)
-      : pinEnum(pin), port(getPortFromPin(pin)),
-        pinNumber(static_cast<uint8_t>(pin) % 8),
-        mask(1 << (static_cast<uint8_t>(pin) % 8)), state(PIN_STATE::UNDEFINED),
-        interruptEnabled(false) {}
+      : pinEnum(pin), port(Util::getPortFromPin(pin)),
+        pinNumber(Util::getPinIndex(pin)), mask(1 << (Util::getPinIndex(pin))),
+        state(false), interruptEnabled(false) {}
 
   constexpr Pin() : Pin(static_cast<PIN>(0)) {}
 
@@ -72,21 +53,10 @@ public:
   constexpr uint8_t getPinNumber() const { return pinNumber; }
   constexpr uint8_t getMask() const { return mask; }
   constexpr PORT getPort() const { return port; }
-  constexpr uint8_t getIndexFromPin(PIN pin) const {
-    uint8_t index = 0;
-    PORT port = getPortFromPin(pin);
-    uint8_t pinEnum = static_cast<uint8_t>(pin);
-    return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
-  }
 
   // State management
-  PIN_STATE getState() const { return state; }
-  void setState(PIN_STATE newState) { state = newState; }
-
-private:
-  constexpr PORT getPortFromPin(PIN pin) const {
-    return (static_cast<uint8_t>(pin) < 8) ? PORT::GPIOA : PORT::GPIOB;
-  }
+  bool getState() const { return state; }
+  void setState(bool newState) { state = newState; }
 };
 
 // GPA Pins (PIN0 to PIN7)

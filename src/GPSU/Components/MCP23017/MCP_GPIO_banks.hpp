@@ -97,30 +97,22 @@ public:
   uint8_t getInterruptMask() const { return interruptMask; }
 
   // Get the pin state by index
-  PIN_STATE getPinState(PIN pin) const { return gpio->readPin(pin); }
+  bool getPinState(PIN pin) const { return gpio->readPin(pin); }
   uint8_t getPinStates() const {
     uint8_t mask = static_cast<MCP::MASK::ALL>;
 
     return gpio->readPins(mask);
   }
-  // Set the pin state by index
-  void setPinState(uint8_t index, PIN_STATE state) {
-    // Validate PIN_PER_BANK at compile-time
-    static_assert(PIN_PER_BANK <= 8, "Invalid PIN_PER_BANK configuration!");
 
-    // Ensure index is within valid range at runtime
-    assert(index < PIN_PER_BANK && "Invalid pin index!");
+  void setPinState(PIN pin, bool state) {
 
-    // Ensure the pin is enabled by the general mask
-    if (!(generalMask & (1 << index))) {
-      assert(false && "Pin is not enabled by the general mask!");
-      return;
-    }
+    assert(Utility::getPortFromPin(pin) == port_name && "Invalid pin ");
 
-    Pins[index].setState(state); // Set the pin state
+    Pins[index].setState(state);
+    return olat->setOutputLatch(pin, state);
   }
 
-  void setPinState(PIN_STATE state) {
+  void setPinState(bool state) {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       if (generalMask & (1 << i)) {
         Pins[i].setState(state);
@@ -202,7 +194,7 @@ private:
   }
   void updatePins() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      bool isGeneralMaskSet = BitUtil::isBitSet(generalMask, i);
+      bool isGeneralMaskSet = Utility::BIT::isSet(generalMask, i);
 
       if (!isGeneralMaskSet) {
 
@@ -213,8 +205,8 @@ private:
 
   void updatePinInterruptState() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      bool isGeneralMaskSet = BitUtil::isBitSet(generalMask, i);
-      bool isInterruptMaskSet = BitUtil::isBitSet(interruptMask, i);
+      bool isGeneralMaskSet = Utility::BIT::isSet(generalMask, i);
+      bool isInterruptMaskSet = Utility::BIT::isSet(interruptMask, i);
       pinInterruptState[i] = isGeneralMaskSet && isInterruptMaskSet;
     }
   }

@@ -102,7 +102,7 @@ enum class COM_MODE {
   SPI_MODE
 
 };
-enum class PIN_STATE { OFF, ON, UNDEFINED };
+
 enum class GPIO_MODE {
   GPIO_OUTPUT = 0,
   GPIO_INPUT = 1,
@@ -113,11 +113,6 @@ enum class INPUT_POLARITY {
 };
 
 enum class PULL_MODE { DISABLE_PULLUP = 0, ENABLE_PULLUP = 1 };
-
-enum class OUTPUT_LATCH {
-  LOGIC_LOW = 0,
-  LOGIC_HIGH = 1,
-};
 
 enum class INTR_TYPE {
   INTR_ON_CHANGE = 0,
