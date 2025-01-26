@@ -4,6 +4,7 @@
 #include "MCP_GPIO_banks.hpp"
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
+#include "RegisterEvents.hpp"
 #include "Wire.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -26,28 +27,15 @@ private:
   std::unique_ptr<TwoWire> wire_;
   bool bankMode_;
 
+  static SemaphoreHandle_t regRWmutex;
+
 public:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
   std::shared_ptr<MCP::MCPRegister> cntrlRegA;
   std::shared_ptr<MCP::MCPRegister> cntrlRegB;
 
-  MCPDevice(uint8_t address, MCP::MCP_MODEL model)
-      : model_(model), address_(address),    //
-        sda_(GPIO_NUM_21),                   //
-        scl_(GPIO_NUM_22),                   //
-        cs_(GPIO_NUM_NC),                    //
-        reset_(GPIO_NUM_33),                 //
-        wire_(std::make_unique<TwoWire>(0)), //
-        gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
-        gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
-        cntrlRegA(gpioBankA->getControlRegister()),
-        cntrlRegB(gpioBankB->getControlRegister())
-
-  {
-
-    bankMode_ = cntrlRegA->getBankMode<MCP::REG::IOCON>();
-  }
+  MCPDevice(uint8_t address, MCP::MCP_MODEL model);
 
   void configure(const MCP::config_icon_t &config) {
     if (cntrlRegA && cntrlRegB) {
@@ -65,6 +53,11 @@ public:
       return gpioBankB->getRegister(reg);
     }
   }
+  uint8_t getsavedSettings(MCP::PORT port) const {
+    return port == MCP::PORT::GPIOA ? cntrlRegA->getSavedValue()
+                                    : cntrlRegB->getSavedValue();
+  }
+
   static void updateRegisters(MCPDevice *device) {
     if (device) {
     }
@@ -109,10 +102,6 @@ public:
                value);
     }
   }
-
-private:
-  void init();
-  void setupDevice();
   uint8_t read_mcp_register(const uint8_t reg) {
     wire_->beginTransmission(address_);
     wire_->write(reg);
@@ -129,6 +118,12 @@ private:
     wire_->write(value);
     wire_->endTransmission(true);
   }
+
+private:
+  void init();
+  void setupDevice();
+  void startEventMonitorTask(MCPDevice *device);
+  static void EventMonitorTask(void *param);
 };
 
 } // namespace COMPONENT

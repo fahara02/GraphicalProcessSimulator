@@ -1,5 +1,6 @@
 #ifndef REGISTER_EVENTS_HPP
 #define REGISTER_EVENTS_HPP
+#include "MCP_Constants.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
@@ -17,6 +18,7 @@ enum class RegisterEvent : EventBits_t {
 };
 struct currentEvent {
   RegisterEvent event;
+  MCP::PORT port;
   uint8_t regAddress;
   uint8_t value = 0;
   uint8_t settings = 0;
@@ -28,12 +30,12 @@ public:
   static void setBits(RegisterEvent e);
   static void clearBits(RegisterEvent e);
   static void initializeEventGroups();
-  static void createEvent(uint8_t addr, RegisterEvent e, uint8_t value = 0,
-                          uint8_t settings = 0);
+  static void createEvent(uint8_t addr, RegisterEvent e, MCP::PORT port,
+                          uint8_t value = 0, uint8_t settings = 0);
+  static currentEvent &getCurrentEvent();
 
 protected:
   static void cleanupEventGroups();
-  static currentEvent &getCurrentEvent();
 
 private:
   static const EventBits_t REGISTER_EVENT_BITS_MASK;

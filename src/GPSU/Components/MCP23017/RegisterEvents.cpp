@@ -19,9 +19,10 @@ void EventManager::initializeEventGroups() {
     registerEventGroup = xEventGroupCreate();
 }
 
-void EventManager::createEvent(uint8_t addr, RegisterEvent e, uint8_t value,
-                               uint8_t settings) {
+void EventManager::createEvent(uint8_t addr, RegisterEvent e, MCP::PORT port,
+                               uint8_t value, uint8_t settings) {
   if (xSemaphoreTake(eventMutex, portMAX_DELAY) == pdTRUE) {
+    current_event.port = port;
     current_event.regAddress = addr;
     current_event.event = e;
     current_event.value = value;
