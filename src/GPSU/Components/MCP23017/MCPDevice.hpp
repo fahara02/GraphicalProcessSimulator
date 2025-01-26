@@ -28,6 +28,7 @@ private:
   bool bankMode_;
 
   static SemaphoreHandle_t regRWmutex;
+  TaskHandle_t eventTaskHandle;
 
 public:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
@@ -102,22 +103,8 @@ public:
                value);
     }
   }
-  uint8_t read_mcp_register(const uint8_t reg) {
-    wire_->beginTransmission(address_);
-    wire_->write(reg);
-    wire_->endTransmission(false);
-    wire_->requestFrom((uint8_t)address_, (uint8_t)1, (uint8_t) true);
-    while (wire_->available() == 0)
-      ;
-
-    return wire_->read();
-  }
-  void write_mcp_register(const uint8_t reg, uint8_t value) {
-    wire_->beginTransmission(address_);
-    wire_->write(reg);
-    wire_->write(value);
-    wire_->endTransmission(true);
-  }
+  uint8_t read_mcp_register(const uint8_t reg);
+  void write_mcp_register(const uint8_t reg, uint8_t value);
 
 private:
   void init();

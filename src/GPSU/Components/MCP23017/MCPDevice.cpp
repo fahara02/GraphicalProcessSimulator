@@ -18,16 +18,37 @@ MCPDevice::MCPDevice(uint8_t address, MCP::MCP_MODEL model)
   init();
 }
 
-void MCPDevice::startEventMonitorTask(MCPDevice *device) {
-  xTaskCreate(EventMonitorTask, "EventMonitorTask", 4096, device, 5, nullptr);
-}
-
 void MCPDevice::init() {
-
+  EventManager::initializeEventGroups();
   bankMode_ = cntrlRegA->getBankMode<MCP::REG::IOCON>() ||
               cntrlRegB->getBankMode<MCP::REG::IOCON>();
   startEventMonitorTask(this);
 }
+void MCPDevice::startEventMonitorTask(MCPDevice *device) {
+  if (!device) {
+    ESP_LOGE(MCP_TAG, "no_device");
+  } else {
+    xTaskCreatePinnedToCore(EventMonitorTask, "EventMonitorTask", 8192, device,
+                            1, &eventTaskHandle, 0);
+  }
+}
+uint8_t MCPDevice::read_mcp_register(const uint8_t reg) {
+  wire_->beginTransmission(address_);
+  wire_->write(reg);
+  wire_->endTransmission(false);
+  wire_->requestFrom((uint8_t)address_, (uint8_t)1, (uint8_t) true);
+  while (wire_->available() == 0)
+    ;
+
+  return wire_->read();
+}
+void MCPDevice::write_mcp_register(const uint8_t reg, uint8_t value) {
+  wire_->beginTransmission(address_);
+  wire_->write(reg);
+  wire_->write(value);
+  wire_->endTransmission(true);
+}
+
 void MCPDevice::EventMonitorTask(void *param) {
   MCPDevice *device = static_cast<MCPDevice *>(param);
 
@@ -51,7 +72,6 @@ void MCPDevice::EventMonitorTask(void *param) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
         uint8_t reg = EventManager::getCurrentEvent().regAddress;
         uint8_t value = device->read_mcp_register(reg);
-        ESP_LOGI(MCP_TAG, "Read Register 0x%02X: Value = 0x%02X", reg, value);
         xSemaphoreGive(regRWmutex);
       }
     }
@@ -62,7 +82,6 @@ void MCPDevice::EventMonitorTask(void *param) {
         uint8_t reg = EventManager::getCurrentEvent().regAddress;
         uint8_t value = EventManager::getCurrentEvent().value;
         device->write_mcp_register(reg, value);
-        ESP_LOGI(MCP_TAG, "Wrote Value 0x%02X to Register 0x%02X", value, reg);
         xSemaphoreGive(regRWmutex);
       }
     }
@@ -79,10 +98,6 @@ void MCPDevice::EventMonitorTask(void *param) {
         // Write the settings to the register
         device->write_mcp_register(regAddress, settings);
 
-        ESP_LOGI(
-            MCP_TAG,
-            "Bank mode changed. Port: %d, Register: 0x%02X, Settings: 0x%02X",
-            static_cast<int>(port), regAddress, settings);
         xSemaphoreGive(regRWmutex);
       }
     }
@@ -95,14 +110,12 @@ void MCPDevice::EventMonitorTask(void *param) {
         uint8_t settings = EventManager::getCurrentEvent().settings;
         device->write_mcp_register(regAddress, settings);
 
-        ESP_LOGI(
-            MCP_TAG,
-            "Settings changed. Port: %d, Register: 0x%02X, Settings: 0x%02X",
-            static_cast<int>(port), regAddress, settings);
         xSemaphoreGive(regRWmutex);
       }
     }
+    vTaskDelay(pdMS_TO_TICKS(200));
   }
+  vTaskDelete(NULL);
 }
 
 } // namespace COMPONENT
