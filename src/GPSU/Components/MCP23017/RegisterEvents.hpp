@@ -20,6 +20,7 @@ public:
   static void setBits(RegisterEvent e);
   static void clearBits(RegisterEvent e);
   static EventGroupHandle_t registerEventGroup;
+
   static void initializeEventGroups();
 
 protected:

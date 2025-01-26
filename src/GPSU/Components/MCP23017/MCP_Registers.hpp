@@ -214,15 +214,24 @@ public:
     }
   }
 };
-
+struct currentEvent {
+  RegisterEvent event;
+  uint8_t regAddress;
+  uint8_t value = 0;
+  uint8_t setting = 0;
+};
 //
 class RegisterBase {
 protected:
   REG reg_;
   MCP::MCP_MODEL model_;
+  PORT port_;
+  bool bankMode_;
+  uint8_t regAddress_;
   config_icon_t settings_;
   uint8_t enumIndex;
   bool readOnly = false;
+  currentEvent current_event;
 
 public:
   using Callback = std::function<void(uint8_t)>;
@@ -248,6 +257,26 @@ public:
 
   virtual void setReadonly() { readOnly = true; }
 
+  currentEvent &createEvent(uint8_t addr, RegisterEvent e) const {
+    currentEvent ev;
+    ev.regAddress = addr;
+    ev.event = e;
+    ev.value = value;
+    ev.setting = settings_.getSettings();
+    EventManager::setBits(e);
+    return ev;
+  }
+  currentEvent &getEvent() { return current_event; }
+
+  void updateState(currentEvent &ev) {
+    if (ev.regAddress == regAddress_) {
+      setValue(ev.value);
+      if (reg_ == REG::IOCON) {
+        settings_.configure(ev.setting);
+      }
+    }
+  }
+
   bool removeCallback(int index) {
     if (index >= 0 && index < static_cast<int>(callbacks_.size())) {
       callbacks_[index] = nullptr;
@@ -270,7 +299,7 @@ public:
     } else {
       value |= mask;
     }
-    EventManager::setBits(RegisterEvent::WRITE_REQUEST);
+    current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
   }
 
   virtual void clearMask(uint8_t mask) {
@@ -279,7 +308,7 @@ public:
     } else {
       value &= ~mask;
     }
-    EventManager::setBits(RegisterEvent::WRITE_REQUEST);
+    current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
   }
 
   bool setValue(uint8_t newValue) {
@@ -287,12 +316,17 @@ public:
       return false;
     } else if (reg_ == REG::IOCON) {
 
-      EventManager::setBits(RegisterEvent::SETTINGS_CHANGED);
-      return settings_.configure(newValue);
+      bool success = settings_.configure(newValue);
+      if (success) {
+        current_event =
+            createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
+      }
+
+      return success;
 
     } else {
       value = newValue;
-      EventManager::setBits(RegisterEvent::WRITE_REQUEST);
+      current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
       return true;
     }
   }
@@ -307,23 +341,25 @@ public:
         *fields |= (1 << field);
       else
         *fields &= ~(1 << field);
-      EventManager::setBits(RegisterEvent::WRITE_REQUEST);
+      current_event = createEvent(regAddress_, RegisterEvent::WRITE_REQUEST);
 
       return;
     }
   }
 
   bool getBitField(Field field) const {
-    EventManager::setBits(RegisterEvent::READ_REQUEST);
+
+    createEvent(regAddress_, RegisterEvent::READ_REQUEST);
     const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
     return (*fields & (1 << field)) != 0;
   }
   bool getBitField(configField field) const {
-
+    createEvent(regAddress_, RegisterEvent::READ_REQUEST);
     const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
     return (*fields & (1 << field)) != 0;
   }
   uint8_t getValue() const {
+    createEvent(regAddress_, RegisterEvent::READ_REQUEST);
     if (reg_ == REG::IOCON) {
       return settings_.getSettings();
     } else {
@@ -349,6 +385,7 @@ public:
     settings_.setBitField(configField::BANK,
                           mode == MCP_BANK_MODE::SEPARATE_BANK);
     updateRegisterAddress();
+    current_event = createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED);
   }
 
   template <REG T>
@@ -356,6 +393,7 @@ public:
   setInterruptSahring(MCP_MIRROR_MODE mode) {
     settings_.setBitField(configField::MIRROR,
                           mode == MCP_MIRROR_MODE::INT_CONNECTED);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
@@ -363,6 +401,7 @@ public:
   setOperationMode(MCP_OPERATION_MODE mode) {
     settings_.setBitField(configField::SEQOP,
                           mode == MCP_OPERATION_MODE::BYTE_MODE);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
@@ -370,6 +409,7 @@ public:
   setSlewRateMode(MCP_SLEW_RATE mode) {
     settings_.setBitField(configField::DISSLW,
                           mode == MCP_SLEW_RATE::SLEW_DISABLED);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
@@ -378,6 +418,7 @@ public:
     if (model_ == MCP::MCP_MODEL::MCP23S17) {
       settings_.setBitField(configField::HAEN,
                             mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
+      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
       return true;
     }
     return false;
@@ -391,9 +432,11 @@ public:
     if (!intPolMode && mode == MCP_OPEN_DRAIN::ODR) {
       settings_.setBitField(configField::ODR, true);
       settings_.setBitField(configField::INTPOL, false);
+      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
       return true;
     } else if (intPolMode && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
       settings_.setBitField(configField::ODR, false);
+      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
       return true;
     }
     return false;
@@ -406,6 +449,7 @@ public:
     if (!outputMode) {
       settings_.setBitField(configField::INTPOL,
                             mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
+      current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
       return true;
     }
     return false;
@@ -426,31 +470,37 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type mergeInterrupts() {
     settings_.setBitField(configField::MIRROR, true);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type separateInterrupts() {
     settings_.setBitField(configField::MIRROR, false);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableContinuousPoll() {
     settings_.setBitField(configField::SEQOP, false);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableContinuousPoll() {
     settings_.setBitField(configField::SEQOP, true);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableSlewRate() {
     settings_.setBitField(configField::DISSLW, false);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableSlewRate() {
     settings_.setBitField(configField::DISSLW, true);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
@@ -462,6 +512,7 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableOpenDrain() {
     settings_.setBitField(configField::ODR, false);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
@@ -475,6 +526,7 @@ public:
   typename std::enable_if<T == REG::IOCON, void>::type
   disableInterruptActiveHigh() {
     settings_.setBitField(configField::INTPOL, false);
+    current_event = createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED);
   }
 
   template <REG T>
@@ -507,18 +559,14 @@ private:
 //
 
 class MCPRegister : public RegisterBase {
-private:
-  PORT port_;
-  bool bankMode_;
-  uint8_t regAddress_;
 
 public:
-  MCPRegister(MCP::MCP_MODEL m, REG rg, PORT p, bool bm)
-      : port_(p), bankMode_(bm), regAddress_(calculateAddress(rg, p)) {
+  MCPRegister(MCP::MCP_MODEL m, REG rg, PORT p, bool bm) {
+    port_ = p;
+    bankMode_ = bm;
+    regAddress_ = (calculateAddress(rg, p));
     setRegEnum(rg);
-
     initialiseValue(rg);
-
     setModel(m);
   }
   void initialiseValue(REG r) {}
