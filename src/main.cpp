@@ -75,7 +75,7 @@ void setup() {
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
-  // expander.dumpRegisters();
+  expander.dumpRegisters();
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);

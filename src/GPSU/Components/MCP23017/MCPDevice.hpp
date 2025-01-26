@@ -69,6 +69,46 @@ public:
     if (device) {
     }
   }
+  uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const {
+    if (port == MCP::PORT::GPIOA) {
+      return gpioBankA->getAddress(reg);
+    } else {
+      return gpioBankB->getAddress(reg);
+    }
+  }
+
+  uint8_t getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const {
+    if (port == MCP::PORT::GPIOA) {
+      return gpioBankA->getSavedValue(reg);
+    } else {
+      return gpioBankB->getSavedValue(reg);
+    }
+  }
+  void dumpRegisters() const {
+
+    ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
+             address_);
+
+    // Dump PORTA Registers
+    ESP_LOGI(MCP_TAG, "PORTA Registers:");
+    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+      MCP::REG reg = static_cast<MCP::REG>(i);
+      uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOA);
+      uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOA);
+      ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
+               value);
+    }
+
+    // Dump PORTB Registers
+    ESP_LOGI(MCP_TAG, "PORTB Registers:");
+    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+      MCP::REG reg = static_cast<MCP::REG>(i);
+      uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOB);
+      uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOB);
+      ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
+               value);
+    }
+  }
 
 private:
   void init();

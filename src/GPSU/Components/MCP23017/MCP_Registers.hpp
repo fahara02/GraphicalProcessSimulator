@@ -117,8 +117,22 @@ public:
   virtual void setAddress(uint8_t address) = 0;
   virtual uint8_t getAddress() const = 0;
 
-  virtual void setReadonly() { readOnly = true; }
+  virtual void initialiseValue() {
 
+    if (reg_ == REG::IOCON) {
+      value = 0X00;
+      settings_ = config_icon_t{};
+    } else if (reg_ == REG::IODIR) {
+
+      value = 0XFF;
+    } else {
+      value = 0X00;
+    }
+  }
+
+  virtual void setReadonly() { readOnly = true; }
+  uint8_t getSavedValue() const { return value; }
+  uint8_t getSavedSettings() const { return settings_.getSettings(); }
   void updateState(currentEvent &ev) {
     if (ev.regAddress == regAddress_) {
       setValue(ev.value);
@@ -452,14 +466,15 @@ class MCPRegister : public RegisterBase {
 
 public:
   MCPRegister(MCP::MCP_MODEL m, REG rg, PORT p, bool bm) {
+
     port_ = p;
     bankMode_ = bm;
     regAddress_ = (calculateAddress(rg, p));
     setRegEnum(rg);
-    initialiseValue(rg);
+    initialiseValue();
     setModel(m);
   }
-  void initialiseValue(REG r) {}
+
   void setRegEnum(MCP::REG reg) override {
     reg_ = reg;
     updateRegisterAddress();

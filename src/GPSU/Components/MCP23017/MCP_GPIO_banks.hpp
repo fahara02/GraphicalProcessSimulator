@@ -11,7 +11,8 @@ class GPIO_BANK {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
-
+  std::array<uint8_t, MAX_REG_PER_PORT> registerAddress;
+  std::array<uint8_t, MAX_REG_PER_PORT> registerSavedValues;
   // Control Register
   std::shared_ptr<MCP::MCPRegister> iocon;
   // Basic GPIO Read & Write
@@ -30,8 +31,9 @@ private:
 public:
   constexpr GPIO_BANK(PORT port, MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017,
                       bool bankMerged = false, bool enableInterrupt = false)
-      : Pins(createPins(port)), pinInterruptState{false}, model(m),
-        bankMode(bankMerged), interruptEnabled(enableInterrupt),
+      : Pins(createPins(port)), pinInterruptState{false}, registerAddress{},
+        registerSavedValues{}, model(m), bankMode(bankMerged),
+        interruptEnabled(enableInterrupt),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), intr_type(INTR_TYPE::NONE),
         intr_out_type(INTR_OUTPUT_TYPE::NA) {
@@ -39,6 +41,7 @@ public:
     init();
   }
   std::shared_ptr<MCP::MCPRegister> const getControlRegister() { return iocon; }
+
   MCPRegister *const getRegister(MCP::REG regType) {
     switch (regType) {
     case MCP::REG::IOCON:
@@ -67,7 +70,13 @@ public:
       ESP_LOGE(BANK_TAG, "Invalid register type requested!");
     }
   }
+  uint8_t getSavedValue(REG reg) const {
 
+    return registerSavedValues[static_cast<uint8_t>(reg)];
+  }
+  uint8_t getAddress(REG reg) const {
+    return registerAddress[static_cast<uint8_t>(reg)];
+  }
   // Pin masks
   void setGeneralMask(MASK mask) {
     generalMask = static_cast<uint8_t>(mask);
@@ -151,6 +160,8 @@ private:
   INTR_OUTPUT_TYPE intr_out_type;
   void init() {
     setupRegisters();
+    updateRegistersAddress();
+    getSavedValues();
     updatePins();
     if (interruptEnabled) {
       updatePinInterruptState();
@@ -160,6 +171,7 @@ private:
 
     iocon = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IOCON,
                                                port_name, bankMode);
+
     iodir = std::make_unique<MCP::MCPRegister>(model, MCP::REG::IODIR,
                                                port_name, bankMode);
     gppu = std::make_unique<MCP::MCPRegister>(model, MCP::REG::GPPU, port_name,
@@ -180,6 +192,115 @@ private:
                                               bankMode);
     intcap = std::make_unique<MCP::MCPRegister>(model, MCP::REG::INTCAP,
                                                 port_name, bankMode);
+  }
+  void updateRegistersAddress() {
+    if (iocon) {
+      iocon->updateRegisterAddress(); // Ensure the address is updated if needed
+      registerAddress[static_cast<size_t>(MCP::REG::IOCON)] =
+          iocon->getAddress();
+    }
+    if (iodir) {
+      iodir->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::IODIR)] =
+          iodir->getAddress();
+    }
+    if (gppu) {
+      gppu->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::GPPU)] = gppu->getAddress();
+    }
+    if (ipol) {
+      ipol->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::IPOL)] = ipol->getAddress();
+    }
+    if (gpio) {
+      gpio->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::GPIO)] = gpio->getAddress();
+    }
+    if (olat) {
+      olat->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::OLAT)] = olat->getAddress();
+    }
+    if (gpinten) {
+      gpinten->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::GPINTEN)] =
+          gpinten->getAddress();
+    }
+    if (intcon) {
+      intcon->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::INTCON)] =
+          intcon->getAddress();
+    }
+    if (defval) {
+      defval->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::DEFVAL)] =
+          defval->getAddress();
+    }
+    if (intf) {
+      intf->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::INTF)] = intf->getAddress();
+    }
+    if (intcap) {
+      intcap->updateRegisterAddress();
+      registerAddress[static_cast<size_t>(MCP::REG::INTCAP)] =
+          intcap->getAddress();
+    }
+  }
+  void getSavedValues() {
+    if (iocon) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::IOCON)] =
+          iocon->getSavedValue();
+    }
+    if (iodir) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::IODIR)] =
+          iodir->getSavedValue();
+    }
+    if (gppu) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::GPPU)] =
+          gppu->getSavedValue();
+    }
+    if (ipol) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::IPOL)] =
+          ipol->getSavedValue();
+    }
+    if (gpio) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::GPIO)] =
+          gpio->getSavedValue();
+    }
+    if (olat) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::OLAT)] =
+          olat->getSavedValue();
+    }
+    if (gpinten) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::GPINTEN)] =
+          gpinten->getSavedValue();
+    }
+    if (intcon) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::INTCON)] =
+          intcon->getSavedValue();
+    }
+    if (defval) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::DEFVAL)] =
+          defval->getSavedValue();
+    }
+    if (intf) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::INTF)] =
+          intf->getSavedValue();
+    }
+    if (intcap) {
+
+      registerSavedValues[static_cast<size_t>(MCP::REG::INTCAP)] =
+          intcap->getSavedValue();
+    }
   }
   void setInterruptMask(uint8_t pinMask) {
     interruptMask = pinMask & 0xFF;
