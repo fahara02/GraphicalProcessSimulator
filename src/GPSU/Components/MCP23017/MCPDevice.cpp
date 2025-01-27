@@ -69,48 +69,64 @@ void MCPDevice::EventMonitorTask(void *param) {
 
     // Handle READ_REQUEST
     if (events & static_cast<EventBits_t>(RegisterEvent::READ_REQUEST)) {
+
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        uint8_t reg = EventManager::getCurrentEvent().regAddress;
-        uint8_t value = device->read_mcp_register(reg);
-        xSemaphoreGive(regRWmutex);
+        device->handleReadEvent(EventManager::getCurrentEvent());
       }
     }
 
     // Handle WRITE_REQUEST
     if (events & static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST)) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        uint8_t reg = EventManager::getCurrentEvent().regAddress;
-        uint8_t value = EventManager::getCurrentEvent().value;
-        device->write_mcp_register(reg, value);
-        xSemaphoreGive(regRWmutex);
+        device->handleWriteEvent(EventManager::getCurrentEvent());
       }
     }
 
     // Handle BANK_MODE_CHANGED
     if (events & static_cast<EventBits_t>(RegisterEvent::BANK_MODE_CHANGED)) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        MCP::PORT port = EventManager::getCurrentEvent().port;
-        uint8_t regAddress = EventManager::getCurrentEvent().regAddress;
-        uint8_t settings = EventManager::getCurrentEvent().settings;
-        device->write_mcp_register(regAddress, settings);
-        xSemaphoreGive(regRWmutex);
+        device->handleBankModeEvent(EventManager::getCurrentEvent());
       }
     }
 
     // Handle SETTINGS_CHANGED
     if (events & static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED)) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        MCP::PORT port = EventManager::getCurrentEvent().port;
-        uint8_t regAddress = EventManager::getCurrentEvent().regAddress;
-        uint8_t settings = EventManager::getCurrentEvent().settings;
-        device->write_mcp_register(regAddress, settings);
-
-        xSemaphoreGive(regRWmutex);
+        device->handleSettingChangeEvent(EventManager::getCurrentEvent());
       }
     }
     vTaskDelay(pdMS_TO_TICKS(200));
   }
   vTaskDelete(NULL);
 }
+void MCPDevice::handleBankModeEvent(currentEvent &ev) {
+  Serial.printf("New Event BankMode changed");
 
+  MCP::PORT port = ev.port;
+  Serial.printf("bank mode change request recieved for port=%d",
+                static_cast<uint8_t>(port));
+  uint8_t regAddress = ev.regAddress;
+  uint8_t settings = ev.settings;
+  write_mcp_register(regAddress, settings);
+  xSemaphoreGive(regRWmutex);
+}
+void MCPDevice::handleReadEvent(currentEvent &ev) {
+  uint8_t reg = ev.regAddress;
+  uint8_t value = read_mcp_register(reg);
+  xSemaphoreGive(regRWmutex);
+}
+void MCPDevice::handleWriteEvent(currentEvent &ev) {
+  uint8_t reg = ev.regAddress;
+  uint8_t value = ev.value;
+  write_mcp_register(reg, value);
+  xSemaphoreGive(regRWmutex);
+}
+void MCPDevice::handleSettingChangeEvent(currentEvent &ev) {
+  MCP::PORT port = ev.port;
+  uint8_t regAddress = ev.regAddress;
+  uint8_t settings = ev.settings;
+  write_mcp_register(regAddress, settings);
+
+  xSemaphoreGive(regRWmutex);
+}
 } // namespace COMPONENT

@@ -19,14 +19,12 @@ void EventManager::initializeEventGroups() {
     registerEventGroup = xEventGroupCreate();
 }
 
-void EventManager::createEvent(uint8_t addr, RegisterEvent e, MCP::PORT port,
-                               uint8_t value, uint8_t settings) {
+void EventManager::createEvent(RegisterEvent e, registerIdentity identity,
+                               uint8_t valueOrSettings, uint8_t id) {
   if (xSemaphoreTake(eventMutex, portMAX_DELAY) == pdTRUE) {
-    current_event.port = port;
-    current_event.regAddress = addr;
-    current_event.event = e;
-    current_event.value = value;
-    current_event.settings = settings;
+    latest_identity = identity;
+    current_event =
+        currentEvent(e, latest_identity, valueOrSettings, getEventId());
 
     setBits(e); // Signal the event
     xSemaphoreGive(eventMutex);

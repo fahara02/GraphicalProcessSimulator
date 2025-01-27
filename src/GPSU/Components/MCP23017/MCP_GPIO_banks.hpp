@@ -107,7 +107,7 @@ public:
 
   // Get the pin state by index
   bool getPinState(MCP::PIN p) const {
-    assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
+    assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
     return gpio->readPin<REG::GPIO>(p);
   }
   uint8_t getPinStates() const { return gpio->readPins<REG::GPIO>(); }

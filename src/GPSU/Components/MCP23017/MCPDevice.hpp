@@ -1,6 +1,7 @@
 #ifndef MCP_DEVICE_HPP
 #define MCP_DEVICE_HPP
 
+#include "Arduino.h"
 #include "MCP_GPIO_banks.hpp"
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
@@ -111,6 +112,10 @@ private:
   void setupDevice();
   void startEventMonitorTask(MCPDevice *device);
   static void EventMonitorTask(void *param);
+  void handleReadEvent(currentEvent &ev);
+  void handleWriteEvent(currentEvent &ev);
+  void handleSettingChangeEvent(currentEvent &ev);
+  void handleBankModeEvent(currentEvent &ev);
 };
 
 } // namespace COMPONENT

@@ -82,6 +82,7 @@ static constexpr uint16_t MAX_PIN = 2 * PIN_PER_BANK;
 static constexpr uint16_t MAX_REG_PER_PORT = 11;
 static constexpr uint16_t MAX_REG_PER_DEVICE = 2 * MAX_REG_PER_PORT;
 static constexpr uint16_t MAX_CALLBACK_PER_REG = 2;
+static constexpr uint16_t MAX_EVENT = 10;
 
 enum class MASK {
   NONE = 0x00,
@@ -127,7 +128,7 @@ enum class INTR_ON_CHANGE_ENABLE {
 enum class INTR_ON_CHANGE_CONTROL {
   COMPARE_WITH_OLD_VALUE = 0,
   COMPARE_WITH_DEFVAL = 1,
-};  
+};
 enum class INTR_OUTPUT_TYPE {
   INTR_ACTIVE_HIGH = 0, // CONTROLS VIA INTPOL REG when ODR=0
   INTR_ACTIVE_LOW = 1,  // CONTROLS VIA INTPOL REG when ODER=0

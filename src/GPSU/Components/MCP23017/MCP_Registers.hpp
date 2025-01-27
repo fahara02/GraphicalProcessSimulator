@@ -250,7 +250,7 @@ public:
 
   bool getBitField(Field field) const {
     EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
-    return (this->value & (1 << field)) != 0;
+    return (this->value & (1 << static_cast<uint8_t>(field))) != 0;
   }
 
   bool getBitField(configField field) const {

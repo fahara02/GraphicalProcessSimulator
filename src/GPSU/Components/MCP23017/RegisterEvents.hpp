@@ -16,12 +16,42 @@ enum class RegisterEvent : EventBits_t {
   NETWORK_ERROR = 1 << 6,
   RESTART = 1 << 7
 };
-struct currentEvent {
-  RegisterEvent event;
+struct registerIdentity {
+  MCP::REG reg;
   MCP::PORT port;
   uint8_t regAddress;
-  uint8_t value = 0;
-  uint8_t settings = 0;
+
+  registerIdentity(const registerIdentity &other)
+      : reg(other.reg), port(other.port), regAddress(other.regAddress) {}
+
+  bool operator==(const registerIdentity &other) const {
+    return (reg == other.reg) && (port == other.port) &&
+           (regAddress == other.regAddress);
+  }
+
+  bool operator!=(const registerIdentity &other) const {
+    return !(*this == other);
+  }
+};
+
+struct currentEvent {
+
+  const RegisterEvent event;
+  const registerIdentity regIdentity;
+  const uint8_t data;
+  currentEvent(RegisterEvent e, registerIdentity identity,
+               uint8_t valueOrSettings = 0, uint8_t id)
+      : event(e), regIdentity(identity), data(valueOrSettings), id_(id),
+        acknowledged_(false){
+
+        };
+  void AcknowledgeEvent() { acknowledged = true; }
+  bool isAckKnowledged() { return acknowledged; }
+  uint8_t getId const() { return id_; }
+
+private:
+  const uint8_t id_ = 0;
+  bool acknowledged_;
 };
 class EventManager {
 public:
@@ -30,8 +60,8 @@ public:
   static void setBits(RegisterEvent e);
   static void clearBits(RegisterEvent e);
   static void initializeEventGroups();
-  static void createEvent(uint8_t addr, RegisterEvent e, MCP::PORT port,
-                          uint8_t value = 0, uint8_t settings = 0);
+  static void createEvent(registerIdentity identity;
+                          uint8_t valueOrSettings = 0);
   static currentEvent &getCurrentEvent();
 
 protected:
@@ -39,7 +69,19 @@ protected:
 
 private:
   static const EventBits_t REGISTER_EVENT_BITS_MASK;
+
+  uint8_t getEventId() {
+    if (event_counter < MAX_EVENT) {
+      event_counter += event_counter;
+    } else {
+      event_counter = 0;
+    }
+  }
+  static registerIdentity latest_identity;
   static currentEvent current_event;
+
+  std::array<currentEvent, MAX_EVENT> allEvents;
+  static uint8_t event_counter = 0;
 };
 
 #endif

@@ -67,16 +67,17 @@ void setup() {
   Serial.begin(115200);
   tft.init();
   delay(1000);
-  auto &controller = GPSU_CORE::IO_Controller::getInstance(
-      GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
+  // auto &controller = GPSU_CORE::IO_Controller::getInstance(
+  //     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
-  delay(1000);
   // encoder.begin();
   //  encoder.setup(readEncoderISR);
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
   expander.dumpRegisters();
+  delay(1000);
+  expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
