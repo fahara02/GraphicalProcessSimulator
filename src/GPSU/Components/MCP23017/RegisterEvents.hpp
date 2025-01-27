@@ -6,6 +6,8 @@
 #include "freertos/semphr.h"
 #include "stdint.h"
 #include <array>
+#include <atomic>
+#include <memory>
 
 enum class RegisterEvent : EventBits_t {
 
@@ -67,7 +69,11 @@ struct currentEvent {
     return (event == e) && (regIdentity == identity) &&
            (data == valueOrSettings);
   }
-  void AcknowledgeEvent() { acknowledged_ = true; }
+  void AcknowledgeEvent() {
+    if (!isAckKnowledged()) {
+      acknowledged_ = true;
+    }
+  }
   bool isAckKnowledged() const { return acknowledged_; }
   int getId() const { return id_; }
 
@@ -84,13 +90,13 @@ public:
   static void initializeEventGroups();
   static bool createEvent(registerIdentity identity, RegisterEvent e,
                           uint8_t valueOrSettings = 0);
-  static currentEvent getEvent(RegisterEvent eventType);
+  static currentEvent *getEvent(RegisterEvent eventType);
   static bool acknowledgeEvent(int eventId);
-  static currentEvent &getCurrentEvent();
 
 protected:
   struct eventQueue {
-    static std::array<currentEvent, MCP::MAX_EVENT> unresolvedEvents;
+    static std::array<std::unique_ptr<currentEvent>, MCP::MAX_EVENT>
+        unresolvedEvents;
     static std::array<size_t, static_cast<size_t>(RegisterEvent::MAX)>
         unresolvedEventCounts;
     static size_t head; // Points to the oldest event
@@ -99,30 +105,36 @@ protected:
     bool isFull() { return (tail + 1) % MCP::MAX_EVENT == head; }
     size_t advance(size_t index) const { return (index + 1) % MCP::MAX_EVENT; }
 
-    currentEvent getNextEvent(size_t currentIndex) {
+    currentEvent *getNextEvent(size_t currentIndex) {
       size_t next_index = advance(currentIndex);
-      return unresolvedEvents[next_index];
+      return unresolvedEvents[next_index].get();
     }
 
-    bool insertEvent(const currentEvent &ev) {
+    bool insertEvent(std::unique_ptr<currentEvent> ev) {
       if (isFull()) {
         return false;
       }
-
+      // Check for duplicates and find a cleared slot (nullptr)
       size_t currentIndex = head;
       while (currentIndex != tail) {
-        if (unresolvedEvents[currentIndex].getId() == -1) {
-          unresolvedEvents[currentIndex] = ev;
-          unresolvedEventCounts[static_cast<size_t>(ev.event)]++;
+        currentEvent *event = unresolvedEvents[currentIndex].get();
+        if (event && event->isIdentical(ev->event, ev->regIdentity, ev->data)) {
+          return false; // Duplicate found
+        }
+        if (!event) {
+          // Reuse cleared slot
+          unresolvedEvents[currentIndex] = std::move(ev);
+          unresolvedEventCounts[static_cast<size_t>(ev->event)]++;
           return true;
         }
-        currentIndex = advance(currentIndex); // Move to the next index
+        currentIndex = advance(currentIndex);
       }
-
       // If no cleared slot is found, insert at the tail
-      unresolvedEvents[tail] = ev;
+      unresolvedEvents[tail] = std::move(ev);
+
+      unresolvedEventCounts[static_cast<size_t>(
+          unresolvedEvents[tail]->event)]++;
       tail = advance(tail);
-      unresolvedEventCounts[static_cast<size_t>(ev.event)]++;
       return true;
     }
 
@@ -130,28 +142,43 @@ protected:
       unresolvedEventCounts[static_cast<size_t>(eventType)]--;
     }
     void markEventResolved(size_t index) {
-      unresolvedEvents[index]
-          .AcknowledgeEvent(); // Mark the event as acknowledged
+      unresolvedEvents[index].get()->AcknowledgeEvent();
     }
 
     void removeResolvedEvents() {
-      while (head != tail && unresolvedEvents[head].isAckKnowledged()) {
-        unresolvedEventCounts[static_cast<size_t>(
-            unresolvedEvents[head].event)]--;
-        unresolvedEvents[head] = currentEvent();
+      while (head != tail && unresolvedEvents[head]->isAckKnowledged()) {
+        decrementEventCount(unresolvedEvents[head]->event);
+        unresolvedEvents[head].reset();
         head = advance(head);
       }
     }
-    currentEvent getOldestEvent(RegisterEvent eventType) const {
+    currentEvent *getOldestEvent(RegisterEvent eventType) const {
       size_t currentIndex = head;
       while (currentIndex != tail) {
-        const auto &event = unresolvedEvents[currentIndex];
-        if (event.event == eventType && !event.isAckKnowledged()) {
-          return unresolvedEvents[currentIndex];
+        currentEvent *event = unresolvedEvents[currentIndex].get();
+
+        if (event && event->event == eventType && !event->isAckKnowledged()) {
+          return event;
         }
         currentIndex = advance(currentIndex);
       }
-      return currentEvent(); // Return a default event if none found
+      return nullptr;
+    }
+    bool removeOldestEvent() {
+      if (isEmpty()) {
+        return false; // Queue is empty, nothing to remove
+      }
+
+      if (unresolvedEvents[head]) {
+        decrementEventCount(unresolvedEvents[head]->event);
+        unresolvedEvents[head].reset(); // Release the unique_ptr
+        head = advance(head);
+        return true;
+      }
+      return false;
+    }
+    size_t getQueueSize() const {
+      return (tail >= head) ? (tail - head) : (MCP::MAX_EVENT - head + tail);
     }
   };
 
@@ -161,7 +188,7 @@ private:
 
   static registerIdentity latest_identity;
   static currentEvent current_event;
-  static uint8_t event_counter;
+  static std::atomic<uint8_t> event_counter;
   static eventQueue event_queue;
 
   static int findOldestEventIndex(RegisterEvent eventType);

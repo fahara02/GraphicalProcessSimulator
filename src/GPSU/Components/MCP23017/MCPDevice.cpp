@@ -60,7 +60,7 @@ void MCPDevice::EventMonitorTask(void *param) {
         static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST) |
         static_cast<EventBits_t>(RegisterEvent::BANK_MODE_CHANGED) |
         static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED);
-    EventBits_t events =
+    EventBits_t eventBits =
         xEventGroupWaitBits(EventManager::registerEventGroup, CHECK_BITS_MASK,
 
                             pdTRUE,  // Clear the bits after processing
@@ -68,63 +68,80 @@ void MCPDevice::EventMonitorTask(void *param) {
                             portMAX_DELAY);
 
     // Handle READ_REQUEST
-    if (events & static_cast<EventBits_t>(RegisterEvent::READ_REQUEST)) {
+    if (eventBits & static_cast<EventBits_t>(RegisterEvent::READ_REQUEST)) {
 
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        device->handleReadEvent(EventManager::getCurrentEvent());
+        currentEvent *event =
+            EventManager::getEvent(RegisterEvent::READ_REQUEST);
+        if (event && event->getId() != -1) {
+          device->handleReadEvent(event);
+        }
       }
     }
 
     // Handle WRITE_REQUEST
-    if (events & static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST)) {
+    if (eventBits & static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST)) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        device->handleWriteEvent(EventManager::getCurrentEvent());
+        currentEvent *event =
+            EventManager::getEvent(RegisterEvent::WRITE_REQUEST);
+        if (event && event->getId() != -1) {
+          device->handleWriteEvent(event);
+        }
       }
     }
 
     // Handle BANK_MODE_CHANGED
-    if (events & static_cast<EventBits_t>(RegisterEvent::BANK_MODE_CHANGED)) {
+    if (eventBits &
+        static_cast<EventBits_t>(RegisterEvent::BANK_MODE_CHANGED)) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        device->handleBankModeEvent(EventManager::getCurrentEvent());
+        currentEvent *event =
+            EventManager::getEvent(RegisterEvent::BANK_MODE_CHANGED);
+        if (event && event->getId() != -1) {
+          device->handleBankModeEvent(event);
+        }
       }
     }
 
     // Handle SETTINGS_CHANGED
-    if (events & static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED)) {
+    if (eventBits & static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED)) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
-        device->handleSettingChangeEvent(EventManager::getCurrentEvent());
+        currentEvent *event =
+            EventManager::getEvent(RegisterEvent::SETTINGS_CHANGED);
+        if (event && event->getId() != -1) {
+          device->handleSettingChangeEvent(event);
+        }
       }
     }
-    vTaskDelay(pdMS_TO_TICKS(200));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
   vTaskDelete(NULL);
 }
-void MCPDevice::handleBankModeEvent(currentEvent &ev) {
+void MCPDevice::handleBankModeEvent(currentEvent *ev) {
   Serial.printf("New Event BankMode changed");
 
-  MCP::PORT port = ev.regIdentity.port;
+  MCP::PORT port = ev->regIdentity.port;
   Serial.printf("bank mode change request recieved for port=%d",
                 static_cast<uint8_t>(port));
-  uint8_t regAddress = ev.regIdentity.regAddress;
-  uint8_t settings = ev.data;
+  uint8_t regAddress = ev->regIdentity.regAddress;
+  uint8_t settings = ev->data;
   write_mcp_register(regAddress, settings);
   xSemaphoreGive(regRWmutex);
 }
-void MCPDevice::handleReadEvent(currentEvent &ev) {
-  uint8_t reg = ev.regIdentity.regAddress;
+void MCPDevice::handleReadEvent(currentEvent *ev) {
+  uint8_t reg = ev->regIdentity.regAddress;
   uint8_t value = read_mcp_register(reg);
   xSemaphoreGive(regRWmutex);
 }
-void MCPDevice::handleWriteEvent(currentEvent &ev) {
-  uint8_t reg = ev.regIdentity.regAddress;
-  uint8_t value = ev.data;
+void MCPDevice::handleWriteEvent(currentEvent *ev) {
+  uint8_t reg = ev->regIdentity.regAddress;
+  uint8_t value = ev->data;
   write_mcp_register(reg, value);
   xSemaphoreGive(regRWmutex);
 }
-void MCPDevice::handleSettingChangeEvent(currentEvent &ev) {
-  MCP::PORT port = ev.regIdentity.port;
-  uint8_t regAddress = ev.regIdentity.regAddress;
-  uint8_t settings = ev.data;
+void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
+  MCP::PORT port = ev->regIdentity.port;
+  uint8_t regAddress = ev->regIdentity.regAddress;
+  uint8_t settings = ev->data;
   write_mcp_register(regAddress, settings);
 
   xSemaphoreGive(regRWmutex);

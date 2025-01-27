@@ -3,13 +3,13 @@
 EventGroupHandle_t EventManager::registerEventGroup = nullptr;
 SemaphoreHandle_t EventManager::eventMutex = xSemaphoreCreateMutex();
 currentEvent EventManager::current_event = {};
-std::array<currentEvent, MCP::MAX_EVENT>
-    EventManager::eventQueue::unresolvedEvents = {};
+std::array<std::unique_ptr<currentEvent>, MCP::MAX_EVENT>
+    EventManager::eventQueue::unresolvedEvents = {nullptr};
 std::array<size_t, static_cast<size_t>(RegisterEvent::MAX)>
     EventManager::eventQueue::unresolvedEventCounts = {};
 size_t EventManager::eventQueue::head = 0;
 size_t EventManager::eventQueue::tail = 0;
-uint8_t EventManager::event_counter = 0;
+std::atomic<uint8_t> EventManager::event_counter{0};
 
 const EventBits_t EventManager::REGISTER_EVENT_BITS_MASK =
 
@@ -42,22 +42,20 @@ void EventManager::clearBits(RegisterEvent e) {
   xEventGroupClearBits(registerEventGroup, static_cast<EventBits_t>(e));
 }
 
-currentEvent &EventManager::getCurrentEvent() { return current_event; }
-
 int EventManager::getNextId() {
-  if (event_counter < MCP::MAX_EVENT) {
-    event_counter += 1;
-  } else {
-    event_counter = 0;
+  int currentId = event_counter.fetch_add(1);
+  if (currentId >= MCP::MAX_EVENT) {
+    event_counter.store(0); // Reset counter if it exceeds MAX_EVENT
+    currentId = 0;          // Start from 0 again
   }
-  return event_counter;
+  return currentId;
 }
 
-currentEvent EventManager::getEvent(RegisterEvent eventType) {
+currentEvent *EventManager::getEvent(RegisterEvent eventType) {
   if (xSemaphoreTake(eventMutex, portMAX_DELAY) != pdTRUE) {
-    return currentEvent();
+    return nullptr;
   }
-  currentEvent oldestEvent = event_queue.getOldestEvent(eventType);
+  currentEvent *oldestEvent = event_queue.getOldestEvent(eventType);
   xSemaphoreGive(eventMutex);
   return oldestEvent;
 }
@@ -69,10 +67,10 @@ bool EventManager::acknowledgeEvent(int eventId) {
 
   size_t currentIndex = event_queue.head;
   while (currentIndex != event_queue.tail) {
-    auto &event = event_queue.unresolvedEvents[currentIndex];
+    currentEvent *event = event_queue.unresolvedEvents[currentIndex].get();
 
-    if (event.getId() == eventId && !event.isAckKnowledged()) {
-      event.AcknowledgeEvent();
+    if (event && event->getId() == eventId && !event->isAckKnowledged()) {
+      event->AcknowledgeEvent();
       event_queue.removeResolvedEvents();
 
       xSemaphoreGive(eventMutex);
@@ -92,20 +90,9 @@ bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
     return false;
   }
 
-  // Check for duplicates
-  size_t currentIndex = event_queue.head;
-  while (currentIndex != event_queue.tail) {
-    const auto &event = event_queue.getNextEvent(currentIndex);
-    if (event.isIdentical(e, identity, valueOrSettings)) {
-      xSemaphoreGive(eventMutex);
-      return false; // Duplicate found
-    }
-    currentIndex = event_queue.advance(currentIndex);
-  }
-
-  // Create and insert the new event
-  currentEvent newEvent(e, identity, valueOrSettings, getNextId());
-  bool inserted = event_queue.insertEvent(newEvent);
+  std::unique_ptr<currentEvent> newEvent =
+      std::make_unique<currentEvent>(e, identity, valueOrSettings, getNextId());
+  bool inserted = event_queue.insertEvent(std::move(newEvent));
 
   xSemaphoreGive(eventMutex);
   return inserted;
