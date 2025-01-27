@@ -101,6 +101,8 @@ protected:
   uint8_t enumIndex;
   bool readOnly = false;
 
+  registerIdentity identity_;
+
   std::array<Callback, MAX_CALLBACK_PER_REG> callbacks_;
   union {
     uint8_t value; // Full register value
@@ -160,10 +162,10 @@ public:
   }
   uint8_t getSavedSettings() const { return settings_.getSettings(); }
   void updateState(currentEvent &ev) {
-    if (ev.regAddress == regAddress_) {
-      setValue(ev.value);
+    if (ev.regIdentity.regAddress == regAddress_) {
+      setValue(ev.data);
       if (reg_ == REG::IOCON) {
-        settings_.configure(ev.settings);
+        settings_.configure(ev.data);
       }
     }
   }
@@ -190,8 +192,7 @@ public:
     } else {
       value |= mask;
     }
-    EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST, port_,
-                              value);
+    EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
   }
 
   virtual void clearMask(uint8_t mask) {
@@ -200,8 +201,7 @@ public:
     } else {
       value &= ~mask;
     }
-    EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST, port_,
-                              value);
+    EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
   }
 
   bool setValue(uint8_t newValue) {
@@ -211,16 +211,16 @@ public:
 
       bool success = settings_.configure(newValue);
       if (success) {
-        EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                                  port_, 0, newValue);
+        EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                  newValue);
       }
 
       return success;
 
     } else {
       value = newValue;
-      EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST,
-                                port_, value);
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
+                                newValue);
       return true;
     }
   }
@@ -241,7 +241,7 @@ public:
     }
 
     // Trigger an event to notify about the change
-    EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST, port_,
+    EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                               this->value);
 
     ESP_LOGI("RegisterBase", "Bit field %d set to %d in register 0x%02X", field,
@@ -249,16 +249,16 @@ public:
   }
 
   bool getBitField(Field field) const {
-    EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
     return (this->value & (1 << static_cast<uint8_t>(field))) != 0;
   }
 
   bool getBitField(configField field) const {
-    EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
     return settings_.getBitField(field);
   }
   uint8_t getValue() const {
-    EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
     if (reg_ == REG::IOCON) {
       return settings_.getSettings();
     } else {
@@ -293,8 +293,8 @@ public:
     settings_.setBitField(configField::BANK,
                           mode == MCP_BANK_MODE::SEPARATE_BANK);
     updateRegisterAddress();
-    EventManager::createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -302,8 +302,8 @@ public:
   setInterruptSahring(MCP_MIRROR_MODE mode) {
     settings_.setBitField(configField::MIRROR,
                           mode == MCP_MIRROR_MODE::INT_CONNECTED);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -311,8 +311,8 @@ public:
   setOperationMode(MCP_OPERATION_MODE mode) {
     settings_.setBitField(configField::SEQOP,
                           mode == MCP_OPERATION_MODE::BYTE_MODE);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -320,8 +320,8 @@ public:
   setSlewRateMode(MCP_SLEW_RATE mode) {
     settings_.setBitField(configField::DISSLW,
                           mode == MCP_SLEW_RATE::SLEW_DISABLED);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -330,8 +330,8 @@ public:
     if (model_ == MCP::MCP_MODEL::MCP23S17) {
       settings_.setBitField(configField::HAEN,
                             mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
-      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                                port_, 0, settings_.getSettings());
+      EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                settings_.getSettings());
       return true;
     }
     return false;
@@ -345,13 +345,13 @@ public:
     if (!intPolMode && mode == MCP_OPEN_DRAIN::ODR) {
       settings_.setBitField(configField::ODR, true);
       settings_.setBitField(configField::INTPOL, false);
-      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                                port_, 0, settings_.getSettings());
+      EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                settings_.getSettings());
       return true;
     } else if (intPolMode && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
       settings_.setBitField(configField::ODR, false);
-      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                                port_, 0, settings_.getSettings());
+      EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                settings_.getSettings());
       return true;
     }
     return false;
@@ -364,8 +364,8 @@ public:
     if (!outputMode) {
       settings_.setBitField(configField::INTPOL,
                             mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
-      EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                                port_, 0, settings_.getSettings());
+      EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                settings_.getSettings());
       return true;
     }
     return false;
@@ -375,88 +375,88 @@ public:
   typename std::enable_if<T == REG::IOCON, void>::type mergeBanks() {
     settings_.setBitField(configField::BANK, true);
     updateRegisterAddress();
-    EventManager::createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type separateBanks() {
     settings_.setBitField(configField::BANK, false);
     updateRegisterAddress();
-    EventManager::createEvent(regAddress_, RegisterEvent::BANK_MODE_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type mergeInterrupts() {
     settings_.setBitField(configField::MIRROR, true);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type separateInterrupts() {
     settings_.setBitField(configField::MIRROR, false);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableContinuousPoll() {
     settings_.setBitField(configField::SEQOP, false);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableContinuousPoll() {
     settings_.setBitField(configField::SEQOP, true);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableSlewRate() {
     settings_.setBitField(configField::DISSLW, false);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableSlewRate() {
     settings_.setBitField(configField::DISSLW, true);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type enableOpenDrain() {
     settings_.setBitField(configField::ODR, true);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type disableOpenDrain() {
     settings_.setBitField(configField::ODR, false);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
   enableInterruptActiveHigh() {
     settings_.setBitField(configField::INTPOL, true);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
   disableInterruptActiveHigh() {
     settings_.setBitField(configField::INTPOL, false);
-    EventManager::createEvent(regAddress_, RegisterEvent::SETTINGS_CHANGED,
-                              port_, 0, settings_.getSettings());
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              settings_.getSettings());
   }
 
   template <REG T>
@@ -487,6 +487,7 @@ public:
     port_ = p;
     bankMode_ = bm;
     regAddress_ = calculateAddress(rg, p);
+    identity_ = registerIdentity(rg, p, regAddress_);
     initialiseValue();
   }
   void setModel(MCP::MCP_MODEL m) override { model_ = m; }

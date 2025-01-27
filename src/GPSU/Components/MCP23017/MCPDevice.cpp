@@ -102,29 +102,29 @@ void MCPDevice::EventMonitorTask(void *param) {
 void MCPDevice::handleBankModeEvent(currentEvent &ev) {
   Serial.printf("New Event BankMode changed");
 
-  MCP::PORT port = ev.port;
+  MCP::PORT port = ev.regIdentity.port;
   Serial.printf("bank mode change request recieved for port=%d",
                 static_cast<uint8_t>(port));
-  uint8_t regAddress = ev.regAddress;
-  uint8_t settings = ev.settings;
+  uint8_t regAddress = ev.regIdentity.regAddress;
+  uint8_t settings = ev.data;
   write_mcp_register(regAddress, settings);
   xSemaphoreGive(regRWmutex);
 }
 void MCPDevice::handleReadEvent(currentEvent &ev) {
-  uint8_t reg = ev.regAddress;
+  uint8_t reg = ev.regIdentity.regAddress;
   uint8_t value = read_mcp_register(reg);
   xSemaphoreGive(regRWmutex);
 }
 void MCPDevice::handleWriteEvent(currentEvent &ev) {
-  uint8_t reg = ev.regAddress;
-  uint8_t value = ev.value;
+  uint8_t reg = ev.regIdentity.regAddress;
+  uint8_t value = ev.data;
   write_mcp_register(reg, value);
   xSemaphoreGive(regRWmutex);
 }
 void MCPDevice::handleSettingChangeEvent(currentEvent &ev) {
-  MCP::PORT port = ev.port;
-  uint8_t regAddress = ev.regAddress;
-  uint8_t settings = ev.settings;
+  MCP::PORT port = ev.regIdentity.port;
+  uint8_t regAddress = ev.regIdentity.regAddress;
+  uint8_t settings = ev.data;
   write_mcp_register(regAddress, settings);
 
   xSemaphoreGive(regRWmutex);
