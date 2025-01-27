@@ -235,9 +235,9 @@ public:
 
     // Update the specific bit in the register's value
     if (value) {
-      this->value |= (1 << field);
+      this->value |= (1 << static_cast<uint8_t>(field));
     } else {
-      this->value &= ~(1 << field);
+      this->value &= ~(1 << static_cast<uint8_t>(field));
     }
 
     // Trigger an event to notify about the change
