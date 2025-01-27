@@ -91,13 +91,8 @@ void MCPDevice::EventMonitorTask(void *param) {
       if (xSemaphoreTake(regRWmutex, portMAX_DELAY)) {
         MCP::PORT port = EventManager::getCurrentEvent().port;
         uint8_t regAddress = EventManager::getCurrentEvent().regAddress;
-
-        // Get saved settings for the port
         uint8_t settings = EventManager::getCurrentEvent().settings;
-
-        // Write the settings to the register
         device->write_mcp_register(regAddress, settings);
-
         xSemaphoreGive(regRWmutex);
       }
     }

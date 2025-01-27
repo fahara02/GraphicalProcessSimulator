@@ -106,7 +106,10 @@ public:
   uint8_t getInterruptMask() const { return interruptMask; }
 
   // Get the pin state by index
-  bool getPinState(MCP::PIN p) const { return gpio->readPin<REG::GPIO>(p); }
+  bool getPinState(MCP::PIN p) const {
+    assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
+    return gpio->readPin<REG::GPIO>(p);
+  }
   uint8_t getPinStates() const { return gpio->readPins<REG::GPIO>(); }
 
   void setPinState(PIN pin, bool state) {

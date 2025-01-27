@@ -49,17 +49,17 @@ public:
       : value(configure(setting) == true ? configure(setting) : 0) {}
 
   void setBitField(Field field, bool value) {
-    uint8_t *fields = reinterpret_cast<uint8_t *>(this);
-    if (value)
-      *fields |= (1 << field);
-    else
-      *fields &= ~(1 << field);
+    if (value) {
+      this->value |= (1 << static_cast<uint8_t>(field));
+    } else {
+      this->value &= ~(1 << static_cast<uint8_t>(field));
+    }
   }
 
   bool getBitField(Field field) const {
-    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
-    return (*fields & (1 << field)) != 0;
+    return (this->value & (1 << static_cast<uint8_t>(field))) != 0;
   }
+
   uint8_t getSettings() const { return value; }
   bool configure(uint8_t newSettings) {
 
@@ -255,7 +255,7 @@ public:
 
   bool getBitField(configField field) const {
     EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
-    return (this->value & (1 << field)) != 0;
+    return settings_.getBitField(field);
   }
   uint8_t getValue() const {
     EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
@@ -482,20 +482,19 @@ class MCPRegister : public RegisterBase {
 
 public:
   MCPRegister(MCP::MCP_MODEL m, REG rg, PORT p, bool bm) {
-
+    setModel(m);
+    setRegEnum(rg);
     port_ = p;
     bankMode_ = bm;
-    regAddress_ = (calculateAddress(rg, p));
-    setRegEnum(rg);
+    regAddress_ = calculateAddress(rg, p);
     initialiseValue();
-    setModel(m);
   }
-
+  void setModel(MCP::MCP_MODEL m) override { model_ = m; }
   void setRegEnum(MCP::REG reg) override {
     reg_ = reg;
     updateRegisterAddress();
   }
-  void setModel(MCP::MCP_MODEL m) override { model_ = m; }
+
   void updateRegisterAddress() override {
     setAddress(calculateAddress(reg_, port_));
   }
