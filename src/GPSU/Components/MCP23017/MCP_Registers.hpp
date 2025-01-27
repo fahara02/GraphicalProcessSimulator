@@ -86,6 +86,11 @@ public:
 
 //
 class RegisterBase {
+
+public:
+  using Callback = std::function<void(uint8_t)>;
+  using configField = MCP::config_icon_t::Field;
+
 protected:
   REG reg_;
   MCP::MCP_MODEL model_;
@@ -96,9 +101,22 @@ protected:
   uint8_t enumIndex;
   bool readOnly = false;
 
+  std::array<Callback, MAX_CALLBACK_PER_REG> callbacks_;
+  union {
+    uint8_t value; // Full register value
+    struct {
+      uint8_t bit7 : 1;
+      uint8_t bit6 : 1;
+      uint8_t bit5 : 1;
+      uint8_t bit4 : 1;
+      uint8_t bit3 : 1;
+      uint8_t bit2 : 1;
+      uint8_t bit1 : 1;
+      uint8_t bit0 : 1;
+    };
+  };
+
 public:
-  using Callback = std::function<void(uint8_t)>;
-  using configField = MCP::config_icon_t::Field;
   RegisterBase() { callbacks_.fill(nullptr); }
   virtual ~RegisterBase() = default;
   enum Field : uint8_t {
@@ -208,20 +226,26 @@ public:
   }
 
   void setBitField(Field field, bool value) {
-
-    if ((reg_ == REG::IOCON) || (reg_ == REG::INTF)) {
-      return;
-    } else {
-      uint8_t *fields = reinterpret_cast<uint8_t *>(this);
-      if (value)
-        *fields |= (1 << field);
-      else
-        *fields &= ~(1 << field);
-      EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST,
-                                port_, getValue());
-
+    // Check if the register is read-only or unsupported for modification
+    if (readOnly || (reg_ == REG::IOCON) || (reg_ == REG::INTF)) {
+      ESP_LOGW("RegisterBase",
+               "Attempted to modify a read-only or unsupported register");
       return;
     }
+
+    // Update the specific bit in the register's value
+    if (value) {
+      this->value |= (1 << field);
+    } else {
+      this->value &= ~(1 << field);
+    }
+
+    // Trigger an event to notify about the change
+    EventManager::createEvent(regAddress_, RegisterEvent::WRITE_REQUEST, port_,
+                              this->value);
+
+    ESP_LOGI("RegisterBase", "Bit field %d set to %d in register 0x%02X", field,
+             value, regAddress_);
   }
 
   bool getBitField(Field field) const {
@@ -452,22 +476,6 @@ public:
   getInterruptFlag() const {
     return getValue();
   }
-
-private:
-  std::array<Callback, MAX_CALLBACK_PER_REG> callbacks_;
-  union {
-    uint8_t value; // Full register value
-    struct {
-      uint8_t bit7 : 1;
-      uint8_t bit6 : 1;
-      uint8_t bit5 : 1;
-      uint8_t bit4 : 1;
-      uint8_t bit3 : 1;
-      uint8_t bit2 : 1;
-      uint8_t bit1 : 1;
-      uint8_t bit0 : 1;
-    };
-  };
 };
 
 //

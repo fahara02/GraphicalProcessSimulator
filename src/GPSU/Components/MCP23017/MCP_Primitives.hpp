@@ -9,10 +9,6 @@
 
 namespace MCP {
 
-class BitUtil {
-public:
-};
-
 //
 struct Pin {
 private:
