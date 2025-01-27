@@ -249,15 +249,13 @@ public:
   }
 
   bool getBitField(Field field) const {
-
     EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
-    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
-    return (*fields & (1 << field)) != 0;
+    return (this->value & (1 << field)) != 0;
   }
+
   bool getBitField(configField field) const {
     EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
-    const uint8_t *fields = reinterpret_cast<const uint8_t *>(this);
-    return (*fields & (1 << field)) != 0;
+    return (this->value & (1 << field)) != 0;
   }
   uint8_t getValue() const {
     EventManager::createEvent(regAddress_, RegisterEvent::READ_REQUEST, port_);
