@@ -1,5 +1,5 @@
 #include "RegisterEvents.hpp"
-
+static int resolved_req = 0;
 EventGroupHandle_t EventManager::registerEventGroup = nullptr;
 SemaphoreHandle_t EventManager::eventMutex = xSemaphoreCreateMutex();
 currentEvent EventManager::current_event = {};
@@ -52,7 +52,8 @@ int EventManager::getNextId() {
 }
 
 currentEvent *EventManager::getEvent(RegisterEvent eventType) {
-  if (xSemaphoreTake(eventMutex, portMAX_DELAY) != pdTRUE) {
+  if (xSemaphoreTake(eventMutex, MCP::RW_MUTEX_TIMEOUT) != pdTRUE) {
+    ESP_LOGE("EVENT_MANAGER", "Failed to acquire semaphore!");
     return nullptr;
   }
   currentEvent *oldestEvent = event_queue.getOldestEvent(eventType);
@@ -60,25 +61,34 @@ currentEvent *EventManager::getEvent(RegisterEvent eventType) {
   return oldestEvent;
 }
 
-bool EventManager::acknowledgeEvent(int eventId) {
-  if (xSemaphoreTake(eventMutex, portMAX_DELAY) != pdTRUE) {
+bool EventManager::acknowledgeEvent(currentEvent *event) {
+
+  if (xSemaphoreTake(eventMutex, MCP::RW_MUTEX_TIMEOUT) != pdTRUE) {
+    ESP_LOGE("EVENT_MANAGER", "Failed to acquire semaphore!");
+    xSemaphoreGive(eventMutex);
     return false;
   }
 
-  size_t currentIndex = event_queue.head;
-  while (currentIndex != event_queue.tail) {
-    currentEvent *event = event_queue.unresolvedEvents[currentIndex].get();
+  // size_t currentIndex = event_queue.head;
+  // while (currentIndex != event_queue.tail) {
+  //   currentEvent *event = event_queue.unresolvedEvents[currentIndex].get();
+  //   Serial.printf("matching id ...%d", eventId);
+  //   if (event && event->id == eventId && !event->isAckKnowledged()) {
+  //     event->AcknowledgeEvent();
+  //     event_queue.removeResolvedEvents();
 
-    if (event && event->getId() == eventId && !event->isAckKnowledged()) {
-      event->AcknowledgeEvent();
-      event_queue.removeResolvedEvents();
+  //     xSemaphoreGive(eventMutex);
+  //     return true;
+  //   }
 
-      xSemaphoreGive(eventMutex);
-      return true;
-    }
-
-    currentIndex = event_queue.advance(currentIndex);
-  }
+  //   currentIndex = event_queue.advance(currentIndex);
+  // }
+  event->AcknowledgeEvent();
+  event_queue.removeResolvedEvents();
+  resolved_req += 1;
+  Serial.printf("acknowdged %d event resolved request Total %d\n", event->id,
+                resolved_req);
+  Serial.println("");
 
   xSemaphoreGive(eventMutex);
   return false;
@@ -86,14 +96,18 @@ bool EventManager::acknowledgeEvent(int eventId) {
 
 bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
                                uint8_t valueOrSettings) {
-  if (xSemaphoreTake(eventMutex, portMAX_DELAY) != pdTRUE) {
+  if (xSemaphoreTake(eventMutex, MCP::RW_MUTEX_TIMEOUT) != pdTRUE) {
+    ESP_LOGE("EVENT_MANAGER", "Failed to acquire semaphore!");
     return false;
   }
 
   std::unique_ptr<currentEvent> newEvent =
       std::make_unique<currentEvent>(e, identity, valueOrSettings, getNextId());
-  bool inserted = event_queue.insertEvent(std::move(newEvent));
 
+  bool inserted = event_queue.insertEvent(std::move(newEvent));
+  if (inserted) {
+    setBits(e);
+  }
   xSemaphoreGive(eventMutex);
   return inserted;
 }

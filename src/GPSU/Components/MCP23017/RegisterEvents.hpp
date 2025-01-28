@@ -1,6 +1,8 @@
 #ifndef REGISTER_EVENTS_HPP
 #define REGISTER_EVENTS_HPP
+#include "Arduino.h"
 #include "MCP_Constants.hpp"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
@@ -43,27 +45,28 @@ struct registerIdentity {
 
 struct currentEvent {
 
-  RegisterEvent event;
-  registerIdentity regIdentity;
-  uint8_t data;
+  const RegisterEvent event;
+  const registerIdentity regIdentity;
+  const uint8_t data;
+  const int id;
 
   currentEvent(RegisterEvent e = RegisterEvent::MAX,
                registerIdentity identity = registerIdentity{},
-               uint8_t valueOrSettings = 0, uint8_t id = -1)
-      : event(e), regIdentity(identity), data(valueOrSettings), id_(id),
+               uint8_t valueOrSettings = 0, uint8_t _id = -1)
+      : event(e), regIdentity(identity), data(valueOrSettings), id(_id),
         acknowledged_(false){
 
         };
-  constexpr currentEvent &operator=(const currentEvent &other) {
-    if (this != &other) {
+  // constexpr currentEvent &operator=(const currentEvent &other) {
+  //   if (this != &other) {
 
-      event = other.event;
-      regIdentity = other.regIdentity;
-      data = other.data;
-      id_ = other.getId();
-    }
-    return *this;
-  }
+  //     event = other.event;
+  //     regIdentity = other.regIdentity;
+  //     data = other.data;
+  //     id_ = other.getId();
+  //   }
+  //   return *this;
+  // }
   bool isIdentical(const RegisterEvent &e, const registerIdentity &identity,
                    uint8_t valueOrSettings) const {
     return (event == e) && (regIdentity == identity) &&
@@ -75,10 +78,8 @@ struct currentEvent {
     }
   }
   bool isAckKnowledged() const { return acknowledged_; }
-  int getId() const { return id_; }
 
 private:
-  int id_;
   bool acknowledged_;
 };
 class EventManager {
@@ -91,7 +92,9 @@ public:
   static bool createEvent(registerIdentity identity, RegisterEvent e,
                           uint8_t valueOrSettings = 0);
   static currentEvent *getEvent(RegisterEvent eventType);
-  static bool acknowledgeEvent(int eventId);
+  static bool acknowledgeEvent(currentEvent *ev);
+  static size_t getQueueSize() { return event_queue.getQueueSize(); }
+  static bool clearOldestEvent() { return event_queue.removeOldestEvent(); }
 
 protected:
   struct eventQueue {

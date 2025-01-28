@@ -244,8 +244,9 @@ public:
     EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                               this->value);
 
-    ESP_LOGI("RegisterBase", "Bit field %d set to %d in register 0x%02X", field,
-             value, regAddress_);
+    // ESP_LOGI("RegisterBase", "Bit field %d set to %d in register 0x%02X",
+    // field,
+    //          value, regAddress_);
   }
 
   bool getBitField(Field field) const {

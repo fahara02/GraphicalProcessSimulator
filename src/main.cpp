@@ -52,6 +52,8 @@ int tempA = 0;
 int rpmA = 0;
 int percent = 0;
 
+static int send_req = 0;
+
 gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
 gpio_num_t pinB = GPIO_NUM_38;
 
@@ -62,6 +64,7 @@ COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 
 COMPONENT::MCPDevice expander(0x20, MCP::MCP_MODEL::MCP23017);
+void RunTask(void *param);
 void setup() {
 
   Serial.begin(115200);
@@ -78,6 +81,8 @@ void setup() {
   expander.dumpRegisters();
   delay(1000);
   expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
+
+  xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2, nullptr, 0);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -124,70 +129,94 @@ void setup() {
   // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);
 }
+void loop() { vTaskDelete(NULL); }
+// void loop() {
+//   // rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
+//   // fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
+//   // tempA = map(analogRead(temperature_pin), 0, 3867, 0, 80);
+//   // angle++;
+//   // if(angle==266)
 
-void loop() {
-  // rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
-  // fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
-  // tempA = map(analogRead(temperature_pin), 0, 3867, 0, 80);
-  // angle++;
-  // if(angle==266)
+//   // angle2=angle2+2;;
+//   // if(angle2==266)
 
-  // angle2=angle2+2;;
-  // if(angle2==266)
+//   // angle3++;
+//   // if(angle3==266)
 
-  // angle3++;
-  // if(angle3==266)
+//   angle = 0;
+//   angle2 = 0;
+//   angle3 = 27;
 
-  angle = 0;
-  angle2 = 0;
-  angle3 = 27;
+//   img.fillSprite(TFT_WHITE);
+//   img.fillCircle(sx + 52, sy - 32, 4, 0x9062);
+//   img.fillCircle(sx + 52, sy - 18, 4, 0x9062);
 
-  img.fillSprite(TFT_WHITE);
-  img.fillCircle(sx + 52, sy - 32, 4, 0x9062);
-  img.fillCircle(sx + 52, sy - 18, 4, 0x9062);
+//   img.drawCircle(sx, sy, r, gray);
+//   img.drawCircle(sx, sy, r - 1, gray);
+//   img.drawCircle(sx2, sy2, r2, gray);
+//   img.fillRect(sx - r, sy + r - 12, 100, 20, TFT_WHITE);
 
-  img.drawCircle(sx, sy, r, gray);
-  img.drawCircle(sx, sy, r - 1, gray);
-  img.drawCircle(sx2, sy2, r2, gray);
-  img.fillRect(sx - r, sy + r - 12, 100, 20, TFT_WHITE);
+//   img.fillRect(0, 0, 140, 22, green);
+//   img.fillRect(0, 122, 68, 16, green);
+//   img.fillRect(68, 160, 68, 16, green);
+//   img.setTextColor(TFT_WHITE, green);
+//   img.drawString("DASHBOARD", 40, 10, 2);
+//   img.drawString("FUEL", 36, 130, 2);
 
-  img.fillRect(0, 0, 140, 22, green);
-  img.fillRect(0, 122, 68, 16, green);
-  img.fillRect(68, 160, 68, 16, green);
-  img.setTextColor(TFT_WHITE, green);
-  img.drawString("DASHBOARD", 40, 10, 2);
-  img.drawString("FUEL", 36, 130, 2);
+//   img.drawString("TEMP", 36 + 68, 168, 2);
 
-  img.drawString("TEMP", 36 + 68, 168, 2);
+//   img.setTextColor(TFT_PURPLE, TFT_WHITE);
+//   img.drawString("mph", sx, sy + 30, 2);
+//   img.drawString("IDEA3D", 105, 136, 2);
+//   img.drawString("bangladesh", 104, 150, 2);
 
-  img.setTextColor(TFT_PURPLE, TFT_WHITE);
-  img.drawString("mph", sx, sy + 30, 2);
-  img.drawString("IDEA3D", 105, 136, 2);
-  img.drawString("bangladesh", 104, 150, 2);
+//   img.drawString("check engine", 44, 230, 2);
+//   img.setTextColor(TFT_BLACK, TFT_WHITE);
 
-  img.drawString("check engine", 44, 230, 2);
-  img.setTextColor(TFT_BLACK, TFT_WHITE);
+//   img.drawCircle(sx3, sy3, r3, gray);
 
-  img.drawCircle(sx3, sy3, r3, gray);
+//   for (int i = 0; i < angle; i++)
+//     img.fillCircle(x[i], y[i], 3, green);
 
-  for (int i = 0; i < angle; i++)
-    img.fillCircle(x[i], y[i], 3, green);
+//   for (int i = 0; i < angle2; i++)
+//     img.fillCircle(x2[i], y2[i], 2, green);
 
-  for (int i = 0; i < angle2; i++)
-    img.fillCircle(x2[i], y2[i], 2, green);
+//   for (int i = 0; i < angle3; i++)
+//     img.fillCircle(x3[i], y3[i], 2, green);
 
-  for (int i = 0; i < angle3; i++)
-    img.fillCircle(x3[i], y3[i], 2, green);
+//   img.drawString(String(angle), sx, sy, 4);
+//   img.setTextColor(TFT_PURPLE, TFT_WHITE);
+//   img.drawString(String((int)angle2 / 10), sx2, sy2);
+//   img.drawString(String((int)angle3 / 10), sx3, sy3);
+//   img.pushImage(12, 198, 44, 17, oil);
 
-  img.drawString(String(angle), sx, sy, 4);
-  img.setTextColor(TFT_PURPLE, TFT_WHITE);
-  img.drawString(String((int)angle2 / 10), sx2, sy2);
-  img.drawString(String((int)angle3 / 10), sx3, sy3);
-  img.pushImage(12, 198, 44, 17, oil);
+//   img.pushSprite(0, 0);
+//   Serial.println("....");
+//   Serial.printf("count is %llu \n", encoder.getCount());
+//   angle = encoder.getCount();
+//   expander.gpioBankA->getPinStates();
+//   expander.gpioBankB->setPinState(MCP::PIN::PIN11, true);
+//   delay(100);
+//   expander.gpioBankB->setPinState(MCP::PIN::PIN11, false);
+//   expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
+// }
 
-  img.pushSprite(0, 0);
-  Serial.printf("count is %llu \n", encoder.getCount());
-  angle = encoder.getCount();
+void RunTask(void *param) {
+  COMPONENT::MCPDevice *expander = static_cast<COMPONENT::MCPDevice *>(param);
+  while (true) {
+    Serial.println("....MAIN TASK......");
 
-  delay(100);
+    expander->gpioBankA->getPinStates();
+    send_req += 1;
+    vTaskDelay(pdMS_TO_TICKS(100));
+    expander->gpioBankB->setPinState(MCP::PIN::PIN11, true);
+    send_req += 1;
+    vTaskDelay(pdMS_TO_TICKS(100));
+    expander->gpioBankB->setPinState(MCP::PIN::PIN11, false);
+    send_req += 1;
+    Serial.printf("Total send request=%d\n", send_req);
+    Serial.println("..........");
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
+  vTaskDelete(NULL);
 }
