@@ -19,6 +19,7 @@ MCPDevice::MCPDevice(uint8_t address, MCP::MCP_MODEL model)
 }
 
 void MCPDevice::init() {
+  wire_->begin(address_, sda_, scl_, DEFAULT_I2C_CLK_FRQ);
   EventManager::initializeEventGroups();
   bankMode_ = cntrlRegA->getBankMode<MCP::REG::IOCON>() ||
               cntrlRegB->getBankMode<MCP::REG::IOCON>();
@@ -55,7 +56,7 @@ void MCPDevice::EventMonitorTask(void *param) {
   while (true) {
     // Wait for events
     size_t queueSize = EventManager::getQueueSize();
-    if (MAX_EVENT - queueSize < 5) {
+    if (MAX_EVENT - queueSize < 2) {
 
       if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
         EventManager::clearOldestEvent();
@@ -86,8 +87,8 @@ void MCPDevice::EventMonitorTask(void *param) {
       if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
         currentEvent *event =
             EventManager::getEvent(RegisterEvent::READ_REQUEST);
-        if (event && event->id != -1) {
-          EventManager::acknowledgeEvent(event);
+        if (event && event->event != RegisterEvent::MAX) {
+
           device->handleReadEvent(event);
         }
       } else {
@@ -100,8 +101,8 @@ void MCPDevice::EventMonitorTask(void *param) {
       if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
         currentEvent *event =
             EventManager::getEvent(RegisterEvent::WRITE_REQUEST);
-        if (event && event->id != -1) {
-          EventManager::acknowledgeEvent(event);
+        if (event && event->event != RegisterEvent::MAX) {
+
           device->handleWriteEvent(event);
         }
       } else {
@@ -115,9 +116,8 @@ void MCPDevice::EventMonitorTask(void *param) {
       if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
         currentEvent *event =
             EventManager::getEvent(RegisterEvent::BANK_MODE_CHANGED);
-        if (event && event->id != -1) {
+        if (event && event->event != RegisterEvent::MAX) {
 
-          EventManager::acknowledgeEvent(event);
           device->handleBankModeEvent(event);
         }
       } else {
@@ -130,8 +130,8 @@ void MCPDevice::EventMonitorTask(void *param) {
       if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
         currentEvent *event =
             EventManager::getEvent(RegisterEvent::SETTINGS_CHANGED);
-        if (event && event->id != -1) {
-          EventManager::acknowledgeEvent(event);
+        if (event && event->event != RegisterEvent::MAX) {
+
           device->handleSettingChangeEvent(event);
         }
       } else {
@@ -145,23 +145,22 @@ void MCPDevice::EventMonitorTask(void *param) {
 void MCPDevice::handleBankModeEvent(currentEvent *ev) {
 
   MCP::PORT port = ev->regIdentity.port;
-  Serial.printf("bank mode change request recieved for port=%d",
-                static_cast<uint8_t>(port));
+
   uint8_t regAddress = ev->regIdentity.regAddress;
   uint8_t settings = ev->data;
-  // write_mcp_register(regAddress, settings);
-  int eventId = ev->id;
+  write_mcp_register(regAddress, settings);
 
-  // Serial.printf("New Event %d BankMode changed \n", eventId);
+  Serial.printf("New Event %d BankMode changed \n", ev->id);
+  EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::BANK_MODE_CHANGED);
   xSemaphoreGive(regRWmutex);
 }
 void MCPDevice::handleReadEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   // uint8_t value = read_mcp_register(reg);
-  int eventId = ev->id;
 
-  // Serial.printf("New ReadEvent id=%d ;\n", eventId);
+  Serial.printf("New ReadEvent id=%d ;\n", ev->id);
+  EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::READ_REQUEST);
   xSemaphoreGive(regRWmutex);
 }
@@ -169,10 +168,10 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   uint8_t value = ev->data;
 
-  // write_mcp_register(reg, value);
-  int eventId = ev->id;
+  write_mcp_register(reg, value);
 
-  // Serial.printf("New WriteEvent id=%d ; \n", eventId);
+  Serial.printf("New WriteEvent id=%d ; \n", ev->id);
+  EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
   xSemaphoreGive(regRWmutex);
 }
@@ -180,9 +179,93 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   MCP::PORT port = ev->regIdentity.port;
   uint8_t regAddress = ev->regIdentity.regAddress;
   uint8_t settings = ev->data;
-  // write_mcp_register(regAddress, settings);
-
+  write_mcp_register(regAddress, settings);
+  Serial.printf("New SettingChangeEvent id=%d ; \n", ev->id);
+  EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::SETTINGS_CHANGED);
   xSemaphoreGive(regRWmutex);
 }
+
+void MCPDevice::read_mcp_registers_batch(uint8_t startReg, uint8_t *buffer,
+                                         size_t length) {
+  if (!buffer || length == 0) {
+    Serial.println("Invalid buffer or length for batch read.");
+    return;
+  }
+
+  if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
+    wire_->beginTransmission(address_);
+    wire_->write(startReg);        // Start at the first register address
+    wire_->endTransmission(false); // Restart condition to read
+
+    size_t bytesRead =
+        wire_->requestFrom((uint8_t)address_, (uint8_t)length, (uint8_t) true);
+    if (bytesRead == length) {
+      for (size_t i = 0; i < length; ++i) {
+        buffer[i] = wire_->read(); // Read each byte into buffer
+      }
+      Serial.printf("Batch read successful: %d bytes starting at 0x%X.\n",
+                    length, startReg);
+    } else {
+      Serial.printf("Batch read failed. Expected %d bytes, got %d.\n", length,
+                    bytesRead);
+    }
+
+    xSemaphoreGive(regRWmutex);
+  } else {
+    Serial.println("Failed to acquire mutex for batch read.");
+  }
+}
+// std::unordered_map<uint8_t, uint8_t> MCPDevice::batchReadRegisters() {
+//   std::unordered_map<uint8_t, uint8_t> registerValues;
+//   constexpr size_t totalRegisters = 2 * MCP::MAX_REG_PER_PORT;
+
+//   uint8_t buffer[totalRegisters] = {0};
+
+//   uint8_t startRegAddress =
+//       Util::calculateAddress(MCP::REG::IODIR, MCP::PORT::GPIOA, bankMode_);
+//   read_mcp_registers_batch(startRegAddress, buffer, totalRegisters);
+
+//   // Map the buffer data to register addresses
+//   for (uint8_t i = 0; i < totalRegisters; ++i) {
+//     // Calculate the corresponding register address
+//     MCP::PORT port =
+//         (i < MCP::MAX_REG_PER_PORT) ? MCP::PORT::GPIOA : MCP::PORT::GPIOB;
+//     MCP::REG reg = static_cast<MCP::REG>(i % MCP::MAX_REG_PER_PORT);
+
+//     uint8_t address = Util::calculateAddress(reg, port, bankMode_);
+//     registerValues[address] = buffer[i];
+//   }
+
+//   return registerValues;
+// }
+void MCPDevice::write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
+                                          size_t length) {
+  if (!data || length == 0) {
+    Serial.println("Invalid data or length for batch write.");
+    return;
+  }
+
+  if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
+    wire_->beginTransmission(address_);
+    wire_->write(startReg); // Start at the first register address
+
+    for (size_t i = 0; i < length; ++i) {
+      wire_->write(data[i]); // Write each byte
+    }
+
+    esp_err_t result = wire_->endTransmission(true);
+    if (result == ESP_OK) {
+      Serial.printf("Batch write successful: %d bytes starting at 0x%X.\n",
+                    length, startReg);
+    } else {
+      Serial.printf("Batch write failed with error: %d.\n", result);
+    }
+
+    xSemaphoreGive(regRWmutex);
+  } else {
+    Serial.println("Failed to acquire mutex for batch write.");
+  }
+}
+
 } // namespace COMPONENT

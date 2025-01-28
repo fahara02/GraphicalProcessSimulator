@@ -104,8 +104,6 @@ public:
                value);
     }
   }
-  uint8_t read_mcp_register(const uint8_t reg);
-  void write_mcp_register(const uint8_t reg, uint8_t value);
 
 private:
   void init();
@@ -116,6 +114,13 @@ private:
   void handleWriteEvent(currentEvent *ev);
   void handleSettingChangeEvent(currentEvent *ev);
   void handleBankModeEvent(currentEvent *ev);
+  uint8_t read_mcp_register(const uint8_t reg);
+  void write_mcp_register(const uint8_t reg, uint8_t value);
+
+  void read_mcp_registers_batch(uint8_t startReg, uint8_t *buffer,
+                                size_t length);
+  void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
+                                 size_t length);
 };
 
 } // namespace COMPONENT

@@ -14,6 +14,8 @@
 #include <WiFiManager.h>
 #include <WifiClient.h>
 
+TaskHandle_t runTaskhandle = nullptr;
+
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite img = TFT_eSprite(&tft);
 
@@ -81,8 +83,15 @@ void setup() {
   expander.dumpRegisters();
   delay(1000);
   expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
-
-  xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2, nullptr, 0);
+  delay(2000);
+  expander.gpioBankB->setPinDirection(MCP::PIN::PIN9,
+                                      MCP::GPIO_MODE::GPIO_OUTPUT);
+  delay(1000);
+  expander.gpioBankB->setPinDirection(MCP::PIN::PIN10,
+                                      MCP::GPIO_MODE::GPIO_OUTPUT);
+  delay(1000);
+  xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
+                          &runTaskhandle, 0);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -129,7 +138,11 @@ void setup() {
   // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);
 }
-void loop() { vTaskDelete(NULL); }
+void loop() {
+
+  Serial.println("....");
+  delay(2000);
+}
 // void loop() {
 //   // rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
 //   // fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
@@ -206,13 +219,13 @@ void RunTask(void *param) {
   while (true) {
     Serial.println("....MAIN TASK......");
 
-    expander->gpioBankA->getPinStates();
+    expander->gpioBankA->getPinState();
     send_req += 1;
-    vTaskDelay(pdMS_TO_TICKS(100));
-    expander->gpioBankB->setPinState(MCP::PIN::PIN11, true);
+    vTaskDelay(pdMS_TO_TICKS(200));
+    expander->gpioBankB->setPinState(00000011, true);
     send_req += 1;
-    vTaskDelay(pdMS_TO_TICKS(100));
-    expander->gpioBankB->setPinState(MCP::PIN::PIN11, false);
+    vTaskDelay(pdMS_TO_TICKS(200));
+    expander->gpioBankB->setPinState(00000011, false);
     send_req += 1;
     Serial.printf("Total send request=%d\n", send_req);
     Serial.println("..........");

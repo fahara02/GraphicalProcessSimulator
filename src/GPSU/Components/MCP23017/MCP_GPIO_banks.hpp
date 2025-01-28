@@ -70,61 +70,109 @@ public:
       ESP_LOGE(BANK_TAG, "Invalid register type requested!");
     }
   }
-  uint8_t getSavedValue(REG reg) const {
+  bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
+    MCP::REG regType = Util::findRegister(reg_address, bankMode);
+    if (regType == REG::IOCON) {
+      return iocon->updateState(value);
+    } else {
+      auto reg = getRegister(regType);
+      return reg->updateState(value);
+    }
+  }
 
+  // This method will not trigger any read event , only return register's
+  // current saved value
+  uint8_t getSavedValue(REG reg) const {
     return registerSavedValues[static_cast<uint8_t>(reg)];
   }
   uint8_t getAddress(REG reg) const {
     return registerAddress[static_cast<uint8_t>(reg)];
   }
   // Pin masks
-  void setGeneralMask(MASK mask) {
-    generalMask = static_cast<uint8_t>(mask);
-    updatePins();
-    if (interruptEnabled) {
-      updatePinInterruptState();
-    }
-  }
-
-  void setGeneralMask(uint8_t mask) {
-    // Ensure the mask is valid for the current configuration of PIN_PER_BANK
-    static_assert(PIN_PER_BANK <= 8, "Only 8-bit masks are supported!");
-
-    // Assert that the mask fits within the valid range
-    assert((mask & ~((1 << PIN_PER_BANK) - 1)) == 0 &&
-           "Invalid mask: must be within the valid pin range!");
-
-    generalMask = mask;
-    updatePins();
-    if (interruptEnabled) {
-      updatePinInterruptState();
-    }
-  }
-
+  void setGeneralMask(MASK mask) { generalMask = static_cast<uint8_t>(mask); }
+  void setGeneralMask(uint8_t mask) { generalMask = mask; }
   uint8_t getGeneralMask() const { return generalMask; }
-
   uint8_t getInterruptMask() const { return interruptMask; }
 
-  // Get the pin state by index
+  // PIN DIRECTION SELECTION
+  void setPinDirection(PIN p, GPIO_MODE m) {
+    assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
+    iodir->setPinMode<REG::IODIR>(p, m);
+  }
+  void setPinsAsOutput(uint8_t pinmask) {
+    iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
+  }
+  void setPinsAsInput(uint8_t pinmask) {
+    iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
+  }
+  void setPinsAsInput() {
+    iodir->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_INPUT);
+  }
+  void setPinsAsOutput() {
+    iodir->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_OUTPUT);
+  }
+
+  void setBankAsOutput() {
+    GPIO_MODE m = GPIO_MODE::GPIO_OUTPUT;
+    uint8_t pinmask = static_cast<uint8_t>(MASK::ALL);
+    iodir->setPinMode<REG::IODIR>(pinmask, m);
+  }
+
+  void setBankAsInput() {
+    GPIO_MODE m = GPIO_MODE::GPIO_INPUT;
+    uint8_t pinmask = static_cast<uint8_t>(MASK::ALL);
+    iodir->setPinMode<REG::IODIR>(pinmask, m);
+  }
+  // PULLUP SELECTION
+  void setPullup(PIN pin, PULL_MODE mode) {
+    gppu->setPullType<REG::GPPU>(pin, mode);
+  }
+
+  void setPinsPullup(uint8_t pinMask, PULL_MODE mode) {
+    gppu->setPullType<REG::GPPU>(pinMask, mode);
+  }
+
+  void setPinsPullup(PULL_MODE mode) {
+    gppu->setPullType<REG::GPPU>(generalMask, mode);
+  }
+
+  void setBankPullup(PULL_MODE mode) {
+    uint8_t pinMask = static_cast<uint8_t>(MASK::ALL);
+    gppu->setPullType<REG::GPPU>(pinMask, mode);
+  }
+
+  // Get PIN VALUE
   bool getPinState(MCP::PIN p) const {
     assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
     return gpio->readPin<REG::GPIO>(p);
   }
-  uint8_t getPinStates() const { return gpio->readPins<REG::GPIO>(); }
-
-  void setPinState(PIN pin, bool state) {
-
+  uint8_t getPinState() const { return gpio->readPins<REG::GPIO>(); }
+  bool getPinState(uint8_t pinmask) {
+    return gpio->readPins<REG::GPIO>(pinmask);
+  }
+  // SET PIN POLARITY
+  void setInputPolarity(PIN pin, INPUT_POLARITY pol) {
     assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
-
+    ipol->setInputPolarity<REG::IPOL>(pin, pol);
+  }
+  void setInputPolarity(uint8_t pinmask, INPUT_POLARITY pol) {
+    ipol->setInputPolarity<REG::IPOL>(pinmask, pol);
+  }
+  void setInputPolarity(INPUT_POLARITY pol) {
+    ipol->setInputPolarity<REG::IPOL>(generalMask, pol);
+  }
+  // SET PIN VALUE
+  void setPinState(PIN pin, bool state) {
+    assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
     olat->setOutputLatch<REG::OLAT>(pin, state);
   }
 
+  void setPinState(uint8_t pinmask, bool state) {
+    olat->setOutputLatch<REG::OLAT>(pinmask, state);
+  }
+
   void setPinState(bool state) {
-    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      if (generalMask & (1 << i)) {
-        Pins[i].setState(state);
-      }
-    }
+    olat->setOutputLatch<REG::OLAT>(generalMask, state);
   }
 
   void setupInterrupt(uint8_t pinMask = 0xFF,
@@ -145,10 +193,6 @@ public:
   }
 
   // Set pull-up resistor for a pin by index
-  void setPullup(uint8_t index, bool enable) {}
-
-  // Set pin direction (INPUT or OUTPUT) by index
-  void setPinDirection(uint8_t index, GPIO_MODE mode) {}
 
   bool isInterruptEnabled() const { return interruptEnabled; }
 
@@ -311,16 +355,7 @@ private:
       updatePinInterruptState();
     }
   }
-  void updatePins() {
-    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      bool isGeneralMaskSet = Util::BIT::isSet(generalMask, i);
-
-      if (!isGeneralMaskSet) {
-
-        Pins[i].setState(false);
-      }
-    }
-  }
+  void updatePins() {}
 
   void updatePinInterruptState() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {

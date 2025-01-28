@@ -203,7 +203,14 @@ public:
     }
     EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
   }
-
+  bool updateState(uint8_t newValue) {
+    if (reg_ == REG::IOCON) {
+      return settings_.configure(newValue);
+    } else {
+      value = newValue;
+      return true;
+    }
+  }
   bool setValue(uint8_t newValue) {
     if (reg_ == REG::INTF) {
       return false;
@@ -244,9 +251,8 @@ public:
     EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                               this->value);
 
-    // ESP_LOGI("RegisterBase", "Bit field %d set to %d in register 0x%02X",
-    // field,
-    //          value, regAddress_);
+    ESP_LOGI("RegisterBase", "Bit field %d set to %d in register 0x%02X", field,
+             value, regAddress_);
   }
 
   bool getBitField(Field field) const {
@@ -527,11 +533,8 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::GPIO, uint8_t>::type //
   readPins(uint8_t pinmask) {
-    uint8_t result = 0;
 
-    result = getValue() & pinmask;
-
-    return result;
+    return getValue() & pinmask;
   }
 
   template <REG T>

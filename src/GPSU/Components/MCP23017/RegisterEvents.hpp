@@ -52,21 +52,12 @@ struct currentEvent {
 
   currentEvent(RegisterEvent e = RegisterEvent::MAX,
                registerIdentity identity = registerIdentity{},
-               uint8_t valueOrSettings = 0, uint8_t _id = -1)
+               uint8_t valueOrSettings = 0, uint8_t _id = 0)
       : event(e), regIdentity(identity), data(valueOrSettings), id(_id),
         acknowledged_(false){
 
         };
-  // constexpr currentEvent &operator=(const currentEvent &other) {
-  //   if (this != &other) {
 
-  //     event = other.event;
-  //     regIdentity = other.regIdentity;
-  //     data = other.data;
-  //     id_ = other.getId();
-  //   }
-  //   return *this;
-  // }
   bool isIdentical(const RegisterEvent &e, const registerIdentity &identity,
                    uint8_t valueOrSettings) const {
     return (event == e) && (regIdentity == identity) &&
@@ -117,6 +108,7 @@ protected:
       if (isFull()) {
         return false;
       }
+      int id = ev->id;
       // Check for duplicates and find a cleared slot (nullptr)
       size_t currentIndex = head;
       while (currentIndex != tail) {
@@ -134,10 +126,12 @@ protected:
       }
       // If no cleared slot is found, insert at the tail
       unresolvedEvents[tail] = std::move(ev);
-
+      ESP_LOGI("EVENT_MANAGER", "created event for position =%d for id=%d",
+               tail, id);
       unresolvedEventCounts[static_cast<size_t>(
           unresolvedEvents[tail]->event)]++;
       tail = advance(tail);
+
       return true;
     }
 

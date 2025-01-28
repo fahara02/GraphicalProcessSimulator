@@ -82,7 +82,7 @@ static constexpr uint16_t MAX_PIN = 2 * PIN_PER_BANK;
 static constexpr uint16_t MAX_REG_PER_PORT = 11;
 static constexpr uint16_t MAX_REG_PER_DEVICE = 2 * MAX_REG_PER_PORT;
 static constexpr uint16_t MAX_CALLBACK_PER_REG = 2;
-static constexpr uint16_t MAX_EVENT = 30;
+static constexpr uint16_t MAX_EVENT = 100;
 
 static constexpr TickType_t MUTEX_TIMEOUT = pdMS_TO_TICKS(50);
 static constexpr TickType_t RW_MUTEX_TIMEOUT = pdMS_TO_TICKS(50);

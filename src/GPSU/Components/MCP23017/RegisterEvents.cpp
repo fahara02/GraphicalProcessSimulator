@@ -65,30 +65,10 @@ bool EventManager::acknowledgeEvent(currentEvent *event) {
 
   if (xSemaphoreTake(eventMutex, MCP::RW_MUTEX_TIMEOUT) != pdTRUE) {
     ESP_LOGE("EVENT_MANAGER", "Failed to acquire semaphore!");
-    xSemaphoreGive(eventMutex);
     return false;
   }
-
-  // size_t currentIndex = event_queue.head;
-  // while (currentIndex != event_queue.tail) {
-  //   currentEvent *event = event_queue.unresolvedEvents[currentIndex].get();
-  //   Serial.printf("matching id ...%d", eventId);
-  //   if (event && event->id == eventId && !event->isAckKnowledged()) {
-  //     event->AcknowledgeEvent();
-  //     event_queue.removeResolvedEvents();
-
-  //     xSemaphoreGive(eventMutex);
-  //     return true;
-  //   }
-
-  //   currentIndex = event_queue.advance(currentIndex);
-  // }
   event->AcknowledgeEvent();
   event_queue.removeResolvedEvents();
-  resolved_req += 1;
-  Serial.printf("acknowdged %d event resolved request Total %d\n", event->id,
-                resolved_req);
-  Serial.println("");
 
   xSemaphoreGive(eventMutex);
   return false;
@@ -100,13 +80,16 @@ bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
     ESP_LOGE("EVENT_MANAGER", "Failed to acquire semaphore!");
     return false;
   }
+  int new_id = getNextId();
 
   std::unique_ptr<currentEvent> newEvent =
-      std::make_unique<currentEvent>(e, identity, valueOrSettings, getNextId());
+      std::make_unique<currentEvent>(e, identity, valueOrSettings, new_id);
 
   bool inserted = event_queue.insertEvent(std::move(newEvent));
   if (inserted) {
     setBits(e);
+  } else {
+    ESP_LOGE("EVENT_MANAGER", "insertion failed for id=%d", new_id);
   }
   xSemaphoreGive(eventMutex);
   return inserted;

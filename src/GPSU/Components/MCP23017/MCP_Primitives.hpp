@@ -11,16 +11,11 @@ namespace MCP {
 
 //
 struct Pin {
-private:
+
   const PIN pinEnum;
   const PORT port;
   const uint8_t pinNumber;
   const uint8_t mask;
-
-  bool state;
-  bool interruptEnabled;
-
-public:
   // Constructor
 
   constexpr Pin(PIN pin)
@@ -53,6 +48,10 @@ public:
   // State management
   bool getState() const { return state; }
   void setState(bool newState) { state = newState; }
+
+private:
+  bool state;
+  bool interruptEnabled;
 };
 
 // GPA Pins (PIN0 to PIN7)
