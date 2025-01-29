@@ -65,7 +65,7 @@ COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 
-COMPONENT::MCPDevice expander(0x20, MCP::MCP_MODEL::MCP23017);
+COMPONENT::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
 void RunTask(void *param);
 void setup() {
 

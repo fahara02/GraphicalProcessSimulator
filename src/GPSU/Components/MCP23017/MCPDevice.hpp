@@ -3,6 +3,7 @@
 
 #include "Arduino.h"
 #include "MCP_GPIO_banks.hpp"
+#include "MCP_I2Cbus.hpp"
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
 #include "RegisterEvents.hpp"
@@ -20,6 +21,7 @@ namespace COMPONENT {
 class MCPDevice {
 private:
   MCP::MCP_MODEL model_;
+  MCP::address_decoder_t addressDecoder_;
   uint8_t address_;
   gpio_num_t sda_;
   gpio_num_t scl_;
@@ -27,6 +29,7 @@ private:
   gpio_num_t reset_;
   std::unique_ptr<TwoWire> wire_;
   bool bankMode_;
+  bool sequentialMode_;
 
   static SemaphoreHandle_t regRWmutex;
   TaskHandle_t eventTaskHandle;
@@ -37,73 +40,17 @@ public:
   std::shared_ptr<MCP::MCPRegister> cntrlRegA;
   std::shared_ptr<MCP::MCPRegister> cntrlRegB;
 
-  MCPDevice(uint8_t address, MCP::MCP_MODEL model);
+  MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
+            bool pinA0 = false);
 
-  void configure(const MCP::config_icon_t &config) {
-    if (cntrlRegA && cntrlRegB) {
-      cntrlRegA->configure<MCP::REG::IOCON>(config.getSettings());
-      cntrlRegB->configure<MCP::REG::IOCON>(config.getSettings());
-    }
-  }
-  MCP::MCPRegister *getRegister(MCP::REG reg, MCP::PORT port) {
-    if (port == MCP::PORT::GPIOA) {
+  void configure(const MCP::config_icon_t &config);
+  MCP::MCPRegister *getRegister(MCP::REG reg, MCP::PORT port);
+  uint8_t getsavedSettings(MCP::PORT port) const;
+  void updateRegisters(MCPDevice *device);
+  uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const;
 
-      return gpioBankA->getRegister(reg);
-
-    } else {
-
-      return gpioBankB->getRegister(reg);
-    }
-  }
-  uint8_t getsavedSettings(MCP::PORT port) const {
-    return port == MCP::PORT::GPIOA ? cntrlRegA->getSavedValue()
-                                    : cntrlRegB->getSavedValue();
-  }
-
-  static void updateRegisters(MCPDevice *device) {
-    if (device) {
-    }
-  }
-  uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const {
-    if (port == MCP::PORT::GPIOA) {
-      return gpioBankA->getAddress(reg);
-    } else {
-      return gpioBankB->getAddress(reg);
-    }
-  }
-
-  uint8_t getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const {
-    if (port == MCP::PORT::GPIOA) {
-      return gpioBankA->getSavedValue(reg);
-    } else {
-      return gpioBankB->getSavedValue(reg);
-    }
-  }
-  void dumpRegisters() const {
-
-    ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
-             address_);
-
-    // Dump PORTA Registers
-    ESP_LOGI(MCP_TAG, "PORTA Registers:");
-    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
-      MCP::REG reg = static_cast<MCP::REG>(i);
-      uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOA);
-      uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOA);
-      ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
-               value);
-    }
-
-    // Dump PORTB Registers
-    ESP_LOGI(MCP_TAG, "PORTB Registers:");
-    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
-      MCP::REG reg = static_cast<MCP::REG>(i);
-      uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOB);
-      uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOB);
-      ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
-               value);
-    }
-  }
+  uint8_t getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const;
+  void dumpRegisters() const;
 
 private:
   void init();
@@ -117,8 +64,7 @@ private:
   uint8_t read_mcp_register(const uint8_t reg);
   void write_mcp_register(const uint8_t reg, uint8_t value);
 
-  void read_mcp_registers_batch(uint8_t startReg, uint8_t *buffer,
-                                size_t length);
+  void read_mcp_registers_batch(uint8_t startReg, uint8_t *data, size_t length);
   void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
                                  size_t length);
 };

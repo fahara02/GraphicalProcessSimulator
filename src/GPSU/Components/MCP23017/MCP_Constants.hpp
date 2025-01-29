@@ -1,6 +1,8 @@
 #ifndef MCP_CONSTANTS_HPP
 #define MCP_CONSTANTS_HPP
+#include "freertos/FreeRTOS.h"
 #include "stdint.h"
+
 namespace MCP {
 
 // MCP DEVICE RELATED
@@ -46,7 +48,7 @@ enum class PIN {
 namespace MCP_23X17 {
 
 namespace MCP_23017 {
-enum class I2C_CLK {
+enum class I2C_CLK : uint32_t {
   CLK_STD = 100000,  // 100KHz
   CLK_HIGH = 400000, // 400 Khz
   CLK_MAX = 17000000 // 1.7 MHZ
@@ -70,10 +72,10 @@ enum class MCP_OPEN_DRAIN { ACTIVE_DRIVER = 0, ODR = 1 };
 enum class MCP_INT_POL { MCP_ACTIVE_LOW = 0, MCP_ACTIVE_HIGH = 1 };
 
 static constexpr uint16_t INT_ERR = 255;
-
+static constexpr uint16_t MCP_ADDRESS_BASE = 0x20;
 static constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x20;
-static constexpr uint16_t DEFAULT_I2C_CLK_FRQ =
-    static_cast<uint16_t>(MCP_23X17::MCP_23017::I2C_CLK::CLK_STD);
+static constexpr uint32_t DEFAULT_I2C_CLK_FRQ =
+    static_cast<uint32_t>(MCP_23X17::MCP_23017::I2C_CLK::CLK_STD);
 static constexpr uint16_t I2C_MASTER_TX_BUF_DISABLE = 0;
 static constexpr uint16_t I2C_MASTER_RX_BUF_DISABLE = 0;
 
@@ -84,6 +86,7 @@ static constexpr uint16_t MAX_REG_PER_DEVICE = 2 * MAX_REG_PER_PORT;
 static constexpr uint16_t MAX_CALLBACK_PER_REG = 2;
 static constexpr uint16_t MAX_EVENT = 100;
 
+static constexpr TickType_t DEFAULT_I2C_TIMEOUT = pdMS_TO_TICKS(1000);
 static constexpr TickType_t MUTEX_TIMEOUT = pdMS_TO_TICKS(50);
 static constexpr TickType_t RW_MUTEX_TIMEOUT = pdMS_TO_TICKS(50);
 enum class MASK {

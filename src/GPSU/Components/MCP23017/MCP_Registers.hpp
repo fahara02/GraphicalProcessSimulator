@@ -13,6 +13,28 @@
 #define REG_TAG "MCP_REGISTERS"
 namespace MCP {
 
+struct address_decoder_t {
+  const MCP::MCP_MODEL model_;
+  const bool A2_;
+  const bool A1_;
+  const bool A0_;
+
+  address_decoder_t(MCP::MCP_MODEL m, bool A2, bool A1, bool A0)
+      : model_(m), A2_(A2), A1_(A1), A0_(A0),
+        device_i2c_address(decodeDeviceAddress()) {}
+
+  constexpr uint8_t decodeDeviceAddress() {
+    if (model_ == MCP::MCP_MODEL::MCP23017 ||
+        model_ == MCP::MCP_MODEL::MCP23S17) {
+      return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
+    }
+    return MCP_ADDRESS_BASE;
+  }
+  uint8_t getDeviceAddress() const { return device_i2c_address; }
+
+private:
+  uint8_t device_i2c_address;
+};
 struct config_icon_t {
 public:
 public:
@@ -287,6 +309,11 @@ public:
   // IOCON-specific methods
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
+  updateSettingBit(configField field, bool value) {
+    return settings_.setBitField(field, value);
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type
   configure(const uint8_t &settings) {
     bool status = settings_.configure(settings);
     if (status) {
@@ -470,6 +497,11 @@ public:
   typename std::enable_if<T == REG::IOCON, bool>::type getBankMode() const {
     return settings_.getBitField(configField::BANK);
   }
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, bool>::type
+  getSequentialMode() const {
+    return settings_.getBitField(configField::SEQOP);
+  }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, uint8_t>::type getSettings() const {
@@ -502,7 +534,10 @@ public:
     reg_ = reg;
     updateRegisterAddress();
   }
-
+  bool updatebankMode(bool mode) {
+    bankMode_ = mode;
+    return true;
+  }
   void updateRegisterAddress() override {
     setAddress(calculateAddress(reg_, port_));
   }

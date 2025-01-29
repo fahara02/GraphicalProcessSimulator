@@ -2,13 +2,14 @@
 using namespace MCP;
 namespace COMPONENT {
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
-MCPDevice::MCPDevice(uint8_t address, MCP::MCP_MODEL model)
-    : model_(model), address_(address),    //
-      sda_(GPIO_NUM_21),                   //
-      scl_(GPIO_NUM_22),                   //
-      cs_(GPIO_NUM_NC),                    //
-      reset_(GPIO_NUM_33),                 //
-      wire_(std::make_unique<TwoWire>(0)), //
+MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
+    : model_(model), addressDecoder_(model, pinA2, pinA1, pinA0),
+      address_(addressDecoder_.getDeviceAddress()), //
+      sda_(GPIO_NUM_21),                            //
+      scl_(GPIO_NUM_22),                            //
+      cs_(GPIO_NUM_NC),                             //
+      reset_(GPIO_NUM_33),                          //
+      wire_(std::make_unique<TwoWire>(0)),          //
       gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
       gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
       cntrlRegA(gpioBankA->getControlRegister()),
@@ -19,10 +20,12 @@ MCPDevice::MCPDevice(uint8_t address, MCP::MCP_MODEL model)
 }
 
 void MCPDevice::init() {
-  wire_->begin(address_, sda_, scl_, DEFAULT_I2C_CLK_FRQ);
+  wire_->begin(sda_, scl_, DEFAULT_I2C_CLK_FRQ);
   EventManager::initializeEventGroups();
   bankMode_ = cntrlRegA->getBankMode<MCP::REG::IOCON>() ||
               cntrlRegB->getBankMode<MCP::REG::IOCON>();
+  sequentialMode_ = cntrlRegA->getSequentialMode<MCP::REG::IOCON>() ||
+                    cntrlRegB->getSequentialMode<MCP::REG::IOCON>();
   startEventMonitorTask(this);
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
@@ -265,6 +268,72 @@ void MCPDevice::write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
     xSemaphoreGive(regRWmutex);
   } else {
     Serial.println("Failed to acquire mutex for batch write.");
+  }
+}
+
+void MCPDevice::configure(const MCP::config_icon_t &config) {
+  if (cntrlRegA && cntrlRegB) {
+    cntrlRegA->configure<MCP::REG::IOCON>(config.getSettings());
+    cntrlRegB->configure<MCP::REG::IOCON>(config.getSettings());
+  }
+}
+MCP::MCPRegister *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
+  if (port == MCP::PORT::GPIOA) {
+
+    return gpioBankA->getRegister(reg);
+
+  } else {
+
+    return gpioBankB->getRegister(reg);
+  }
+}
+uint8_t MCPDevice::getsavedSettings(MCP::PORT port) const {
+  return port == MCP::PORT::GPIOA ? cntrlRegA->getSavedValue()
+                                  : cntrlRegB->getSavedValue();
+}
+
+uint8_t MCPDevice::getRegisterAddress(MCP::REG reg, MCP::PORT port) const {
+  if (port == MCP::PORT::GPIOA) {
+    return gpioBankA->getAddress(reg);
+  } else {
+    return gpioBankB->getAddress(reg);
+  }
+}
+
+uint8_t MCPDevice::getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const {
+  if (port == MCP::PORT::GPIOA) {
+    return gpioBankA->getSavedValue(reg);
+  } else {
+    return gpioBankB->getSavedValue(reg);
+  }
+}
+void MCPDevice::dumpRegisters() const {
+
+  ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
+           address_);
+
+  // Dump PORTA Registers
+  ESP_LOGI(MCP_TAG, "PORTA Registers:");
+  for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+    MCP::REG reg = static_cast<MCP::REG>(i);
+    uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOA);
+    uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOA);
+    ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
+             value);
+  }
+
+  // Dump PORTB Registers
+  ESP_LOGI(MCP_TAG, "PORTB Registers:");
+  for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
+    MCP::REG reg = static_cast<MCP::REG>(i);
+    uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOB);
+    uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOB);
+    ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
+             value);
+  }
+}
+void MCPDevice::updateRegisters(MCPDevice *device) {
+  if (device) {
   }
 }
 
