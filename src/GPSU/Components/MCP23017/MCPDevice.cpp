@@ -196,11 +196,16 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
 }
 void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   MCP::PORT port = ev->regIdentity.port;
-  uint8_t regAddress = ev->regIdentity.regAddress;
+  uint8_t reg = ev->regIdentity.regAddress;
   uint8_t settings = ev->data;
-  write_mcp_register(regAddress, settings);
-  Serial.printf("New SettingChangeEvent id=%d ; \n", ev->id);
-  EventManager::acknowledgeEvent(ev);
+  uint8_t result = write_mcp_register(reg, settings);
+  if (result == 0) {
+    Serial.printf("New Setting Event sucessfull id=%d ; \n", ev->id);
+    EventManager::acknowledgeEvent(ev);
+  } else {
+    Serial.printf("New Setting Event failed for id=%d ; \n", ev->id);
+  }
+
   EventManager::clearBits(RegisterEvent::SETTINGS_CHANGED);
   xSemaphoreGive(regRWmutex);
 }

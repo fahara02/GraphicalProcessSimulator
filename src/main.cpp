@@ -84,9 +84,9 @@ void setup() {
   delay(1000);
   // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   delay(2000);
-  expander.gpioBankA->setPinsAsOutput(0XFF);
+  expander.gpioBankA->setBankAsOutput();
   delay(1000);
-
+  expander.cntrlRegA->enableOpenDrain<MCP::REG::IOCON>();
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);
@@ -216,12 +216,18 @@ void RunTask(void *param) {
   COMPONENT::MCPDevice *expander = static_cast<COMPONENT::MCPDevice *>(param);
   while (true) {
     Serial.println("....MAIN TASK......");
+    uint8_t mask = 0b00011110;
+    expander->gpioBankA->setPinState(mask, true);
+    // send_req += 1;
 
-    expander->gpioBankA->setPinState(00011110, true);
+    // expander->gpioBankA->setPinState(mask, false);
+    vTaskDelay(pdMS_TO_TICKS(200));
     send_req += 1;
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    expander->gpioBankA->setPinState(00011110, false);
-    send_req += 1;
+    if (send_req == 2) {
+      send_req = 0;
+      expander->gpioBankA->setPinState(mask, false);
+      vTaskDelay(pdMS_TO_TICKS(200));
+    }
     Serial.printf("Total send request=%d\n", send_req);
     Serial.println("..........");
     vTaskDelay(pdMS_TO_TICKS(100));

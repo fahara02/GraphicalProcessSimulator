@@ -250,6 +250,7 @@ public:
       value = newValue;
       EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                                 newValue);
+
       return true;
     }
   }
@@ -673,6 +674,9 @@ public:
     } else {
       clearMask(pinmask);
     }
+    ESP_LOGI("RegisterBase",
+             "Bits 0x%02X are set with value %d in register 0x%02X", pinmask,
+             getSavedValue(), regAddress_);
     return true;
   }
 
