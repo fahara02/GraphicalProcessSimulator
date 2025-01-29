@@ -214,7 +214,6 @@ private:
   void setupRegisters() {
     iocon = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IOCON,
                                                port_name, bankMode);
-    addressMap[iocon->getAddress()] = MCP::REG::IOCON;
 
     for (auto regType :
          {MCP::REG::IODIR, MCP::REG::GPPU, MCP::REG::IPOL, MCP::REG::GPIO,
@@ -222,9 +221,10 @@ private:
           MCP::REG::INTF, MCP::REG::INTCAP}) {
       auto reg = std::make_unique<MCP::MCPRegister>(model, regType, port_name,
                                                     bankMode);
-      addressMap[reg->getAddress()] = regType;
       regMap[regType] = std::move(reg);
     }
+
+    updateAddressMap(); // Ensure addressMap is initialized separately
   }
 
   void updateRegistersAddress() {
@@ -236,6 +236,18 @@ private:
     for (auto &[regType, regPtr] : regMap) {
       regPtr->updatebankMode(bankMode);
       regPtr->updateRegisterAddress();
+    }
+
+    updateAddressMap(); // Update addressMap when addresses change
+  }
+  void updateAddressMap() {
+    addressMap.clear();
+    if (iocon) {
+      addressMap[iocon->getAddress()] = MCP::REG::IOCON;
+    }
+
+    for (const auto &[regType, regPtr] : regMap) {
+      addressMap[regPtr->getAddress()] = regType;
     }
   }
 

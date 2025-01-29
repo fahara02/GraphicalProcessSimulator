@@ -6,11 +6,11 @@ SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
 MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
     : model_(model), addressDecoder_(model, pinA2, pinA1, pinA0),
       address_(addressDecoder_.getDeviceAddress()), //
-      sda_(GPIO_NUM_21),                            //
-      scl_(GPIO_NUM_22),                            //
+      sda_(GPIO_NUM_25),                            //
+      scl_(GPIO_NUM_33),                            //
       cs_(GPIO_NUM_NC),                             //
       reset_(GPIO_NUM_33),                          //
-      wire_(std::make_unique<TwoWire>(0)),          //
+      wire_(std::make_unique<TwoWire>(1)),          //
       gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
       gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
       cntrlRegA(gpioBankA->getControlRegister()),
@@ -21,7 +21,10 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
 }
 
 void MCPDevice::init() {
-  wire_->begin(sda_, scl_, DEFAULT_I2C_CLK_FRQ);
+  if (!wire_->begin(sda_, scl_, 100000)) {
+    ESP_LOGE(MCP_TAG, "i2c init failed");
+  }
+
   EventManager::initializeEventGroups();
   bankMode_ = cntrlRegA->getBankMode<MCP::REG::IOCON>() ||
               cntrlRegB->getBankMode<MCP::REG::IOCON>();
@@ -47,11 +50,13 @@ int MCPDevice::read_mcp_register(const uint8_t reg) {
 
   return wire_->read();
 }
-void MCPDevice::write_mcp_register(const uint8_t reg, uint8_t value) {
+uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint8_t value) {
+  uint8_t result = 0;
   wire_->beginTransmission(address_);
   wire_->write(reg);
   wire_->write(value);
-  wire_->endTransmission(true);
+  result = wire_->endTransmission(true);
+  return result;
 }
 
 void MCPDevice::EventMonitorTask(void *param) {
@@ -171,19 +176,21 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
     }
     Serial.printf("New ReadEvent id=%d ;\n", ev->id);
     EventManager::acknowledgeEvent(ev);
-    EventManager::clearBits(RegisterEvent::READ_REQUEST);
   }
-
+  EventManager::clearBits(RegisterEvent::READ_REQUEST);
   xSemaphoreGive(regRWmutex);
 }
 void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   uint8_t value = ev->data;
+  uint8_t result = write_mcp_register(reg, value);
+  if (result == 0) {
+    Serial.printf("New WriteEvent SuccessFull id=%d ; \n", ev->id);
+    EventManager::acknowledgeEvent(ev);
+  } else {
+    Serial.printf("New Write failed for id=%d ; \n", ev->id);
+  }
 
-  write_mcp_register(reg, value);
-
-  Serial.printf("New WriteEvent id=%d ; \n", ev->id);
-  EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
   xSemaphoreGive(regRWmutex);
 }

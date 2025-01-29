@@ -82,13 +82,11 @@ void setup() {
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
   expander.dumpRegisters();
   delay(1000);
-  expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
+  // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   delay(2000);
-  expander.gpioBankB->setPinDirection(MCP::PIN::PIN9,
-                                      MCP::GPIO_MODE::GPIO_OUTPUT);
+  expander.gpioBankA->setPinsAsOutput(0XFF);
   delay(1000);
-  expander.gpioBankB->setPinDirection(MCP::PIN::PIN10,
-                                      MCP::GPIO_MODE::GPIO_OUTPUT);
+
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);
@@ -219,17 +217,16 @@ void RunTask(void *param) {
   while (true) {
     Serial.println("....MAIN TASK......");
 
-    expander->gpioBankA->getPinState();
+    expander->gpioBankA->setPinState(00011110, true);
     send_req += 1;
-    vTaskDelay(pdMS_TO_TICKS(200));
-    expander->gpioBankB->setPinState(00000011, true);
-    send_req += 1;
-    vTaskDelay(pdMS_TO_TICKS(200));
-    expander->gpioBankB->setPinState(00000011, false);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    expander->gpioBankA->setPinState(00011110, false);
     send_req += 1;
     Serial.printf("Total send request=%d\n", send_req);
     Serial.println("..........");
-    vTaskDelay(pdMS_TO_TICKS(200));
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
   vTaskDelete(NULL);
 }
+
+// 01100111

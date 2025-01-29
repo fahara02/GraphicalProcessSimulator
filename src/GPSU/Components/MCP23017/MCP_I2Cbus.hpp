@@ -20,7 +20,6 @@ private:
   MCP_MODEL model_;
   int sda_;
   int scl_;
-
   int reset_;
   uint32_t i2c_clk_;
   TickType_t i2c_timeout_;
@@ -29,7 +28,6 @@ private:
   uint8_t deviceAddress_;
   uint8_t readBuffer_[MAX_CHUNK_SIZE] = {0};
   size_t bufferSize_ = 0;
-
   // Read callback function
   std::function<void(uint8_t *, size_t)> readCallback_;
 
