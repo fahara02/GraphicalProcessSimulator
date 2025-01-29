@@ -1,4 +1,5 @@
 #include "MCPDevice.hpp"
+#include "climits"
 using namespace MCP;
 namespace COMPONENT {
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
@@ -36,7 +37,7 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
                             5, &eventTaskHandle, 0);
   }
 }
-uint8_t MCPDevice::read_mcp_register(const uint8_t reg) {
+int MCPDevice::read_mcp_register(const uint8_t reg) {
   wire_->beginTransmission(address_);
   wire_->write(reg);
   wire_->endTransmission(false);
@@ -160,11 +161,19 @@ void MCPDevice::handleBankModeEvent(currentEvent *ev) {
 }
 void MCPDevice::handleReadEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
-  // uint8_t value = read_mcp_register(reg);
+  MCP::PORT port = ev->regIdentity.port;
+  int value = read_mcp_register(reg);
+  if (value >= 0 and value <= UINT8_MAX) {
+    if (port == MCP::PORT::GPIOA) {
+      gpioBankA->updateRegisterValue(reg, value);
+    } else {
+      gpioBankB->updateRegisterValue(reg, value);
+    }
+    Serial.printf("New ReadEvent id=%d ;\n", ev->id);
+    EventManager::acknowledgeEvent(ev);
+    EventManager::clearBits(RegisterEvent::READ_REQUEST);
+  }
 
-  Serial.printf("New ReadEvent id=%d ;\n", ev->id);
-  EventManager::acknowledgeEvent(ev);
-  EventManager::clearBits(RegisterEvent::READ_REQUEST);
   xSemaphoreGive(regRWmutex);
 }
 void MCPDevice::handleWriteEvent(currentEvent *ev) {
