@@ -13,10 +13,10 @@
 
 #define REG_TAG "MCP_REGISTERS"
 namespace MCP {
-
 struct Settings {
+  // Default Settings
   OperationMode opMode = OperationMode::SequentialMode8;   // 00
-  PairedInterrupt mirror = PairedInterrupt ::Disabled;     // 0
+  PairedInterrupt mirror = PairedInterrupt::Disabled;      // 0
   Slew slew = Slew::Enabled;                               // 0
   HardwareAddr haen = HardwareAddr::Disabled;              // 0
   OpenDrain odr = OpenDrain::Disabled;                     // 0
@@ -27,29 +27,26 @@ struct Settings {
       : model_(m), A2_(pinA2), A1_(pinA1), A0_(pinA0),
         address_(decodeDeviceAddress()) {}
 
-  uint8_t getSetting() {
-    uint8_t bank = (opMode == OperationMode::SequentialMode16 ||
-                    opMode == OperationMode::ByteMode16)
-                       ? 1
-                       : 0;
-    uint8_t seqOp = (opMode == OperationMode::ByteMode16 ||
-                     opMode == OperationMode::ByteMode8)
-                        ? 1
-                        : 0;
-    if (model_ == MCP_MODEL::MCP23017 || model_ == MCP_MODEL::MCP23018) {
-      haen = HardwareAddr::Disabled; // These models dont have SPI
-    }
-    if (odr == OpenDrain::Enabled && intpol == InterruptPolarity::ActiveHigh) {
-      intpol = InterruptPolarity::ActiveLow; // ODR overrides the INTPOL bit.)
-    }
-
-    value =
-        (static_cast<uint8_t>(bank) << 7) |
-        (static_cast<uint8_t>(mirror) << 6) |
-        (static_cast<uint8_t>(seqOp) << 5) | (static_cast<uint8_t>(slew) << 4) |
-        (static_cast<uint8_t>(haen) << 3) | (static_cast<uint8_t>(odr) << 2) |
-        (static_cast<uint8_t>(intpol) << 1);
-    return value;
+  uint8_t getSetting() const {
+    return (static_cast<uint8_t>((opMode == OperationMode::SequentialMode16 ||
+                                  opMode == OperationMode::ByteMode16))
+            << 7) |
+           (static_cast<uint8_t>(mirror) << 6) |
+           (static_cast<uint8_t>((opMode == OperationMode::ByteMode16 ||
+                                  opMode == OperationMode::ByteMode8))
+            << 5) |
+           (static_cast<uint8_t>(slew) << 4) |
+           (static_cast<uint8_t>(haen) << 3) |
+           (static_cast<uint8_t>(odr) << 2) |
+           (static_cast<uint8_t>(intpol) << 1);
+  }
+  void updateFrom(const Settings &other) {
+    opMode = other.opMode;
+    mirror = other.mirror;
+    slew = other.slew;
+    haen = other.haen;
+    odr = other.odr;
+    intpol = other.intpol;
   }
 
   constexpr uint8_t decodeDeviceAddress() {
@@ -59,7 +56,9 @@ struct Settings {
     }
     return MCP_ADDRESS_BASE;
   }
+
   uint8_t getDeviceAddress() const { return address_; }
+  MCP_MODEL getModel() const { return model_; }
 
 private:
   const MCP::MCP_MODEL model_;
@@ -67,20 +66,165 @@ private:
   const bool A1_;
   const bool A0_;
   uint8_t address_;
+};
+
+// ================= Config Struct ==================
+struct Config {
+  Config(MCP::MCP_MODEL m, bool pinA2 = false, bool pinA1 = false,
+         bool pinA0 = false)
+      : config_(m, pinA2, pinA1, pinA0), value(0) {}
+
+  void configureDefault() { validate_update(config_); }
+  bool configure(Settings &new_setting) { return validate_update(config_); }
+  bool configure(uint8_t new_setting) {
+    Settings new_config = extractSettings(new_setting);
+    applyValidationRules(new_config);
+    return validate_update(new_config);
+  }
+
+  uint8_t getSettings() const { return value; }
+
+  void setOperationMode(bool byteMode, bool mapping16Bit) {
+    config_.opMode = byteMode ? (mapping16Bit ? OperationMode::ByteMode16
+                                              : OperationMode::ByteMode8)
+                              : (mapping16Bit ? OperationMode::SequentialMode16
+                                              : OperationMode::SequentialMode8);
+    updateConfig();
+  }
+
+  // **Interrupt Mirror Setter**
+  void setMirror(bool enable) {
+    config_.mirror =
+        enable ? PairedInterrupt::Enabled : PairedInterrupt::Disabled;
+    updateConfig();
+  }
+
+  // **Slew Rate Setter**
+  void setSlewRate(bool enable) {
+    config_.slew = enable ? Slew::Enabled : Slew::Disabled;
+    updateConfig();
+  }
+
+  // **Hardware Addressing Setter**
+  void setHardwareAddressing(bool enable) {
+    if (config_.getModel() == MCP_MODEL::MCP23017 ||
+        config_.getModel() == MCP_MODEL::MCP23018) {
+      enable = false;
+    }
+    config_.haen = enable ? HardwareAddr::Enabled : HardwareAddr::Disabled;
+    updateConfig();
+  }
+
+  // **Open-Drain Interrupt Output Setter**
+  void setOpenDrain(bool enable) {
+    config_.odr = enable ? OpenDrain::Enabled : OpenDrain::Disabled;
+    applyValidationRules();
+    updateConfig();
+  }
+
+  // **Interrupt Polarity Setter**
+  void setInterruptPolarity(bool activeHigh) {
+    config_.intpol = activeHigh ? InterruptPolarity::ActiveHigh
+                                : InterruptPolarity::ActiveLow;
+    applyValidationRules();
+    updateConfig();
+  }
+
+  uint8_t getDeviceAddress() const { return config_.getDeviceAddress(); }
+
+private:
+  Settings config_;
+
   union {
     uint8_t value; // Full register value
     struct {
-      uint8_t BANK : 1;     //!< Controls how the registers are addressed
-      uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
-      uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
-      uint8_t DISSLW : 1;   //!< Slew Rate control bit for SDA output
-      uint8_t HAEN : 1;     //!< Enables hardware addressing
-      uint8_t ODR : 1;      //!< Configures the INT pin as an open-drain output
-      uint8_t INTPOL : 1;   //!< Sets the polarity of the INT output pin
-      uint8_t RESERVED : 1; //!< Reserved bit (unused)
+      uint8_t RESERVED : 1; //!< Reserved bit (unused) (bit 0)
+      uint8_t INTPOL : 1;   //!< Interrupt Polarity (bit 1)
+      uint8_t ODR : 1;      //!< Open Drain (bit 2)
+      uint8_t HAEN : 1;     //!< Hardware Addressing Enable (bit 3)
+      uint8_t DISSLW : 1;   //!< Slew Rate (bit 4)
+      uint8_t SEQOP : 1;    //!< Sequential Operation mode (bit 5)
+      uint8_t MIRROR : 1;   //!< Mirror INT pins (bit 6)
+      uint8_t BANK : 1;     //!< Register Bank (bit 7)
     };
   };
+
+  void updateConfig() { value = config_.getSetting(); }
+
+  void applyValidationRules(Settings &setting) {
+    // Enforce HAEN is disabled for MCP23017/MCP23018
+    if ((setting.getModel() == MCP_MODEL::MCP23017) ||
+        (setting.getModel() == MCP_MODEL::MCP23018)) {
+      setting.haen = HardwareAddr::Disabled;
+    }
+    // ODR forces INTPOL to ActiveLow
+    if (setting.odr == OpenDrain::Enabled &&
+        setting.intpol == InterruptPolarity::ActiveHigh) {
+      setting.intpol = InterruptPolarity::ActiveLow;
+    }
+  }
+
+  bool validate_update(Settings &setting) {
+
+    return updateSettingsIfChanged(setting);
+  }
+  Settings extractSettings(uint8_t setting) {
+    Settings new_config = config_; // Start with current config
+
+    new_config.opMode =
+        (setting & (1 << 7))
+            ? ((setting & (1 << 5)) ? OperationMode::ByteMode16
+                                    : OperationMode::SequentialMode16)
+            : ((setting & (1 << 5)) ? OperationMode::ByteMode8
+                                    : OperationMode::SequentialMode8);
+
+    new_config.mirror = (setting & (1 << 6)) ? PairedInterrupt::Enabled
+                                             : PairedInterrupt::Disabled;
+    new_config.slew = (setting & (1 << 4)) ? Slew::Disabled : Slew::Enabled;
+    new_config.haen =
+        (setting & (1 << 3)) ? HardwareAddr::Enabled : HardwareAddr::Disabled;
+    new_config.odr =
+        (setting & (1 << 2)) ? OpenDrain::Enabled : OpenDrain::Disabled;
+    new_config.intpol = (setting & (1 << 1)) ? InterruptPolarity::ActiveHigh
+                                             : InterruptPolarity::ActiveLow;
+
+    return new_config;
+  }
+  bool updateSettingsIfChanged(const Settings &new_config) {
+    bool changed = false;
+
+    if (config_.opMode != new_config.opMode) {
+      config_.opMode = new_config.opMode;
+      changed = true;
+    }
+    if (config_.mirror != new_config.mirror) {
+      config_.mirror = new_config.mirror;
+      changed = true;
+    }
+    if (config_.slew != new_config.slew) {
+      config_.slew = new_config.slew;
+      changed = true;
+    }
+    if (config_.haen != new_config.haen) {
+      config_.haen = new_config.haen;
+      changed = true;
+    }
+    if (config_.odr != new_config.odr) {
+      config_.odr = new_config.odr;
+      changed = true;
+    }
+    if (config_.intpol != new_config.intpol) {
+      config_.intpol = new_config.intpol;
+      changed = true;
+    }
+
+    if (changed) {
+      updateConfig();
+    }
+  }
+  return changed;
 };
+
 struct address_decoder_t {
   const MCP::MCP_MODEL model_;
   const bool A2_;
@@ -188,7 +332,7 @@ protected:
   PORT port_;
   bool bankMode_;
   uint8_t regAddress_;
-  config_icon_t settings_;
+  Config settings_;
   uint8_t enumIndex;
   bool readOnly = false;
 
@@ -198,14 +342,14 @@ protected:
   union {
     uint8_t value; // Full register value
     struct {
-      uint8_t bit7 : 1;
-      uint8_t bit6 : 1;
-      uint8_t bit5 : 1;
-      uint8_t bit4 : 1;
-      uint8_t bit3 : 1;
-      uint8_t bit2 : 1;
-      uint8_t bit1 : 1;
       uint8_t bit0 : 1;
+      uint8_t bit1 : 1;
+      uint8_t bit2 : 1;
+      uint8_t bit3 : 1;
+      uint8_t bit4 : 1;
+      uint8_t bit5 : 1;
+      uint8_t bit6 : 1;
+      uint8_t bit7 : 1;
     };
   };
 
@@ -213,14 +357,14 @@ public:
   RegisterBase() { callbacks_.fill(nullptr); }
   virtual ~RegisterBase() = default;
   enum Field : uint8_t {
-    BIT_7 = 0,
-    BIT_6,
-    BIT_5,
-    BIT_4,
-    BIT_3,
-    BIT_2,
+    BIT_0 = 0,
     BIT_1,
-    BIT_0,
+    BIT_2,
+    BIT_3,
+    BIT_4,
+    BIT_5,
+    BIT_6,
+    BIT_7,
   };
 
   virtual void setModel(MCP::MCP_MODEL m) = 0;
@@ -279,20 +423,20 @@ public:
   virtual void applyMask(uint8_t mask) {
 
     if (reg_ == REG::IOCON) {
-      return settings_.applyMask(mask);
+      ESP_LOGE(REG_TAG, "MASK is not appropriate for control register");
     } else {
       value |= mask;
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
     }
-    EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
   }
 
   virtual void clearMask(uint8_t mask) {
     if (reg_ == REG::IOCON) {
-      return settings_.clearMask(mask);
+      ESP_LOGE(REG_TAG, "MASK is not appropriate for control register");
     } else {
       value &= ~mask;
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
     }
-    EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
   }
   bool updateState(uint8_t newValue) {
     if (reg_ == REG::IOCON) {
@@ -377,19 +521,11 @@ public:
   }
 
   // IOCON-specific methods
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, bool>::type
-  updateSettingBit(configField field, bool value) {
-    return settings_.setBitField(field, value);
-  }
+
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
   configure(const uint8_t &settings) {
-    bool status = settings_.configure(settings);
-    if (status) {
-      settings_ = config_icon_t(settings);
-    };
-    return status;
+    return settings_.configure(settings);
   };
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
@@ -623,11 +759,7 @@ public:
       return false;
     }
     uint8_t index = Util::getPinIndex(pin);
-    if (reg_ == REG::INTCON) {
-      return getBitField(static_cast<configField>(index));
-    } else {
-      return getBitField(static_cast<Field>(index));
-    }
+    return getBitField(static_cast<Field>(index));
   }
   template <REG T>
   typename std::enable_if<T == REG::GPIO, uint8_t>::type //
