@@ -7,14 +7,12 @@
 #include <unordered_map>
 #define BANK_TAG "GPIO_BANK"
 namespace MCP {
+
 class GPIO_BANK {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
-  std::unordered_map<MCP::REG, std::unique_ptr<MCP::MCPRegister>> regMap;
-  std::unordered_map<uint8_t, MCP::REG> addressMap;
-  // Control Register
-  std::shared_ptr<MCP::MCPRegister> iocon;
+  MCPRegisters regs;
 
 public:
   GPIO_BANK(PORT port, MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017,
@@ -25,59 +23,37 @@ public:
         port_name(port), intr_type(INTR_TYPE::NONE),
         intr_out_type(INTR_OUTPUT_TYPE::NA) {
     assert(isValidPort(port) && "Invalid PORT provided!");
+
+    regs.setup(model, port_name, bankMode);
     init();
   }
-  std::shared_ptr<MCP::MCPRegister> const getControlRegister() { return iocon; }
-  MCPRegister *getRegister(MCP::REG regType) {
-    if (regType == REG::IOCON)
-      return iocon.get();
-    auto it = regMap.find(regType);
-    return (it != regMap.end()) ? it->second.get() : nullptr;
+
+  std::shared_ptr<MCP::MCPRegister> const getControlRegister() {
+    return regs.getIOCON();
+  }
+  const MCPRegister *getRegister(MCP::REG regType) const {
+    return regs.getRegister(regType);
+  }
+  MCPRegister *getRegisterForUpdate(MCP::REG regType) {
+    return regs.getRegisterForUpdate(regType);
   }
 
-  uint8_t getSavedValue(REG reg) const {
-    if (reg == REG::IOCON) {
-      return iocon->getSavedValue();
-    } else {
-      auto it = regMap.find(reg);
-      return it != regMap.end() ? it->second->getSavedValue() : 0;
-    }
-  }
-
-  uint8_t getAddress(REG reg) const {
-    if (reg == REG::IOCON) {
-      return iocon->getAddress();
-    } else {
-      auto it = regMap.find(reg);
-      return it != regMap.end() ? it->second->getAddress() : 0;
-    }
-  }
+  uint8_t getAddress(REG reg) const { return regs.getAddress(reg); }
 
   bool updateBankMode(bool value) {
     // icon register not need to be invoked again as this method is already
     // invoked and icon is updated  ,just notify this class for updating address
     bankMode = value;
-    updateRegistersAddress();
+    regs.updateAddress(bankMode);
     return true;
   }
   bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
-    if (iocon->getAddress() == reg_address) {
-      return iocon->updateState(value);
-    }
-
-    for (auto &[regType, regPtr] : regMap) {
-      if (regPtr->getAddress() == reg_address) {
-        return regPtr->updateState(value);
-      }
-    }
-
-    ESP_LOGE(BANK_TAG, "Failed to update register: Invalid address (0x%02X)",
-             reg_address);
-    return false;
+    return regs.updateRegisterValue(reg_address, value);
   }
 
   // This method will not trigger any read event , only return register's
   // current saved value
+  uint8_t getSavedValue(REG reg) const { return regs.getSavedValue(reg); }
 
   // Pin masks
   void setGeneralMask(MASK mask) { generalMask = static_cast<uint8_t>(mask); }
@@ -88,88 +64,80 @@ public:
   // PIN DIRECTION SELECTION
   void setPinDirection(PIN p, GPIO_MODE m) {
     assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
-    getRegister(MCP::REG::IODIR)->setPinMode<REG::IODIR>(p, m);
+    regs.iodir->setPinMode<REG::IODIR>(p, m);
   }
   void setPinsAsOutput(uint8_t pinmask) {
-    getRegister(MCP::REG::IODIR)
-        ->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
   }
   void setPinsAsInput(uint8_t pinmask) {
-    getRegister(MCP::REG::IODIR)
-        ->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
   }
   void setPinsAsInput() {
-    getRegister(MCP::REG::IODIR)
-        ->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_INPUT);
+    regs.iodir->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_INPUT);
   }
   void setPinsAsOutput() {
-    getRegister(MCP::REG::IODIR)
-        ->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_OUTPUT);
+    regs.iodir->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_OUTPUT);
   }
 
   void setBankAsOutput() {
     uint8_t pinmask = static_cast<uint8_t>(MASK::ALL);
-    getRegister(MCP::REG::IODIR)
-        ->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
   }
 
   void setBankAsInput() {
     uint8_t pinmask = static_cast<uint8_t>(MASK::ALL);
-    getRegister(MCP::REG::IODIR)
-        ->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
   }
   // PULLUP SELECTION
   void setPullup(PIN pin, PULL_MODE mode) {
-    getRegister(MCP::REG::GPPU)->setPullType<REG::GPPU>(pin, mode);
+    regs.gppu->setPullType<REG::GPPU>(pin, mode);
   }
 
   void setPinsPullup(uint8_t pinMask, PULL_MODE mode) {
-    getRegister(MCP::REG::GPPU)->setPullType<REG::GPPU>(pinMask, mode);
+    regs.gppu->setPullType<REG::GPPU>(pinMask, mode);
   }
 
   void setPinsPullup(PULL_MODE mode) {
-    getRegister(MCP::REG::GPPU)->setPullType<REG::GPPU>(generalMask, mode);
+    regs.gppu->setPullType<REG::GPPU>(generalMask, mode);
   }
 
   void setBankPullup(PULL_MODE mode) {
     uint8_t pinMask = static_cast<uint8_t>(MASK::ALL);
-    getRegister(MCP::REG::GPPU)->setPullType<REG::GPPU>(pinMask, mode);
+    regs.gppu->setPullType<REG::GPPU>(pinMask, mode);
   }
 
   // Get PIN VALUE
   bool getPinState(MCP::PIN p) {
     assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
-    return getRegister(MCP::REG::GPIO)->readPin<REG::GPIO>(p);
+    return regs.gpio->readPin<REG::GPIO>(p);
   }
-  uint8_t getPinState() {
-    return getRegister(MCP::REG::GPIO)->readPins<REG::GPIO>();
-  }
+  uint8_t getPinState() { return regs.gpio->readPins<REG::GPIO>(); }
   bool getPinState(uint8_t pinmask) {
-    return getRegister(MCP::REG::GPIO)->readPins<REG::GPIO>(pinmask);
+    return regs.gpio->readPins<REG::GPIO>(pinmask);
   }
   // SET PIN POLARITY
   void setInputPolarity(PIN pin, INPUT_POLARITY pol) {
     assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
-    getRegister(MCP::REG::IPOL)->setInputPolarity<REG::IPOL>(pin, pol);
+    regs.ipol->setInputPolarity<REG::IPOL>(pin, pol);
   }
   void setInputPolarity(uint8_t pinmask, INPUT_POLARITY pol) {
-    getRegister(MCP::REG::IPOL)->setInputPolarity<REG::IPOL>(pinmask, pol);
+    regs.ipol->setInputPolarity<REG::IPOL>(pinmask, pol);
   }
   void setInputPolarity(INPUT_POLARITY pol) {
-    getRegister(MCP::REG::IPOL)->setInputPolarity<REG::IPOL>(generalMask, pol);
+    regs.ipol->setInputPolarity<REG::IPOL>(generalMask, pol);
   }
   // SET PIN VALUE
   void setPinState(PIN pin, bool state) {
     assert(Util::getPortFromPin(pin) == port_name && "Invalid pin ");
-    getRegister(MCP::REG::OLAT)->setOutputLatch<REG::OLAT>(pin, state);
+    regs.olat->setOutputLatch<REG::OLAT>(pin, state);
   }
 
   void setPinState(uint8_t pinmask, bool state) {
-    getRegister(MCP::REG::OLAT)->setOutputLatch<REG::OLAT>(pinmask, state);
+    regs.olat->setOutputLatch<REG::OLAT>(pinmask, state);
   }
 
   void setPinState(bool state) {
-    getRegister(MCP::REG::OLAT)->setOutputLatch<REG::OLAT>(generalMask, state);
+    regs.olat->setOutputLatch<REG::OLAT>(generalMask, state);
   }
 
   void setupInterrupt(uint8_t pinMask = 0xFF,
@@ -203,51 +171,9 @@ private:
   INTR_TYPE intr_type;
   INTR_OUTPUT_TYPE intr_out_type;
   void init() {
-    setupRegisters();
-    updateRegistersAddress();
-
     updatePins();
     if (interruptEnabled) {
       updatePinInterruptState();
-    }
-  }
-  void setupRegisters() {
-    iocon = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IOCON,
-                                               port_name, bankMode);
-
-    for (auto regType :
-         {MCP::REG::IODIR, MCP::REG::GPPU, MCP::REG::IPOL, MCP::REG::GPIO,
-          MCP::REG::OLAT, MCP::REG::GPINTEN, MCP::REG::INTCON, MCP::REG::DEFVAL,
-          MCP::REG::INTF, MCP::REG::INTCAP}) {
-      auto reg = std::make_unique<MCP::MCPRegister>(model, regType, port_name,
-                                                    bankMode);
-      regMap[regType] = std::move(reg);
-    }
-
-    updateAddressMap(); // Ensure addressMap is initialized separately
-  }
-
-  void updateRegistersAddress() {
-    if (iocon) {
-      iocon->updatebankMode(bankMode);
-      iocon->updateRegisterAddress();
-    }
-
-    for (auto &[regType, regPtr] : regMap) {
-      regPtr->updatebankMode(bankMode);
-      regPtr->updateRegisterAddress();
-    }
-
-    updateAddressMap(); // Update addressMap when addresses change
-  }
-  void updateAddressMap() {
-    addressMap.clear();
-    if (iocon) {
-      addressMap[iocon->getAddress()] = MCP::REG::IOCON;
-    }
-
-    for (const auto &[regType, regPtr] : regMap) {
-      addressMap[regPtr->getAddress()] = regType;
     }
   }
 
@@ -280,12 +206,7 @@ private:
     return pins;
   }
 };
-// constexpr GPIO_BANKS<MCP23017Pin> gpioBankA(PORT::GPIOA);
-// // Define GPIO Bank instances
-// GPIO_BANKS BANK_A(PORT::GPIOA);
 
-// // Using the variadic constructor
-// constexpr GPIO_BANKS bankA_custom(PORT::GPIOA, GPA0, GPA1, GPA2);
 } // namespace MCP
 #endif
 

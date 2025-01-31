@@ -301,11 +301,11 @@ void MCPDevice::configure(const MCP::config_icon_t &config) {
 MCP::MCPRegister *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
   if (port == MCP::PORT::GPIOA) {
 
-    return gpioBankA->getRegister(reg);
+    return gpioBankA->getRegisterForUpdate(reg);
 
   } else {
 
-    return gpioBankB->getRegister(reg);
+    return gpioBankB->getRegisterForUpdate(reg);
   }
 }
 uint8_t MCPDevice::getsavedSettings(MCP::PORT port) const {

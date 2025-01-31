@@ -6,13 +6,81 @@
 #include "Utility.hpp"
 #include "esp_log.h"
 #include "freertos/semphr.h"
+#include "memory"
 #include <functional>
-#include <memory>
 #include <type_traits>
+#include <unordered_map>
 
 #define REG_TAG "MCP_REGISTERS"
 namespace MCP {
 
+struct Settings {
+  OperationMode opMode = OperationMode::SequentialMode8;   // 00
+  PairedInterrupt mirror = PairedInterrupt ::Disabled;     // 0
+  Slew slew = Slew::Enabled;                               // 0
+  HardwareAddr haen = HardwareAddr::Disabled;              // 0
+  OpenDrain odr = OpenDrain::Disabled;                     // 0
+  InterruptPolarity intpol = InterruptPolarity::ActiveLow; // 0
+
+  Settings(MCP::MCP_MODEL m, bool pinA2 = false, bool pinA1 = false,
+           bool pinA0 = false)
+      : model_(m), A2_(pinA2), A1_(pinA1), A0_(pinA0),
+        address_(decodeDeviceAddress()) {}
+
+  uint8_t getSetting() {
+    uint8_t bank = (opMode == OperationMode::SequentialMode16 ||
+                    opMode == OperationMode::ByteMode16)
+                       ? 1
+                       : 0;
+    uint8_t seqOp = (opMode == OperationMode::ByteMode16 ||
+                     opMode == OperationMode::ByteMode8)
+                        ? 1
+                        : 0;
+    if (model_ == MCP_MODEL::MCP23017 || model_ == MCP_MODEL::MCP23018) {
+      haen = HardwareAddr::Disabled; // These models dont have SPI
+    }
+    if (odr == OpenDrain::Enabled && intpol == InterruptPolarity::ActiveHigh) {
+      intpol = InterruptPolarity::ActiveLow; // ODR overrides the INTPOL bit.)
+    }
+
+    value =
+        (static_cast<uint8_t>(bank) << 7) |
+        (static_cast<uint8_t>(mirror) << 6) |
+        (static_cast<uint8_t>(seqOp) << 5) | (static_cast<uint8_t>(slew) << 4) |
+        (static_cast<uint8_t>(haen) << 3) | (static_cast<uint8_t>(odr) << 2) |
+        (static_cast<uint8_t>(intpol) << 1);
+    return value;
+  }
+
+  constexpr uint8_t decodeDeviceAddress() {
+    if (model_ == MCP::MCP_MODEL::MCP23017 ||
+        model_ == MCP::MCP_MODEL::MCP23S17) {
+      return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
+    }
+    return MCP_ADDRESS_BASE;
+  }
+  uint8_t getDeviceAddress() const { return address_; }
+
+private:
+  const MCP::MCP_MODEL model_;
+  const bool A2_;
+  const bool A1_;
+  const bool A0_;
+  uint8_t address_;
+  union {
+    uint8_t value; // Full register value
+    struct {
+      uint8_t BANK : 1;     //!< Controls how the registers are addressed
+      uint8_t MIRROR : 1;   //!< INT Pins Mirror bit
+      uint8_t SEQOP : 1;    //!< Sequential Operation mode bit
+      uint8_t DISSLW : 1;   //!< Slew Rate control bit for SDA output
+      uint8_t HAEN : 1;     //!< Enables hardware addressing
+      uint8_t ODR : 1;      //!< Configures the INT pin as an open-drain output
+      uint8_t INTPOL : 1;   //!< Sets the polarity of the INT output pin
+      uint8_t RESERVED : 1; //!< Reserved bit (unused)
+    };
+  };
+};
 struct address_decoder_t {
   const MCP::MCP_MODEL model_;
   const bool A2_;
@@ -36,7 +104,7 @@ private:
   uint8_t device_i2c_address;
 };
 struct config_icon_t {
-public:
+
 public:
   // Define fields as a public enum for easier reference
   enum Field : uint8_t {
@@ -51,6 +119,7 @@ public:
   };
 
 private:
+  MCP::MCP_MODEL model_;
   union {
     uint8_t value; // Full register value
     struct {
@@ -66,7 +135,7 @@ private:
   };
 
 public:
-  config_icon_t() : value(0) {}
+  config_icon_t() : model_(MCP_MODEL::MCP23017), value(0) {}
   config_icon_t(uint8_t setting)
       : value(configure(setting) == true ? configure(setting) : 0) {}
 
@@ -783,6 +852,130 @@ private:
     }
 
     return baseAddress;
+  }
+};
+class MCPRegisters {
+private:
+  std::unordered_map<MCP::REG, std::unique_ptr<MCP::MCPRegister>> regMap;
+  std::unordered_map<uint8_t, MCP::REG> addressMap;
+
+public:
+  std::shared_ptr<MCP::MCPRegister> iocon;
+  // Raw pointers for easier access
+  MCP::MCPRegister *iodir{};
+  MCP::MCPRegister *gppu{};
+  MCP::MCPRegister *ipol{};
+  MCP::MCPRegister *gpio{};
+  MCP::MCPRegister *olat{};
+  MCP::MCPRegister *gpinten{};
+  MCP::MCPRegister *intcon{};
+  MCP::MCPRegister *defval{};
+  MCP::MCPRegister *intf{};
+  MCP::MCPRegister *intcap{};
+
+  MCPRegisters() = default;
+
+  void setup(MCP::MCP_MODEL model, PORT port, bool bankMode) {
+    iocon = std::make_shared<MCP::MCPRegister>(model, MCP::REG::IOCON, port,
+                                               bankMode);
+
+    for (auto regType :
+         {MCP::REG::IODIR, MCP::REG::GPPU, MCP::REG::IPOL, MCP::REG::GPIO,
+          MCP::REG::OLAT, MCP::REG::GPINTEN, MCP::REG::INTCON, MCP::REG::DEFVAL,
+          MCP::REG::INTF, MCP::REG::INTCAP}) {
+      regMap[regType] =
+          std::make_unique<MCP::MCPRegister>(model, regType, port, bankMode);
+    }
+
+    assign();    // Assign raw pointers
+    updateMap(); // Populate addressMap
+  }
+
+  void assign() {
+    iodir = regMap[MCP::REG::IODIR].get();
+    gppu = regMap[MCP::REG::GPPU].get();
+    ipol = regMap[MCP::REG::IPOL].get();
+    gpio = regMap[MCP::REG::GPIO].get();
+    olat = regMap[MCP::REG::OLAT].get();
+    gpinten = regMap[MCP::REG::GPINTEN].get();
+    intcon = regMap[MCP::REG::INTCON].get();
+    defval = regMap[MCP::REG::DEFVAL].get();
+    intf = regMap[MCP::REG::INTF].get();
+    intcap = regMap[MCP::REG::INTCAP].get();
+  }
+  void updateAddress(bool bankMode) {
+    if (iocon) {
+      iocon->updatebankMode(bankMode);
+      iocon->updateRegisterAddress();
+    }
+
+    for (auto &[regType, regPtr] : regMap) {
+      regPtr->updatebankMode(bankMode);
+      regPtr->updateRegisterAddress();
+    }
+    updateMap();
+  }
+  void updateMap() {
+    addressMap.clear();
+    if (iocon) {
+      addressMap[iocon->getAddress()] = MCP::REG::IOCON;
+    }
+
+    for (const auto &[regType, regPtr] : regMap) {
+      addressMap[regPtr->getAddress()] = regType;
+    }
+  }
+
+  std::shared_ptr<MCP::MCPRegister> const getIOCON() { return iocon; }
+
+  // ✅ Getter for read-only access
+  const MCP::MCPRegister *getRegister(MCP::REG regType) const {
+    if (regType == MCP::REG::IOCON)
+      return iocon.get();
+    auto it = regMap.find(regType);
+    return (it != regMap.end()) ? it->second.get() : nullptr;
+  }
+
+  // ✅ Getter for modifying the register
+  MCP::MCPRegister *getRegisterForUpdate(MCP::REG regType) {
+    if (regType == MCP::REG::IOCON)
+      return iocon.get();
+    auto it = regMap.find(regType);
+    return (it != regMap.end()) ? it->second.get() : nullptr;
+  }
+
+  uint8_t getSavedValue(MCP::REG reg) const {
+    if (reg == MCP::REG::IOCON) {
+      return iocon->getSavedValue();
+    } else {
+      auto it = regMap.find(reg);
+      return it != regMap.end() ? it->second->getSavedValue() : 0;
+    }
+  }
+
+  uint8_t getAddress(MCP::REG reg) const {
+    if (reg == MCP::REG::IOCON) {
+      return iocon->getAddress();
+    } else {
+      auto it = regMap.find(reg);
+      return it != regMap.end() ? it->second->getAddress() : 0;
+    }
+  }
+  bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
+    if (iocon->getAddress() == reg_address) {
+      return iocon->updateState(value);
+    }
+
+    for (auto &[regType, regPtr] : regMap) {
+      if (regPtr->getAddress() == reg_address) {
+        return regPtr->updateState(value);
+      }
+    }
+
+    ESP_LOGE("MCPRegisters",
+             "Failed to update register: Invalid address (0x%02X)",
+             reg_address);
+    return false;
   }
 };
 

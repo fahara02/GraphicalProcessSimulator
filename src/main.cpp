@@ -221,18 +221,16 @@ void RunTask(void *param) {
     // send_req += 1;
 
     // expander->gpioBankA->setPinState(mask, false);
-    vTaskDelay(pdMS_TO_TICKS(200));
+    vTaskDelay(pdMS_TO_TICKS(100));
     send_req += 1;
     if (send_req == 2) {
       send_req = 0;
       expander->gpioBankA->setPinState(mask, false);
-      vTaskDelay(pdMS_TO_TICKS(200));
+      vTaskDelay(pdMS_TO_TICKS(100));
     }
     Serial.printf("Total send request=%d\n", send_req);
     Serial.println("..........");
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
   vTaskDelete(NULL);
 }
-
-// 01100111

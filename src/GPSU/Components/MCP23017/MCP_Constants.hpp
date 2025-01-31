@@ -113,6 +113,7 @@ enum class GPIO_MODE {
   GPIO_OUTPUT = 0,
   GPIO_INPUT = 1,
 };
+enum class OUTPUT_TYPE { MCP_ACTIVE_PUSHPULL = 0, MCP_OPEN_DRAIN = 1 };
 enum class INPUT_POLARITY {
   UNCHANGED = 0,
   INVERTED = 1,
@@ -144,6 +145,19 @@ enum class DEF_VAL_COMPARE {
   SAVE_LOGIC_LOW = 0,
   SAVE_LOGIC_HIGH = 1,
 };
+
+enum class OperationMode {
+  SequentialMode8,  // SEQOP = 0, BANK = 0 (8-bit sequential mode)
+  SequentialMode16, // SEQOP = 0, BANK = 1(16-bit sequential mode)
+  ByteMode8,        // SEQOP = 1, BANK = 0 (Toggles between A/B pairs)
+  ByteMode16        // SEQOP = 1, BANK = 1 (16-bit BYTE mode)
+};
+
+enum class PairedInterrupt { Disabled, Enabled };
+enum class Slew { Enabled, Disabled };
+enum class HardwareAddr { Disabled, Enabled }; // Only for SPI
+enum class OpenDrain { Disabled, Enabled };
+enum class InterruptPolarity { ActiveLow, ActiveHigh };
 
 } // namespace MCP
 #endif
