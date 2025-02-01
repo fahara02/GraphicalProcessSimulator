@@ -47,12 +47,12 @@ struct currentEvent {
 
   const RegisterEvent event;
   const registerIdentity regIdentity;
-  const uint8_t data;
+  const uint16_t data;
   const int id;
 
   currentEvent(RegisterEvent e = RegisterEvent::MAX,
                registerIdentity identity = registerIdentity{},
-               uint8_t valueOrSettings = 0, uint8_t _id = 0)
+               uint16_t valueOrSettings = 0, uint8_t _id = 0)
       : event(e), regIdentity(identity), data(valueOrSettings), id(_id),
         acknowledged_(false){
 
@@ -81,7 +81,7 @@ public:
   static void clearBits(RegisterEvent e);
   static void initializeEventGroups();
   static bool createEvent(registerIdentity identity, RegisterEvent e,
-                          uint8_t valueOrSettings = 0);
+                          uint16_t valueOrSettings = 0);
   static currentEvent *getEvent(RegisterEvent eventType);
   static bool acknowledgeEvent(currentEvent *ev);
   static size_t getQueueSize() { return event_queue.getQueueSize(); }

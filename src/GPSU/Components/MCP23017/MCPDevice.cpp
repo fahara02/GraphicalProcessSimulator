@@ -217,28 +217,80 @@ void MCPDevice::handleBankModeEvent(currentEvent *ev) {
   EventManager::clearBits(RegisterEvent::BANK_MODE_CHANGED);
   xSemaphoreGive(regRWmutex);
 }
+// void MCPDevice::handleReadEvent(currentEvent *ev) {
+//   uint8_t reg = ev->regIdentity.regAddress;
+//   MCP::PORT port = ev->regIdentity.port;
+//   int value = read_mcp_register(reg);
+//   if (value >= 0 and value <= UINT8_MAX) {
+//     if (port == MCP::PORT::GPIOA) {
+//       gpioBankA->updateRegisterValue(reg, value);
+//     } else {
+//       gpioBankB->updateRegisterValue(reg, value);
+//     }
+//     Serial.printf("New ReadEvent id=%d ;\n", ev->id);
+//     EventManager::acknowledgeEvent(ev);
+//   }
+//   EventManager::clearBits(RegisterEvent::READ_REQUEST);
+//   xSemaphoreGive(regRWmutex);
+// }
+
 void MCPDevice::handleReadEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   MCP::PORT port = ev->regIdentity.port;
-  int value = read_mcp_register(reg);
-  if (value >= 0 and value <= UINT8_MAX) {
+
+  int value = read_mcp_register(reg); // Read either 8-bit or 16-bit
+
+  if (value == -1) {
+    Serial.printf("Read failed for id=%d ; Invalid data received\n", ev->id);
+    return;
+  }
+
+  if (configuration_.getSettings().opMode == OperationMode::SequentialMode16 ||
+      configuration_.getSettings().opMode == OperationMode::ByteMode16) {
+    // Handle 16-bit mode
+    uint8_t valueA = value & 0xFF;        // Extract Port A data
+    uint8_t valueB = (value >> 8) & 0xFF; // Extract Port B data
+
+    gpioBankA->updateRegisterValue(reg, valueA);
+    gpioBankB->updateRegisterValue(reg + 1, valueB); // Port B is next register
+  } else {
+    // Handle 8-bit mode
     if (port == MCP::PORT::GPIOA) {
       gpioBankA->updateRegisterValue(reg, value);
     } else {
       gpioBankB->updateRegisterValue(reg, value);
     }
-    Serial.printf("New ReadEvent id=%d ;\n", ev->id);
-    EventManager::acknowledgeEvent(ev);
   }
+
+  Serial.printf("New ReadEvent id=%d ;\n", ev->id);
+  EventManager::acknowledgeEvent(ev);
+
   EventManager::clearBits(RegisterEvent::READ_REQUEST);
   xSemaphoreGive(regRWmutex);
 }
+
+// void MCPDevice::handleWriteEvent(currentEvent *ev) {
+//   uint8_t reg = ev->regIdentity.regAddress;
+//   uint8_t value = ev->data;
+//   uint8_t result = write_mcp_register(reg, value);
+//   if (result == 0) {
+//     Serial.printf("New WriteEvent SuccessFull id=%d ; \n", ev->id);
+//     EventManager::acknowledgeEvent(ev);
+//   } else {
+//     Serial.printf("New Write failed for id=%d ; \n", ev->id);
+//   }
+
+//   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
+//   xSemaphoreGive(regRWmutex);
+// }
 void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
-  uint8_t value = ev->data;
-  uint8_t result = write_mcp_register(reg, value);
+  uint16_t value = ev->data; // Use 16-bit storage
+
+  uint8_t result = write_mcp_register(reg, value); // Handles 8-bit & 16-bit
+
   if (result == 0) {
-    Serial.printf("New WriteEvent SuccessFull id=%d ; \n", ev->id);
+    Serial.printf("New WriteEvent Successful id=%d ; \n", ev->id);
     EventManager::acknowledgeEvent(ev);
   } else {
     Serial.printf("New Write failed for id=%d ; \n", ev->id);
@@ -247,10 +299,11 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
   xSemaphoreGive(regRWmutex);
 }
+
 void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   MCP::PORT port = ev->regIdentity.port;
   uint8_t reg = ev->regIdentity.regAddress;
-  uint8_t settings = ev->data;
+  uint16_t settings = ev->data;
   uint8_t result = write_mcp_register(reg, settings);
   if (result == 0) {
     Serial.printf("New Setting Event sucessfull id=%d ; \n", ev->id);

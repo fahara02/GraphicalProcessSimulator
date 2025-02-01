@@ -75,7 +75,7 @@ bool EventManager::acknowledgeEvent(currentEvent *event) {
 }
 
 bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
-                               uint8_t valueOrSettings) {
+                               uint16_t valueOrSettings) {
   if (xSemaphoreTake(eventMutex, MCP::RW_MUTEX_TIMEOUT) != pdTRUE) {
     ESP_LOGE("EVENT_MANAGER", "Failed to acquire semaphore!");
     return false;
