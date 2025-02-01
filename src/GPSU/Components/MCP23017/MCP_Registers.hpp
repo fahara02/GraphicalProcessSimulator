@@ -22,7 +22,20 @@ struct Settings {
   OpenDrain odr = OpenDrain::Disabled;                     // 0
   InterruptPolarity intpol = InterruptPolarity::ActiveLow; // 0
 
-  Settings(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : model_(m) {}
+  // Copy constructor
+  Settings(const Settings &other) = default;
+
+  // Equality operator
+  bool operator==(const Settings &other) const {
+    return opMode == other.opMode && mirror == other.mirror &&
+           slew == other.slew && haen == other.haen && odr == other.odr &&
+           intpol == other.intpol && model_ == other.model_;
+  }
+
+  // Inequality operator
+  bool operator!=(const Settings &other) const { return !(*this == other); }
+
+  explicit Settings(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : model_(m) {}
 
   uint8_t getSetting() const {
     return (static_cast<uint8_t>((opMode == OperationMode::SequentialMode16 ||
@@ -36,15 +49,6 @@ struct Settings {
            (static_cast<uint8_t>(haen) << 3) |
            (static_cast<uint8_t>(odr) << 2) |
            (static_cast<uint8_t>(intpol) << 1);
-  }
-
-  void updateFrom(const Settings &other) {
-    opMode = other.opMode;
-    mirror = other.mirror;
-    slew = other.slew;
-    haen = other.haen;
-    odr = other.odr;
-    intpol = other.intpol;
   }
 
   void setModel(MCP_MODEL m) { model_ = m; }
@@ -75,8 +79,7 @@ struct Config {
   void setModel(MCP::MCP_MODEL m) { config_.setModel(m); }
 
   bool configure(const Settings &setting) {
-    Settings validated(setting.getModel());
-    validated.updateFrom(setting);
+    Settings validated = setting;
     applyValidationRules(validated);
     return validate_update(validated);
   }
