@@ -147,10 +147,10 @@ enum class DEF_VAL_COMPARE {
 };
 
 enum class OperationMode {
-  SequentialMode8,  // SEQOP = 0, BANK = 0 (8-bit sequential mode)
-  SequentialMode16, // SEQOP = 0, BANK = 1(16-bit sequential mode)
-  ByteMode8,        // SEQOP = 1, BANK = 0 (Toggles between A/B pairs)
-  ByteMode16        // SEQOP = 1, BANK = 1 (16-bit BYTE mode)
+  SequentialMode16, // SEQOP = 0, BANK = 0 (16-bit sequential mode)
+  SequentialMode8,  // SEQOP = 0, BANK = 1( 8-bit sequential mode)
+  ByteMode16,       // SEQOP = 1, BANK = 0 (Toggles between A/B pairs)
+  ByteMode8         // SEQOP = 1, BANK = 1 (8-bit BYTE mode)
 };
 
 enum class PairedInterrupt { Disabled, Enabled };

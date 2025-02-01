@@ -5,7 +5,8 @@ namespace COMPONENT {
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
 MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
     : model_(model), configuration_(model),
-      decoder_(model, pinA2, pinA1, pinA0),
+      settings_(configuration_.getSettings()),
+      defaultSettings_(Settings(model)), decoder_(model, pinA2, pinA1, pinA0),
       address_(decoder_.getDeviceAddress()), //
       sda_(GPIO_NUM_25),                     //
       scl_(GPIO_NUM_33),                     //
@@ -19,18 +20,72 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
 
 {
   init();
+  loadSettings();
 }
+void MCPDevice::configure(const MCP::Settings &setting) {
+  if (cntrlRegA && cntrlRegB) {
+    if (configuration_.configure(setting)) {
+      settings_ = configuration_.getSettings();
+      loadSettings();
+    }
+  }
+}
+void MCPDevice::loadSettings() {
 
+  if (settings_ != defaultSettings_) {
+
+    if (settings_.opMode == MCP::OperationMode::SequentialMode16 ||
+        settings_.opMode == MCP::OperationMode::ByteMode16) {
+      bankMode_ = true; // 8bitMapping
+    }
+
+    if (settings_.opMode == MCP::OperationMode::ByteMode16 ||
+        settings_.opMode == MCP::OperationMode::ByteMode8) {
+      byteMode_ = true; // Adress pointer dont increment ,continous poll
+    }
+    mirrorMode_ =
+        settings_.mirror == MCP::PairedInterrupt::Enabled ? true : false;
+    slewrateDisabled_ = settings_.slew == MCP::Slew::Disabled ? true : false;
+
+    hardwareAddressing_ =
+        settings_.haen == MCP::HardwareAddr::Enabled ? true : false;
+
+    opendrainEnabled_ = settings_.odr == MCP::OpenDrain::Enabled ? true : false;
+    interruptPolarityHigh_ =
+        settings_.intpol == MCP::InterruptPolarity::ActiveHigh ? true : false;
+
+    // Send the Settings To MCP Register
+    uint8_t updatedSetting = configuration_.getSettingValue();
+
+    uint8_t result = 0;
+    if (bankMode_) {
+      // To update the register address before write
+      gpioBankA->updateBankMode(bankMode_);
+      gpioBankB->updateBankMode(bankMode_);
+      // for bankMode Sending 16 bit value to A port is enough
+      result = write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
+    } else {
+      result = write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
+      result = write_mcp_register(cntrlRegB->getAddress(), updatedSetting);
+    }
+    cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
+    cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
+    if (result != 0) {
+      ESP_LOGI(MCP_TAG, "new_Setting changed failed , going back to defaults");
+      configuration_.configureDefault();
+    } else {
+      ESP_LOGI(MCP_TAG, "succefully changed the settings");
+    }
+  }
+}
+void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
   if (!wire_->begin(sda_, scl_, 100000)) {
     ESP_LOGE(MCP_TAG, "i2c init failed");
   }
 
   EventManager::initializeEventGroups();
-  bankMode_ = cntrlRegA->getBankMode<MCP::REG::IOCON>() ||
-              cntrlRegB->getBankMode<MCP::REG::IOCON>();
-  sequentialMode_ = cntrlRegA->getSequentialMode<MCP::REG::IOCON>() ||
-                    cntrlRegB->getSequentialMode<MCP::REG::IOCON>();
+
   startEventMonitorTask(this);
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
@@ -56,8 +111,7 @@ int MCPDevice::read_mcp_register(const uint8_t reg) {
   uint8_t bytesToRead = 1;
   uint8_t regAddress = reg;
 
-  if (configuration_.getSettings().opMode == OperationMode::SequentialMode16 ||
-      configuration_.getSettings().opMode == OperationMode::ByteMode16) {
+  if (bankMode_) {
     bytesToRead = 2;
     if ((reg % 2) != 0) {
       regAddress = reg - 1;
@@ -91,8 +145,7 @@ uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint16_t value) {
   uint8_t regAddress = reg; // Default: Single register
   uint8_t bytesToWrite = 1; // Default: 8-bit mode
 
-  if (configuration_.getSettings().opMode == OperationMode::SequentialMode16 ||
-      configuration_.getSettings().opMode == OperationMode::ByteMode16) {
+  if (bankMode_) {
     bytesToWrite = 2;
 
     // Only adjust for Port B if in 16-bit mode
@@ -398,12 +451,6 @@ void MCPDevice::write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
   }
 }
 
-void MCPDevice::configure(const MCP::Settings &setting) {
-  if (cntrlRegA && cntrlRegB) {
-    cntrlRegA->configure<MCP::REG::IOCON>(setting);
-    cntrlRegB->configure<MCP::REG::IOCON>(setting);
-  }
-}
 MCP::MCPRegister *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
   if (port == MCP::PORT::GPIOA) {
 

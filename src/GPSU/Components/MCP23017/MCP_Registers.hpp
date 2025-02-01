@@ -15,7 +15,7 @@
 namespace MCP {
 struct Settings {
   // Default Settings
-  OperationMode opMode = OperationMode::SequentialMode8;   // 00
+  OperationMode opMode = OperationMode::SequentialMode16;  // 00
   PairedInterrupt mirror = PairedInterrupt::Disabled;      // 0
   Slew slew = Slew::Enabled;                               // 0
   HardwareAddr haen = HardwareAddr::Disabled;              // 0
@@ -38,8 +38,8 @@ struct Settings {
   explicit Settings(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : model_(m) {}
 
   uint8_t getSetting() const {
-    return (static_cast<uint8_t>((opMode == OperationMode::SequentialMode16 ||
-                                  opMode == OperationMode::ByteMode16))
+    return (static_cast<uint8_t>((opMode == OperationMode::SequentialMode8 ||
+                                  opMode == OperationMode::ByteMode8))
             << 7) |
            (static_cast<uint8_t>(mirror) << 6) |
            (static_cast<uint8_t>((opMode == OperationMode::ByteMode16 ||
@@ -97,11 +97,11 @@ struct Config {
     return (value & (1 << static_cast<uint8_t>(field))) != 0;
   }
 
-  void setOperationMode(bool byteMode, bool mapping16Bit) {
-    config_.opMode = byteMode ? (mapping16Bit ? OperationMode::ByteMode16
-                                              : OperationMode::ByteMode8)
-                              : (mapping16Bit ? OperationMode::SequentialMode16
-                                              : OperationMode::SequentialMode8);
+  void setOperationMode(bool byteMode, bool mapping8Bit) {
+    config_.opMode = byteMode ? (mapping8Bit ? OperationMode::ByteMode8
+                                             : OperationMode::ByteMode16)
+                              : (mapping8Bit ? OperationMode::SequentialMode8
+                                             : OperationMode::SequentialMode16);
     updateConfig();
   }
 
@@ -183,10 +183,10 @@ private:
 
     new_config.opMode =
         (setting & (1 << 7))
-            ? ((setting & (1 << 5)) ? OperationMode::ByteMode16
-                                    : OperationMode::SequentialMode16)
-            : ((setting & (1 << 5)) ? OperationMode::ByteMode8
-                                    : OperationMode::SequentialMode8);
+            ? ((setting & (1 << 5)) ? OperationMode::ByteMode8
+                                    : OperationMode::SequentialMode8)
+            : ((setting & (1 << 5)) ? OperationMode::ByteMode16
+                                    : OperationMode::SequentialMode16);
 
     new_config.mirror = (setting & (1 << 6)) ? PairedInterrupt::Enabled
                                              : PairedInterrupt::Disabled;
@@ -479,9 +479,10 @@ public:
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
-  setOperationMode(bool byteMode, bool mapping16Bit) {
-    config_.setOperationMode(byteMode, mapping16Bit);
-    if (mapping16Bit) {
+  setOperationMode(bool byteMode, bool mapping8Bit) {
+    config_.setOperationMode(byteMode, mapping8Bit);
+    if (mapping8Bit) {
+      bankMode_ = true;
       updateRegisterAddress();
       EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
                                 config_.getSettingValue());
@@ -892,6 +893,7 @@ public:
     intcap = regMap[MCP::REG::INTCAP].get();
   }
   void updateAddress(bool bankMode) {
+
     if (iocon) {
       iocon->updatebankMode(bankMode);
       iocon->updateRegisterAddress();

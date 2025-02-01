@@ -22,6 +22,8 @@ class MCPDevice {
 private:
   MCP::MCP_MODEL model_;
   MCP::Config configuration_;
+  MCP::Settings settings_;
+  MCP::Settings defaultSettings_;
   MCP::address_decoder_t decoder_;
   uint8_t address_;
   gpio_num_t sda_;
@@ -29,8 +31,13 @@ private:
   gpio_num_t cs_;
   gpio_num_t reset_;
   std::unique_ptr<TwoWire> wire_;
-  bool bankMode_;
-  bool sequentialMode_;
+  bool bankMode_ = false;
+  bool mirrorMode_ = false;
+  bool byteMode_ = false;
+  bool slewrateDisabled_ = false;
+  bool hardwareAddressing_ = false;
+  bool opendrainEnabled_ = false;
+  bool interruptPolarityHigh_ = false;
 
   static SemaphoreHandle_t regRWmutex;
   TaskHandle_t eventTaskHandle;
@@ -55,7 +62,8 @@ public:
 
 private:
   void init();
-  void setupDevice();
+  void loadSettings();
+  void resetDevice();
   void startEventMonitorTask(MCPDevice *device);
   static void EventMonitorTask(void *param);
   void handleReadEvent(currentEvent *ev);
