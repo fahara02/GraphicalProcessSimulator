@@ -842,7 +842,6 @@ private:
 class MCPRegisters {
 private:
   std::unordered_map<MCP::REG, std::unique_ptr<MCP::MCPRegister>> regMap;
-  std::unordered_map<uint8_t, MCP::REG> addressMap;
 
 public:
   std::shared_ptr<MCP::MCPRegister> iocon;
@@ -872,8 +871,7 @@ public:
           std::make_unique<MCP::MCPRegister>(model, regType, port, bankMode);
     }
 
-    assign();    // Assign raw pointers
-    updateMap(); // Populate addressMap
+    assign(); // Assign raw pointers
   }
 
   void assign() {
@@ -898,17 +896,6 @@ public:
       regPtr->updatebankMode(bankMode);
       regPtr->updateRegisterAddress();
     }
-    updateMap();
-  }
-  void updateMap() {
-    addressMap.clear();
-    if (iocon) {
-      addressMap[iocon->getAddress()] = MCP::REG::IOCON;
-    }
-
-    for (const auto &[regType, regPtr] : regMap) {
-      addressMap[regPtr->getAddress()] = regType;
-    }
   }
 
   std::shared_ptr<MCP::MCPRegister> const getIOCON() { return iocon; }
@@ -927,6 +914,15 @@ public:
       return iocon.get();
     auto it = regMap.find(regType);
     return (it != regMap.end()) ? it->second.get() : nullptr;
+  }
+  const MCP::MCPRegister *getRegister(uint8_t address) const {
+
+    for (auto &[regType, regPtr] : regMap) {
+      if (regPtr->getAddress() == address) {
+        return regPtr.get();
+      }
+    }
+    return nullptr;
   }
 
   uint8_t getSavedValue(MCP::REG reg) const {
