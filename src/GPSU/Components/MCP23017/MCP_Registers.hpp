@@ -22,10 +22,7 @@ struct Settings {
   OpenDrain odr = OpenDrain::Disabled;                     // 0
   InterruptPolarity intpol = InterruptPolarity::ActiveLow; // 0
 
-  Settings(MCP::MCP_MODEL m, bool pinA2 = false, bool pinA1 = false,
-           bool pinA0 = false)
-      : model_(m), A2_(pinA2), A1_(pinA1), A0_(pinA0),
-        address_(decodeDeviceAddress()) {}
+  Settings(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : model_(m) {}
 
   uint8_t getSetting() const {
     return (static_cast<uint8_t>((opMode == OperationMode::SequentialMode16 ||
@@ -40,6 +37,7 @@ struct Settings {
            (static_cast<uint8_t>(odr) << 2) |
            (static_cast<uint8_t>(intpol) << 1);
   }
+
   void updateFrom(const Settings &other) {
     opMode = other.opMode;
     mirror = other.mirror;
@@ -49,33 +47,40 @@ struct Settings {
     intpol = other.intpol;
   }
 
-  constexpr uint8_t decodeDeviceAddress() {
-    if (model_ == MCP::MCP_MODEL::MCP23017 ||
-        model_ == MCP::MCP_MODEL::MCP23S17) {
-      return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
-    }
-    return MCP_ADDRESS_BASE;
-  }
+  void setModel(MCP_MODEL m) { model_ = m; }
 
-  uint8_t getDeviceAddress() const { return address_; }
   MCP_MODEL getModel() const { return model_; }
 
 private:
-  const MCP::MCP_MODEL model_;
-  const bool A2_;
-  const bool A1_;
-  const bool A0_;
-  uint8_t address_;
+  MCP::MCP_MODEL model_;
 };
 
 // ================= Config Struct ==================
 struct Config {
-  Config(MCP::MCP_MODEL m, bool pinA2 = false, bool pinA1 = false,
-         bool pinA0 = false)
-      : config_(m, pinA2, pinA1, pinA0), value(0) {}
 
+  enum Field : uint8_t {
+    RESERVED = 0,
+    INTPOL,
+    ODR,
+    HAEN,
+    DISSLW,
+    SEQOP,
+    MIRROR,
+    BANK,
+  };
+
+  Config(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : config_(m), value(0) {}
   void configureDefault() { validate_update(config_); }
-  bool configure(Settings &new_setting) { return validate_update(config_); }
+
+  void setModel(MCP::MCP_MODEL m) { config_.setModel(m); }
+
+  bool configure(const Settings &setting) {
+    Settings validated(setting.getModel());
+    validated.updateFrom(setting);
+    applyValidationRules(validated);
+    return validate_update(validated);
+  }
+
   bool configure(uint8_t new_setting) {
     Settings new_config = extractSettings(new_setting);
     applyValidationRules(new_config);
@@ -83,6 +88,10 @@ struct Config {
   }
 
   uint8_t getSettings() const { return value; }
+
+  bool getBitField(Field field) const {
+    return (value & (1 << static_cast<uint8_t>(field))) != 0;
+  }
 
   void setOperationMode(bool byteMode, bool mapping16Bit) {
     config_.opMode = byteMode ? (mapping16Bit ? OperationMode::ByteMode16
@@ -118,7 +127,6 @@ struct Config {
   // **Open-Drain Interrupt Output Setter**
   void setOpenDrain(bool enable) {
     config_.odr = enable ? OpenDrain::Enabled : OpenDrain::Disabled;
-    applyValidationRules();
     updateConfig();
   }
 
@@ -126,18 +134,16 @@ struct Config {
   void setInterruptPolarity(bool activeHigh) {
     config_.intpol = activeHigh ? InterruptPolarity::ActiveHigh
                                 : InterruptPolarity::ActiveLow;
-    applyValidationRules();
+
     updateConfig();
   }
-
-  uint8_t getDeviceAddress() const { return config_.getDeviceAddress(); }
 
 private:
   Settings config_;
 
   union {
     uint8_t value; // Full register value
-    struct {
+    struct __attribute__((packed)) {
       uint8_t RESERVED : 1; //!< Reserved bit (unused) (bit 0)
       uint8_t INTPOL : 1;   //!< Interrupt Polarity (bit 1)
       uint8_t ODR : 1;      //!< Open Drain (bit 2)
@@ -146,7 +152,7 @@ private:
       uint8_t SEQOP : 1;    //!< Sequential Operation mode (bit 5)
       uint8_t MIRROR : 1;   //!< Mirror INT pins (bit 6)
       uint8_t BANK : 1;     //!< Register Bank (bit 7)
-    };
+    } bits;
   };
 
   void updateConfig() { value = config_.getSetting(); }
@@ -165,11 +171,11 @@ private:
   }
 
   bool validate_update(Settings &setting) {
-
     return updateSettingsIfChanged(setting);
   }
+
   Settings extractSettings(uint8_t setting) {
-    Settings new_config = config_; // Start with current config
+    Settings new_config(config_.getModel());
 
     new_config.opMode =
         (setting & (1 << 7))
@@ -190,6 +196,7 @@ private:
 
     return new_config;
   }
+
   bool updateSettingsIfChanged(const Settings &new_config) {
     bool changed = false;
 
@@ -221,8 +228,8 @@ private:
     if (changed) {
       updateConfig();
     }
+    return changed;
   }
-  return changed;
 };
 
 struct address_decoder_t {
@@ -247,92 +254,22 @@ struct address_decoder_t {
 private:
   uint8_t device_i2c_address;
 };
-struct config_icon_t {
-
-public:
-  // Define fields as a public enum for easier reference
-  enum Field : uint8_t {
-    BANK = 0,
-    MIRROR,
-    SEQOP,
-    DISSLW,
-    HAEN,
-    ODR,
-    INTPOL,
-    RESERVED
-  };
-
-private:
-  MCP::MCP_MODEL model_;
-  union {
-    uint8_t value; // Full register value
-    struct {
-      uint8_t bank : 1;     //!< Controls how the registers are addressed
-      uint8_t mirror : 1;   //!< INT Pins Mirror bit
-      uint8_t seqop : 1;    //!< Sequential Operation mode bit
-      uint8_t disslw : 1;   //!< Slew Rate control bit for SDA output
-      uint8_t haen : 1;     //!< Enables hardware addressing
-      uint8_t odr : 1;      //!< Configures the INT pin as an open-drain output
-      uint8_t intpol : 1;   //!< Sets the polarity of the INT output pin
-      uint8_t reserved : 1; //!< Reserved bit (unused)
-    };
-  };
-
-public:
-  config_icon_t() : model_(MCP_MODEL::MCP23017), value(0) {}
-  config_icon_t(uint8_t setting)
-      : value(configure(setting) == true ? configure(setting) : 0) {}
-
-  void setBitField(Field field, bool value) {
-    if (value) {
-      this->value |= (1 << static_cast<uint8_t>(field));
-    } else {
-      this->value &= ~(1 << static_cast<uint8_t>(field));
-    }
-  }
-
-  bool getBitField(Field field) const {
-    return (this->value & (1 << static_cast<uint8_t>(field))) != 0;
-  }
-
-  uint8_t getSettings() const { return value; }
-  bool configure(uint8_t newSettings) {
-
-    if (newSettings & (1 << Field::RESERVED)) {
-      return false;
-    }
-
-    bool intPol = (newSettings & (1 << Field::INTPOL)) != 0;
-    bool odr = (newSettings & (1 << Field::ODR)) != 0;
-
-    if (intPol && odr) {
-      return false;
-    }
-
-    value = newSettings;
-    return true;
-  }
-  void applyMask(uint8_t mask) {
-    { value |= mask; }
-  }
-
-  void clearMask(uint8_t mask) { value &= ~mask; }
-};
 
 //
 class RegisterBase {
 
 public:
   using Callback = std::function<void(uint8_t)>;
-  using configField = MCP::config_icon_t::Field;
+  using configField = MCP::Config::Field;
 
 protected:
   REG reg_;
   MCP::MCP_MODEL model_;
+  Config config_;
   PORT port_;
   bool bankMode_;
   uint8_t regAddress_;
-  Config settings_;
+
   uint8_t enumIndex;
   bool readOnly = false;
 
@@ -377,7 +314,7 @@ public:
 
     if (reg_ == REG::IOCON) {
       value = 0X00;
-      settings_ = config_icon_t{};
+      config_.configureDefault();
     } else if (reg_ == REG::IODIR) {
 
       value = 0XFF;
@@ -387,20 +324,23 @@ public:
   }
 
   virtual void setReadonly() { readOnly = true; }
+
+  void useDefaultConfiguration() { return config_.configureDefault(); }
+
   uint8_t getSavedValue() const {
     if (reg_ == REG::IOCON) {
-      return settings_.getSettings();
+      return config_.getSettings();
 
     } else {
       return value;
     }
   }
-  uint8_t getSavedSettings() const { return settings_.getSettings(); }
+  uint8_t getSavedSettings() const { return config_.getSettings(); }
   void updateState(currentEvent &ev) {
     if (ev.regIdentity.regAddress == regAddress_) {
       setValue(ev.data);
       if (reg_ == REG::IOCON) {
-        settings_.configure(ev.data);
+        config_.configure(ev.data);
       }
     }
   }
@@ -440,7 +380,7 @@ public:
   }
   bool updateState(uint8_t newValue) {
     if (reg_ == REG::IOCON) {
-      return settings_.configure(newValue);
+      return config_.configure(newValue);
     } else {
       value = newValue;
       return true;
@@ -451,7 +391,7 @@ public:
       return false;
     } else if (reg_ == REG::IOCON) {
 
-      bool success = settings_.configure(newValue);
+      bool success = config_.configure(newValue);
       if (success) {
         EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
                                   newValue);
@@ -498,12 +438,12 @@ public:
 
   bool getBitField(configField field) const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
-    return settings_.getBitField(field);
+    return config_.getBitField(field);
   }
   uint8_t getValue() const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
     if (reg_ == REG::IOCON) {
-      return settings_.getSettings();
+      return config_.getSettings();
     } else {
       return value;
     }
@@ -525,53 +465,51 @@ public:
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
   configure(const uint8_t &settings) {
-    return settings_.configure(settings);
+    return config_.configure(settings);
   };
   template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type
-  setBankMode(MCP_BANK_MODE mode) {
-    settings_.setBitField(configField::BANK,
-                          mode == MCP_BANK_MODE::SEPARATE_BANK);
-    updateRegisterAddress();
-    EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
-                              settings_.getSettings());
+  typename std::enable_if<T == REG::IOCON, bool>::type
+  configure(const Settings &setting) {
+    return config_.configure(setting);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
-  setInterruptSahring(MCP_MIRROR_MODE mode) {
-    settings_.setBitField(configField::MIRROR,
-                          mode == MCP_MIRROR_MODE::INT_CONNECTED);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
+  setOperationMode(bool byteMode, bool mapping16Bit) {
+    config_.setOperationMode(byteMode, mapping16Bit);
+    if (mapping16Bit) {
+      updateRegisterAddress();
+      EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
+                                config_.getSettings());
+    } else {
+      EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                config_.getSettings());
+    }
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
-  setOperationMode(MCP_OPERATION_MODE mode) {
-    settings_.setBitField(configField::SEQOP,
-                          mode == MCP_OPERATION_MODE::BYTE_MODE);
+  setInterruptSahring(bool enable) {
+    config_.setMirror(enable);
     EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
+                              config_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, void>::type
-  setSlewRateMode(MCP_SLEW_RATE mode) {
-    settings_.setBitField(configField::DISSLW,
-                          mode == MCP_SLEW_RATE::SLEW_DISABLED);
+  setSlewRate(bool disable_state) {
+    config_.setSlewRate(disable_state);
     EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
+                              config_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
-  setHardwareAddressing(MCP_HARDWARE_ADDRESSING mode) {
+  setHardwareAddressing(bool enable) {
     if (model_ == MCP::MCP_MODEL::MCP23S17) {
-      settings_.setBitField(configField::HAEN,
-                            mode == MCP_HARDWARE_ADDRESSING::HAEN_ENABLED);
+      config_.setHardwareAddressing(enable);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                settings_.getSettings());
+                                config_.getSettings());
       return true;
     }
     return false;
@@ -579,19 +517,19 @@ public:
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
-  setOpenDrain(MCP_OPEN_DRAIN mode) {
-    bool intPolMode = settings_.getBitField(configField::INTPOL);
+  setOpenDrain(bool enable) {
+    bool intPolMode = config_.getBitField(configField::INTPOL);
 
-    if (!intPolMode && mode == MCP_OPEN_DRAIN::ODR) {
-      settings_.setBitField(configField::ODR, true);
-      settings_.setBitField(configField::INTPOL, false);
+    if (!intPolMode && enable) {
+      config_.setOpenDrain(true);
+      config_.setInterruptPolarity(false);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                settings_.getSettings());
+                                config_.getSettings());
       return true;
-    } else if (intPolMode && mode == MCP_OPEN_DRAIN::ACTIVE_DRIVER) {
-      settings_.setBitField(configField::ODR, false);
+    } else if (intPolMode && enable) {
+      config_.setOpenDrain(false);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                settings_.getSettings());
+                                config_.getSettings());
       return true;
     }
     return false;
@@ -599,119 +537,30 @@ public:
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
-  setInterruptPolarity(MCP_INT_POL mode) {
-    bool outputMode = settings_.getBitField(configField::ODR);
+  setInterruptPolarity(bool activeHigh) {
+    bool outputMode = config_.getBitField(configField::ODR);
     if (!outputMode) {
-      settings_.setBitField(configField::INTPOL,
-                            mode == MCP_INT_POL::MCP_ACTIVE_HIGH);
+      config_.setInterruptPolarity(activeHigh);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                settings_.getSettings());
+                                config_.getSettings());
       return true;
     }
     return false;
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type mergeBanks() {
-    settings_.setBitField(configField::BANK, true);
-    updateRegisterAddress();
-    EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type separateBanks() {
-    settings_.setBitField(configField::BANK, false);
-    updateRegisterAddress();
-    EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type mergeInterrupts() {
-    settings_.setBitField(configField::MIRROR, true);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type separateInterrupts() {
-    settings_.setBitField(configField::MIRROR, false);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type enableContinuousPoll() {
-    settings_.setBitField(configField::SEQOP, false);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type disableContinuousPoll() {
-    settings_.setBitField(configField::SEQOP, true);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type enableSlewRate() {
-    settings_.setBitField(configField::DISSLW, false);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type disableSlewRate() {
-    settings_.setBitField(configField::DISSLW, true);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type enableOpenDrain() {
-    settings_.setBitField(configField::ODR, true);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type disableOpenDrain() {
-    settings_.setBitField(configField::ODR, false);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type
-  enableInterruptActiveHigh() {
-    settings_.setBitField(configField::INTPOL, true);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
-  }
-
-  template <REG T>
-  typename std::enable_if<T == REG::IOCON, void>::type
-  disableInterruptActiveHigh() {
-    settings_.setBitField(configField::INTPOL, false);
-    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              settings_.getSettings());
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type getBankMode() const {
-    return settings_.getBitField(configField::BANK);
+    return config_.getBitField(configField::BANK);
   }
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
   getSequentialMode() const {
-    return settings_.getBitField(configField::SEQOP);
+    return config_.getBitField(configField::SEQOP);
   }
 
   template <REG T>
   typename std::enable_if<T == REG::IOCON, uint8_t>::type getSettings() const {
-    return settings_.getSettings();
+    return config_.getSettings();
   }
 
   template <REG T>
@@ -729,13 +578,17 @@ public:
   MCPRegister(MCP::MCP_MODEL m, REG rg, PORT p, bool bm) {
     setModel(m);
     setRegEnum(rg);
+    config_ = Config(m);
     port_ = p;
     bankMode_ = bm;
     regAddress_ = calculateAddress(rg, p);
+
     identity_ = registerIdentity(rg, p, regAddress_);
     initialiseValue();
   }
+
   void setModel(MCP::MCP_MODEL m) override { model_ = m; }
+
   void setRegEnum(MCP::REG reg) override {
     reg_ = reg;
     updateRegisterAddress();

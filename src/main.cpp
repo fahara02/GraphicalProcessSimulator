@@ -86,7 +86,7 @@ void setup() {
   delay(2000);
   expander.gpioBankA->setBankAsOutput();
   delay(1000);
-  expander.cntrlRegA->enableOpenDrain<MCP::REG::IOCON>();
+  expander.cntrlRegA->setOpenDrain<MCP::REG::IOCON>(true);
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);

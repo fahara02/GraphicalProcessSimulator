@@ -4,13 +4,14 @@ using namespace MCP;
 namespace COMPONENT {
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
 MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
-    : model_(model), addressDecoder_(model, pinA2, pinA1, pinA0),
-      address_(addressDecoder_.getDeviceAddress()), //
-      sda_(GPIO_NUM_25),                            //
-      scl_(GPIO_NUM_33),                            //
-      cs_(GPIO_NUM_NC),                             //
-      reset_(GPIO_NUM_33),                          //
-      wire_(std::make_unique<TwoWire>(1)),          //
+    : model_(model), configuration_(model),
+      decoder_(model, pinA2, pinA1, pinA0),
+      address_(decoder_.getDeviceAddress()), //
+      sda_(GPIO_NUM_25),                     //
+      scl_(GPIO_NUM_33),                     //
+      cs_(GPIO_NUM_NC),                      //
+      reset_(GPIO_NUM_33),                   //
+      wire_(std::make_unique<TwoWire>(1)),   //
       gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
       gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
       cntrlRegA(gpioBankA->getControlRegister()),
@@ -292,10 +293,10 @@ void MCPDevice::write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
   }
 }
 
-void MCPDevice::configure(const MCP::config_icon_t &config) {
+void MCPDevice::configure(const MCP::Settings &setting) {
   if (cntrlRegA && cntrlRegB) {
-    cntrlRegA->configure<MCP::REG::IOCON>(config.getSettings());
-    cntrlRegB->configure<MCP::REG::IOCON>(config.getSettings());
+    cntrlRegA->configure<MCP::REG::IOCON>(setting);
+    cntrlRegB->configure<MCP::REG::IOCON>(setting);
   }
 }
 MCP::MCPRegister *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {

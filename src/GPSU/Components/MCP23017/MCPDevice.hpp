@@ -21,7 +21,8 @@ namespace COMPONENT {
 class MCPDevice {
 private:
   MCP::MCP_MODEL model_;
-  MCP::address_decoder_t addressDecoder_;
+  MCP::Config configuration_;
+  MCP::address_decoder_t decoder_;
   uint8_t address_;
   gpio_num_t sda_;
   gpio_num_t scl_;
@@ -43,7 +44,7 @@ public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
 
-  void configure(const MCP::config_icon_t &config);
+  void configure(const MCP::Settings &config);
   MCP::MCPRegister *getRegister(MCP::REG reg, MCP::PORT port);
   uint8_t getsavedSettings(MCP::PORT port) const;
   void updateRegisters(MCPDevice *device);
