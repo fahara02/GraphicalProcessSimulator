@@ -87,7 +87,8 @@ struct Config {
     return validate_update(new_config);
   }
 
-  uint8_t getSettings() const { return value; }
+  uint8_t getSettingValue() const { return value; }
+  Settings getSettings() const { return config_; }
 
   bool getBitField(Field field) const {
     return (value & (1 << static_cast<uint8_t>(field))) != 0;
@@ -329,13 +330,13 @@ public:
 
   uint8_t getSavedValue() const {
     if (reg_ == REG::IOCON) {
-      return config_.getSettings();
+      return config_.getSettingValue();
 
     } else {
       return value;
     }
   }
-  uint8_t getSavedSettings() const { return config_.getSettings(); }
+  uint8_t getSavedSettings() const { return config_.getSettingValue(); }
   void updateState(currentEvent &ev) {
     if (ev.regIdentity.regAddress == regAddress_) {
       setValue(ev.data);
@@ -443,7 +444,7 @@ public:
   uint8_t getValue() const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
     if (reg_ == REG::IOCON) {
-      return config_.getSettings();
+      return config_.getSettingValue();
     } else {
       return value;
     }
@@ -480,10 +481,10 @@ public:
     if (mapping16Bit) {
       updateRegisterAddress();
       EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
-                                config_.getSettings());
+                                config_.getSettingValue());
     } else {
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                config_.getSettings());
+                                config_.getSettingValue());
     }
   }
 
@@ -492,7 +493,7 @@ public:
   setInterruptSahring(bool enable) {
     config_.setMirror(enable);
     EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              config_.getSettings());
+                              config_.getSettingValue());
   }
 
   template <REG T>
@@ -500,7 +501,7 @@ public:
   setSlewRate(bool disable_state) {
     config_.setSlewRate(disable_state);
     EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                              config_.getSettings());
+                              config_.getSettingValue());
   }
 
   template <REG T>
@@ -509,7 +510,7 @@ public:
     if (model_ == MCP::MCP_MODEL::MCP23S17) {
       config_.setHardwareAddressing(enable);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                config_.getSettings());
+                                config_.getSettingValue());
       return true;
     }
     return false;
@@ -524,12 +525,12 @@ public:
       config_.setOpenDrain(true);
       config_.setInterruptPolarity(false);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                config_.getSettings());
+                                config_.getSettingValue());
       return true;
     } else if (intPolMode && enable) {
       config_.setOpenDrain(false);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                config_.getSettings());
+                                config_.getSettingValue());
       return true;
     }
     return false;
@@ -542,7 +543,7 @@ public:
     if (!outputMode) {
       config_.setInterruptPolarity(activeHigh);
       EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                config_.getSettings());
+                                config_.getSettingValue());
       return true;
     }
     return false;
@@ -559,8 +560,9 @@ public:
   }
 
   template <REG T>
-  typename std::enable_if<T == REG::IOCON, uint8_t>::type getSettings() const {
-    return config_.getSettings();
+  typename std::enable_if<T == REG::IOCON, uint8_t>::type
+  getSettingValue() const {
+    return config_.getSettingValue();
   }
 
   template <REG T>

@@ -41,22 +41,74 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
                             5, &eventTaskHandle, 0);
   }
 }
+// int MCPDevice::read_mcp_register(const uint8_t reg) {
+//   wire_->beginTransmission(address_);
+//   wire_->write(reg);
+//   wire_->endTransmission(false);
+//   wire_->requestFrom((uint8_t)address_, (uint8_t)1, (uint8_t) true);
+//   while (wire_->available() == 0)
+//     ;
+
+//   return wire_->read();
+// }
+
 int MCPDevice::read_mcp_register(const uint8_t reg) {
+  uint8_t bytesToRead = 1;
+  uint8_t regAddress = reg;
+
+  if (configuration_.getSettings().opMode == OperationMode::SequentialMode16 ||
+      configuration_.getSettings().opMode == OperationMode::ByteMode16) {
+    bytesToRead = 2;
+    if ((reg % 2) != 0) {
+      regAddress = reg - 1;
+    }
+  }
+
   wire_->beginTransmission(address_);
-  wire_->write(reg);
+  wire_->write(regAddress);
   wire_->endTransmission(false);
-  wire_->requestFrom((uint8_t)address_, (uint8_t)1, (uint8_t) true);
-  while (wire_->available() == 0)
+  wire_->requestFrom((uint8_t)address_, bytesToRead, (uint8_t) true);
+
+  while (wire_->available() < bytesToRead)
     ;
 
-  return wire_->read();
+  uint8_t low = wire_->read();
+  uint8_t high = (bytesToRead == 2) ? wire_->read() : 0;
+
+  return (bytesToRead == 2) ? ((high << 8) | low) : low;
 }
-uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint8_t value) {
+
+// uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint8_t value) {
+//   uint8_t result = 0;
+//   wire_->beginTransmission(address_);
+//   wire_->write(reg);
+//   wire_->write(value);
+//   result = wire_->endTransmission(true);
+//   return result;
+// }
+uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint16_t value) {
   uint8_t result = 0;
+  uint8_t regAddress = reg; // Default: Single register
+  uint8_t bytesToWrite = 1; // Default: 8-bit mode
+
+  if (configuration_.getSettings().opMode == OperationMode::SequentialMode16 ||
+      configuration_.getSettings().opMode == OperationMode::ByteMode16) {
+    bytesToWrite = 2;
+
+    // Only adjust for Port B if in 16-bit mode
+    if ((reg % 2) != 0) {
+      regAddress = reg - 1; // Align to Port A
+    }
+  }
+
   wire_->beginTransmission(address_);
-  wire_->write(reg);
-  wire_->write(value);
+  wire_->write(regAddress);
+  wire_->write(value & 0xFF); // Write low byte (Port A)
+  if (bytesToWrite == 2) {
+    wire_->write((value >> 8) & 0xFF); // Write high byte (Port B)
+  }
   result = wire_->endTransmission(true);
+
   return result;
 }
 

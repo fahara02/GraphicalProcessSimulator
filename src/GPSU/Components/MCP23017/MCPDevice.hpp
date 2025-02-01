@@ -63,7 +63,7 @@ private:
   void handleSettingChangeEvent(currentEvent *ev);
   void handleBankModeEvent(currentEvent *ev);
   int read_mcp_register(const uint8_t reg);
-  uint8_t write_mcp_register(const uint8_t reg, uint8_t value);
+  uint8_t write_mcp_register(const uint8_t reg, uint16_t value);
 
   void read_mcp_registers_batch(uint8_t startReg, uint8_t *data, size_t length);
   void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
