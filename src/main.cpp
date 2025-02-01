@@ -222,12 +222,19 @@ void RunTask(void *param) {
 
     // expander->gpioBankA->setPinState(mask, false);
     vTaskDelay(pdMS_TO_TICKS(100));
+    uint8_t value = expander->gpioBankA->getPinState();
+    Serial.printf("pins value is %d", value);
+    vTaskDelay(pdMS_TO_TICKS(100));
     send_req += 1;
     if (send_req == 2) {
       send_req = 0;
       expander->gpioBankA->setPinState(mask, false);
       vTaskDelay(pdMS_TO_TICKS(100));
     }
+    value = expander->gpioBankA->getPinState();
+    Serial.printf("pins value is %d", value);
+    vTaskDelay(pdMS_TO_TICKS(100));
+
     Serial.printf("Total send request=%d\n", send_req);
     Serial.println("..........");
     vTaskDelay(pdMS_TO_TICKS(50));

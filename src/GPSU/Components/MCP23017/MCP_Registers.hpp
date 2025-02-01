@@ -437,21 +437,65 @@ public:
 
   bool getBitField(Field field) const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
+
+    // Wait for the DATA_RECEIVED event
+    EventBits_t bits = xEventGroupWaitBits(
+        EventManager::registerEventGroup,
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED),
+        pdFALSE,     // Clear the bit after processing
+        pdFALSE,     // Don't wait for all bits
+        READ_TIMEOUT // Timeout
+    );
+
+    if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
+      ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
+      return false; // Return default (safe) value
+    }
+    currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
+    EventManager::acknowledgeEvent(event);
+    EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
+
     return (this->value & (1 << static_cast<uint8_t>(field))) != 0;
   }
 
   bool getBitField(configField field) const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
+
+    // Wait for the DATA_RECEIVED event
+    EventBits_t bits = xEventGroupWaitBits(
+        EventManager::registerEventGroup,
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
+        pdFALSE, READ_TIMEOUT);
+
+    if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
+      ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
+      return false;
+    }
+    currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
+    EventManager::acknowledgeEvent(event);
+    EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
     return config_.getBitField(field);
   }
+
   uint8_t getValue() const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
-    if (reg_ == REG::IOCON) {
-      return config_.getSettingValue();
-    } else {
-      return value;
+
+    // Wait for the DATA_RECEIVED event
+    EventBits_t bits = xEventGroupWaitBits(
+        EventManager::registerEventGroup,
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
+        pdFALSE, READ_TIMEOUT);
+
+    if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
+      ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
+      return 0xFF; // Return error code
     }
+    currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
+    EventManager::acknowledgeEvent(event);
+    EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
+    return (reg_ == REG::IOCON) ? config_.getSettingValue() : value;
   }
+
   // Add a callback
   int addCallback(const Callback &callback) {
     for (size_t i = 0; i < callbacks_.size(); ++i) {

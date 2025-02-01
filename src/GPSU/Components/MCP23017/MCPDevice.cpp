@@ -59,14 +59,19 @@ void MCPDevice::loadSettings() {
 
     uint8_t result = 0;
     if (bankMode_) {
-      // To update the register address before write
+      // Delay the Register address update before sending as
+      // default is bankMode= false i.e 16 bit mapping address
+      // write 8 bit value to both port
+      result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
+      result |= write_mcp_register(cntrlRegB->getAddress(), updatedSetting);
+
       gpioBankA->updateBankMode(bankMode_);
       gpioBankB->updateBankMode(bankMode_);
-      // for bankMode Sending 16 bit value to A port is enough
-      result = write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
     } else {
-      result = write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
-      result = write_mcp_register(cntrlRegB->getAddress(), updatedSetting);
+      // if not writing 16 bit to A port is enough and no address change
+
+      result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
+      result |= write_mcp_register(cntrlRegA->getAddress() + 1, updatedSetting);
     }
     cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
     cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
@@ -96,22 +101,12 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
                             5, &eventTaskHandle, 0);
   }
 }
-// int MCPDevice::read_mcp_register(const uint8_t reg) {
-//   wire_->beginTransmission(address_);
-//   wire_->write(reg);
-//   wire_->endTransmission(false);
-//   wire_->requestFrom((uint8_t)address_, (uint8_t)1, (uint8_t) true);
-//   while (wire_->available() == 0)
-//     ;
-
-//   return wire_->read();
-// }
 
 int MCPDevice::read_mcp_register(const uint8_t reg) {
   uint8_t bytesToRead = 1;
   uint8_t regAddress = reg;
 
-  if (bankMode_) {
+  if (!bankMode_) {
     bytesToRead = 2;
     if ((reg % 2) != 0) {
       regAddress = reg - 1;
@@ -132,20 +127,13 @@ int MCPDevice::read_mcp_register(const uint8_t reg) {
   return (bytesToRead == 2) ? ((high << 8) | low) : low;
 }
 
-// uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint8_t value) {
-//   uint8_t result = 0;
-//   wire_->beginTransmission(address_);
-//   wire_->write(reg);
-//   wire_->write(value);
-//   result = wire_->endTransmission(true);
-//   return result;
-// }
 uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint16_t value) {
   uint8_t result = 0;
   uint8_t regAddress = reg; // Default: Single register
-  uint8_t bytesToWrite = 1; // Default: 8-bit mode
+  uint8_t bytesToWrite = 1; //  8-bit mode
 
-  if (bankMode_) {
+  if (!bankMode_) {
+    // Default 16 Bit mode
     bytesToWrite = 2;
 
     // Only adjust for Port B if in 16-bit mode
@@ -270,44 +258,23 @@ void MCPDevice::handleBankModeEvent(currentEvent *ev) {
   EventManager::clearBits(RegisterEvent::BANK_MODE_CHANGED);
   xSemaphoreGive(regRWmutex);
 }
-// void MCPDevice::handleReadEvent(currentEvent *ev) {
-//   uint8_t reg = ev->regIdentity.regAddress;
-//   MCP::PORT port = ev->regIdentity.port;
-//   int value = read_mcp_register(reg);
-//   if (value >= 0 and value <= UINT8_MAX) {
-//     if (port == MCP::PORT::GPIOA) {
-//       gpioBankA->updateRegisterValue(reg, value);
-//     } else {
-//       gpioBankB->updateRegisterValue(reg, value);
-//     }
-//     Serial.printf("New ReadEvent id=%d ;\n", ev->id);
-//     EventManager::acknowledgeEvent(ev);
-//   }
-//   EventManager::clearBits(RegisterEvent::READ_REQUEST);
-//   xSemaphoreGive(regRWmutex);
-// }
 
 void MCPDevice::handleReadEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   MCP::PORT port = ev->regIdentity.port;
 
-  int value = read_mcp_register(reg); // Read either 8-bit or 16-bit
-
+  int value = read_mcp_register(reg);
   if (value == -1) {
     Serial.printf("Read failed for id=%d ; Invalid data received\n", ev->id);
     return;
   }
 
-  if (configuration_.getSettings().opMode == OperationMode::SequentialMode16 ||
-      configuration_.getSettings().opMode == OperationMode::ByteMode16) {
-    // Handle 16-bit mode
-    uint8_t valueA = value & 0xFF;        // Extract Port A data
-    uint8_t valueB = (value >> 8) & 0xFF; // Extract Port B data
-
+  if (!bankMode_) {
+    uint8_t valueA = value & 0xFF;
+    uint8_t valueB = (value >> 8) & 0xFF;
     gpioBankA->updateRegisterValue(reg, valueA);
-    gpioBankB->updateRegisterValue(reg + 1, valueB); // Port B is next register
+    gpioBankB->updateRegisterValue(reg + 1, valueB);
   } else {
-    // Handle 8-bit mode
     if (port == MCP::PORT::GPIOA) {
       gpioBankA->updateRegisterValue(reg, value);
     } else {
@@ -316,26 +283,16 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
   }
 
   Serial.printf("New ReadEvent id=%d ;\n", ev->id);
-  EventManager::acknowledgeEvent(ev);
 
+  EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::READ_REQUEST);
+
+  EventManager::createEvent(ev->regIdentity, RegisterEvent::DATA_RECEIVED,
+                            value);
+
   xSemaphoreGive(regRWmutex);
 }
 
-// void MCPDevice::handleWriteEvent(currentEvent *ev) {
-//   uint8_t reg = ev->regIdentity.regAddress;
-//   uint8_t value = ev->data;
-//   uint8_t result = write_mcp_register(reg, value);
-//   if (result == 0) {
-//     Serial.printf("New WriteEvent SuccessFull id=%d ; \n", ev->id);
-//     EventManager::acknowledgeEvent(ev);
-//   } else {
-//     Serial.printf("New Write failed for id=%d ; \n", ev->id);
-//   }
-
-//   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
-//   xSemaphoreGive(regRWmutex);
-// }
 void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   uint16_t value = ev->data; // Use 16-bit storage

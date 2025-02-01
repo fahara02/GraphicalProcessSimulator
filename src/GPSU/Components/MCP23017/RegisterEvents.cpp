@@ -18,7 +18,7 @@ const EventBits_t EventManager::REGISTER_EVENT_BITS_MASK =
     static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST) |
     static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED) |
     static_cast<EventBits_t>(RegisterEvent::CLEAR_INTERRUPT) |
-    static_cast<EventBits_t>(RegisterEvent::NETWORK_ERROR) |
+    static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED) |
     static_cast<EventBits_t>(RegisterEvent::RESTART) |
     static_cast<EventBits_t>(RegisterEvent::MAX);
 

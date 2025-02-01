@@ -18,7 +18,7 @@ enum class RegisterEvent : EventBits_t {
   WRITE_REQUEST = 1 << 2,
   SETTINGS_CHANGED = 1 << 3,
   CLEAR_INTERRUPT = 1 << 4,
-  NETWORK_ERROR = 1 << 5,
+  DATA_RECEIVED = 1 << 5,
   RESTART = 1 << 6,
   MAX = 1 << 7
 };
