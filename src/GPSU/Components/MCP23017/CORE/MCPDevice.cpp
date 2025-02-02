@@ -76,7 +76,7 @@ void MCPDevice::loadSettings() {
     cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
     cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
     if (result != 0) {
-      ESP_LOGI(MCP_TAG, "new_Setting changed failed , going back to defaults");
+      ESP_LOGE(MCP_TAG, "new_Setting changed failed , going back to defaults");
       configuration_.configureDefault();
     } else {
       ESP_LOGI(MCP_TAG, "succefully changed the settings");
@@ -107,9 +107,10 @@ int MCPDevice::read_mcp_register(const uint8_t reg) {
   uint8_t regAddress = reg;
 
   if (!bankMode_) {
+    // Default 16 bit mapping
     bytesToRead = 2;
     if ((reg % 2) != 0) {
-      regAddress = reg - 1;
+      regAddress = reg - 1; // Align with Port A
     }
   }
 
@@ -162,7 +163,7 @@ void MCPDevice::EventMonitorTask(void *param) {
     if (MAX_EVENT - queueSize < 2) {
 
       if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-        EventManager::clearOldestEvent();
+        // EventManager::clearOldestEvent();
         Serial.printf("QUE Cleared");
       } else {
         Serial.printf(" Monitor task: Failed to get mutex!");
@@ -282,8 +283,6 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
     }
   }
 
-  Serial.printf("New ReadEvent id=%d ;\n", ev->id);
-
   EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::READ_REQUEST);
 
@@ -300,10 +299,10 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t result = write_mcp_register(reg, value); // Handles 8-bit & 16-bit
 
   if (result == 0) {
-    Serial.printf("New WriteEvent Successful id=%d ; \n", ev->id);
+
     EventManager::acknowledgeEvent(ev);
   } else {
-    Serial.printf("New Write failed for id=%d ; \n", ev->id);
+    ESP_LOGE(MCP_TAG, "New Write failed for id=%d ; \n", ev->id);
   }
 
   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
