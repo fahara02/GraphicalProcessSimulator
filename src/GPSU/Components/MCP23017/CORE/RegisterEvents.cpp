@@ -71,13 +71,10 @@ bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
     return false; // Queue full
   }
 
-  // if (eventIndexMap.find(identity) != eventIndexMap.end()) {
-  //   return false;
-  // }
   if (eventIndexMap.find(identity) != eventIndexMap.end()) {
     size_t index = eventIndexMap[identity];
     eventBuffer[index] = currentEvent(e, identity, valueOrSettings, index);
-    setBits(e); // Ensure the event gets signaled
+    setBits(e);
     return true;
   }
 

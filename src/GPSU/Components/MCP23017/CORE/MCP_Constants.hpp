@@ -62,15 +62,6 @@ namespace MCP_23S17 {} // namespace MCP_23S17
 
 namespace MCP_23X18 {}; // namespace MCP_23X18
 
-// Enums for the configuration options
-enum class MCP_BANK_MODE { MERGE_BANK = 0, SEPARATE_BANK = 1 };
-enum class MCP_MIRROR_MODE { INT_DISCONNECTED = 0, INT_CONNECTED = 1 };
-enum class MCP_OPERATION_MODE { SEQUENTIAL_MODE = 0, BYTE_MODE = 1 };
-enum class MCP_SLEW_RATE { SLEW_ENABLED = 0, SLEW_DISABLED = 1 };
-enum class MCP_HARDWARE_ADDRESSING { HAEN_DISABLED = 0, HAEN_ENABLED = 1 };
-enum class MCP_OPEN_DRAIN { ACTIVE_DRIVER = 0, ODR = 1 };
-enum class MCP_INT_POL { MCP_ACTIVE_LOW = 0, MCP_ACTIVE_HIGH = 1 };
-
 static constexpr uint16_t INT_ERR = 255;
 static constexpr uint16_t MCP_ADDRESS_BASE = 0x20;
 static constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x20;

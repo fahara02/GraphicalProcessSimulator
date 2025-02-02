@@ -41,6 +41,7 @@ struct Pin {
   }
 
   // Core constants getters
+  constexpr PIN getEnum() const { return pinEnum; }
   constexpr uint8_t getPinNumber() const { return pinNumber; }
   constexpr uint8_t getMask() const { return mask; }
   constexpr PORT getPort() const { return port; }

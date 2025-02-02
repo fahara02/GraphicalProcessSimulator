@@ -38,7 +38,6 @@ struct registerIdentity {
   }
 };
 
-// Correct specialization of std::hash
 namespace std {
 template <> struct hash<registerIdentity> {
   size_t operator()(const registerIdentity &key) const {
