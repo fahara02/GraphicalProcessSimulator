@@ -68,6 +68,8 @@ void MCPDevice::loadSettings() {
 
     // Step 2: Update remaining settings using configuration struct value
     uint8_t updatedSetting = configuration_.getSettingValue();
+    cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
+    cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
 
     if (bankMode_) {
       // In BANK mode (8-bit register mapping), write separately to each bank
@@ -79,9 +81,7 @@ void MCPDevice::loadSettings() {
       result |= write_mcp_register(cntrlRegA->getAddress() + 1, updatedSetting);
     }
 
-    // Step 3: Store settings in control registers
-    cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
-    cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
+    
 
     // Step 4: Update other MCP settings
     mirrorMode_ = (settings_.mirror == MCP::PairedInterrupt::Enabled);
