@@ -102,67 +102,6 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   }
 }
 
-// void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
-//   MCP::PORT port = pin.getPort();
-//   PIN pinEnum = pin.getEnum();
-
-//   if (port == MCP::PORT::GPIOA) {
-//     switch (mode) {
-//     case INPUT:
-//       gpioBankA->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-//       break;
-//     case INPUT_PULLUP:
-//       gpioBankA->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-//       gpioBankA->setPullup(pinEnum, MCP::PULL_MODE::ENABLE_PULLUP);
-//       break;
-//     case INPUT_PULLDOWN:
-//       gpioBankA->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-//       ESP_LOGI(MCP_TAG,
-//                "Not avialable feature in MCP devices switching to just
-//                INPUT");
-
-//     case OUTPUT:
-//       gpioBankA->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
-//       break;
-//     case OUTPUT_OPEN_DRAIN:
-//       gpioBankA->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
-//       cntrlRegA->setOpenDrain<MCP::REG::IOCON>(true);
-//       break;
-//     default:
-//       assert(false && "Invalid mode");
-//       break;
-//     }
-//   } else if (port == MCP::PORT::GPIOB) {
-//     switch (mode) {
-//     case INPUT:
-//       gpioBankB->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-//       break;
-//     case INPUT_PULLUP:
-//       gpioBankB->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-//       gpioBankB->setPullup(pinEnum, MCP::PULL_MODE::ENABLE_PULLUP);
-//       break;
-//     case INPUT_PULLDOWN:
-//       gpioBankB->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-//       ESP_LOGI(MCP_TAG,
-//                "Not avialable feature in MCP devices switching to just
-//                INPUT");
-
-//     case OUTPUT:
-//       gpioBankB->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
-//       break;
-//     case OUTPUT_OPEN_DRAIN:
-//       gpioBankB->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
-//       cntrlRegB->setOpenDrain<MCP::REG::IOCON>(true);
-//       break;
-
-//     default:
-//       assert(false && "Invalid mode");
-//       break;
-//     }
-//   } else {
-//     assert(false && "Invalid port");
-//   }
-// }
 void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
   MCP::PORT port = pin.getPort();
   PIN pinEnum = pin.getEnum();
