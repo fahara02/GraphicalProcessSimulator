@@ -81,18 +81,16 @@ void setup() {
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
-  Serial.println("when Bank Mode is false");
-  expander.dumpRegisters();
+
   // delay(1000);
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
   MCP::Settings setting;
-  setting.opMode = MCP::OperationMode::SequentialMode8;
+  setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
-  Serial.println("when Bank Mode is false");
-  expander.dumpRegisters();
-  expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
 
+  expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+  expander.dumpRegisters();
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);
