@@ -529,7 +529,6 @@ public:
       bankMode_ = true;
 
       updateRegisterAddress();
-      identity_.regAddress = regAddress_;
       EventManager::createEvent(identity_, RegisterEvent::BANK_MODE_CHANGED,
                                 config_.getSettingValue());
     } else {
