@@ -119,7 +119,7 @@ public:
     regs.ipol->setInputPolarity<REG::IPOL>(generalMask, pol);
   }
   template <typename... Pins>
-  void setInputPolarity(INPUT_POLARITY pol, Pins... pins) {
+  void setInputPolarity(Pins... pins, INPUT_POLARITY pol) {
     uint8_t pinmask = generateMask(pins...);
     regs.ipol->setInputPolarity<REG::IPOL>(pinmask, pol);
   }

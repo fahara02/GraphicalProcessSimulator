@@ -108,6 +108,9 @@ void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
   uint8_t pinIndex = Util::getPinIndex(pinEnum);
   return pinMode(pinIndex, mode);
 }
+
+
+
 void MCPDevice::pinMode(const int pin, const uint8_t mode) {
   MCP::PIN pinEnum;
   if (0 <= pin && pin <= 15) {

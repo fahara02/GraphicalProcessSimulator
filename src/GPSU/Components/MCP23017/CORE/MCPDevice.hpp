@@ -12,6 +12,7 @@
 #include "esp_log.h"
 #include <array>
 #include <memory>
+#include <tuple>
 #include <variant>
 
 #define MCP_TAG "MCPDevice"
@@ -57,6 +58,17 @@ public:
   void pinMode(const int pin, const uint8_t mode);
   void pinMode(MCP::PORT port, uint8_t pinmask, const uint8_t mode);
   void pinMode(MCP::PORT port, const uint8_t mode);
+  template <
+      typename FirstPin, typename... RestPins,
+      typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
+                                   std::is_same_v<RestPins, MCP::Pin>)>>
+  void pinMode(uint8_t mode, FirstPin first, RestPins... rest) {
+
+    uint8_t pinmask = generateMask(first, rest...);
+    MCP::PORT port = first.getPort();
+
+    pinMode(port, pinmask, mode);
+  }
 
   void setupCommunication();
 
@@ -84,6 +96,15 @@ private:
   void read_mcp_registers_batch(uint8_t startReg, uint8_t *data, size_t length);
   void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
                                  size_t length);
+
+  template <typename FirstPin, typename... RestPins>
+  constexpr uint8_t generateMask(FirstPin first, RestPins... rest) {
+    static_assert(sizeof...(rest) < 8, "Too many pins, max is 8");
+    MCP::PORT port = first.getPort();
+    assert(((rest.getPort() == port) && ...));
+
+    return (1 << first.getIndex()) | (0 | ... | (1 << rest.getIndex()));
+  }
 };
 
 } // namespace COMPONENT
