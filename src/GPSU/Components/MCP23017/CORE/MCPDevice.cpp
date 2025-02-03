@@ -32,11 +32,17 @@ void MCPDevice::configure(const MCP::Settings &setting) {
 }
 void MCPDevice::loadSettings() {
 
+  uint8_t result = 0;
+
   if (settings_ != defaultSettings_) {
 
-    if (settings_.opMode == MCP::OperationMode::SequentialMode16 ||
-        settings_.opMode == MCP::OperationMode::ByteMode16) {
+    if (settings_.opMode == MCP::OperationMode::SequentialMode8 ||
+        settings_.opMode == MCP::OperationMode::ByteMode8) {
       bankMode_ = true; // 8bitMapping
+      result |= write_mcp_register(cntrlRegA->getAddress(), 0x80);
+
+      gpioBankA->updateBankMode(bankMode_);
+      gpioBankB->updateBankMode(bankMode_);
     }
 
     if (settings_.opMode == MCP::OperationMode::ByteMode16 ||
@@ -56,8 +62,6 @@ void MCPDevice::loadSettings() {
 
     // Send the Settings To MCP Register
     uint8_t updatedSetting = configuration_.getSettingValue();
-
-    uint8_t result = 0;
     if (bankMode_) {
       // Delay the Register address update before sending as
       // default is bankMode= false i.e 16 bit mapping address
@@ -65,8 +69,6 @@ void MCPDevice::loadSettings() {
       result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
       result |= write_mcp_register(cntrlRegB->getAddress(), updatedSetting);
 
-      gpioBankA->updateBankMode(bankMode_);
-      gpioBankB->updateBankMode(bankMode_);
     } else {
       // if not writing 16 bit to A port is enough and no address change
 

@@ -85,9 +85,9 @@ void setup() {
   // delay(1000);
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
-  // MCP::Settings setting;
-  // setting.opMode = MCP::OperationMode::SequentialMode16;
-  // expander.configure(setting);
+  MCP::Settings setting;
+  setting.opMode = MCP::OperationMode::SequentialMode16;
+  expander.configure(setting);
 
   expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
 
