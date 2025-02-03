@@ -66,38 +66,25 @@ public:
     assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
     regs.iodir->setPinMode<REG::IODIR>(p, m);
   }
-  void setPinsAsOutput(uint8_t pinmask) {
-    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
-  }
-  void setPinsAsInput(uint8_t pinmask) {
-    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
-  }
-  void setPinsAsInput() {
-    regs.iodir->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_INPUT);
-  }
-  void setPinsAsOutput() {
-    regs.iodir->setPinMode<REG::IODIR>(generalMask, GPIO_MODE::GPIO_OUTPUT);
+  void setPinDirection(uint8_t pinmask, GPIO_MODE m) {
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, m);
   }
 
-  void setBankAsOutput() {
+  void setPinDirection(GPIO_MODE m) {
     uint8_t pinmask = static_cast<uint8_t>(MASK::ALL);
-    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_OUTPUT);
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, m);
   }
 
-  void setBankAsInput() {
-    uint8_t pinmask = static_cast<uint8_t>(MASK::ALL);
-    regs.iodir->setPinMode<REG::IODIR>(pinmask, GPIO_MODE::GPIO_INPUT);
-  }
   // PULLUP SELECTION
   void setPullup(PIN pin, PULL_MODE mode) {
     regs.gppu->setPullType<REG::GPPU>(pin, mode);
   }
 
-  void setPinsPullup(uint8_t pinMask, PULL_MODE mode) {
+  void setPullup(uint8_t pinMask, PULL_MODE mode) {
     regs.gppu->setPullType<REG::GPPU>(pinMask, mode);
   }
 
-  void setPinsPullup(PULL_MODE mode) {
+  void setPullup(PULL_MODE mode) {
     regs.gppu->setPullType<REG::GPPU>(generalMask, mode);
   }
 

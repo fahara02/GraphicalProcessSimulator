@@ -84,9 +84,8 @@ void setup() {
   delay(1000);
   // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   delay(2000);
-  expander.gpioBankA->setBankAsOutput();
-  delay(1000);
-  expander.cntrlRegA->setOpenDrain<MCP::REG::IOCON>(true);
+  expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
+
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);

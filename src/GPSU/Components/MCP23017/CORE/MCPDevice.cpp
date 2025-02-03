@@ -103,8 +103,21 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
 }
 
 void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
-  MCP::PORT port = pin.getPort();
+
   PIN pinEnum = pin.getEnum();
+  uint8_t pinIndex = Util::getPinIndex(pinEnum);
+  return pinMode(pinIndex, mode);
+}
+void MCPDevice::pinMode(const int pin, const uint8_t mode) {
+  MCP::PIN pinEnum;
+  if (0 <= pin && pin <= 15) {
+    pinEnum = static_cast<MCP::PIN>(pin);
+  } else {
+    assert(false && "Invalid pin");
+    return;
+  }
+  MCP::PORT port = Util::getPortFromPin(pinEnum);
+
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   auto *cntrlReg =
@@ -124,14 +137,87 @@ void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
     gpioBank->setPullup(pinEnum, MCP::PULL_MODE::ENABLE_PULLUP);
     break;
   case INPUT_PULLDOWN:
-    gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-    ESP_LOGI(MCP_TAG, "Not available in MCP devices, defaulting to INPUT.");
+
+    ESP_LOGE(MCP_TAG,
+             "PullDown not available in MCP devices, defaulting to INPUT.");
     break;
   case OUTPUT:
     gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
     break;
   case OUTPUT_OPEN_DRAIN:
     gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
+    cntrlReg->setOpenDrain<MCP::REG::IOCON>(true);
+    break;
+  default:
+    assert(false && "Invalid mode");
+    break;
+  }
+}
+void MCPDevice::pinMode(MCP::PORT port, uint8_t pinmask, const uint8_t mode) {
+
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  auto *cntrlReg =
+      (port == MCP::PORT::GPIOA) ? cntrlRegA.get() : cntrlRegB.get();
+  if (!gpioBank) {
+    assert(false && "Invalid port");
+    return;
+  }
+
+  switch (mode) {
+  case INPUT:
+    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_INPUT);
+    break;
+  case INPUT_PULLUP:
+    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_INPUT);
+    gpioBank->setPullup(pinmask, MCP::PULL_MODE::ENABLE_PULLUP);
+    break;
+  case INPUT_PULLDOWN:
+
+    ESP_LOGE(MCP_TAG,
+             "PullDown not available in MCP devices, defaulting to INPUT.");
+    break;
+  case OUTPUT:
+    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_OUTPUT);
+    break;
+  case OUTPUT_OPEN_DRAIN:
+    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_OUTPUT);
+    cntrlReg->setOpenDrain<MCP::REG::IOCON>(true);
+    break;
+  default:
+    assert(false && "Invalid mode");
+    break;
+  }
+}
+void MCPDevice::pinMode(MCP::PORT port, const uint8_t mode) {
+
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  auto *cntrlReg =
+      (port == MCP::PORT::GPIOA) ? cntrlRegA.get() : cntrlRegB.get();
+  if (!gpioBank) {
+    assert(false && "Invalid port");
+    return;
+  }
+
+  switch (mode) {
+  case INPUT:
+    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_INPUT);
+    break;
+  case INPUT_PULLUP:
+    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_INPUT);
+    gpioBank->setPullup(MCP::PULL_MODE::ENABLE_PULLUP);
+    break;
+  case INPUT_PULLDOWN:
+
+    ESP_LOGE(MCP_TAG,
+             "PullDown not available in MCP devices, defaulting to INPUT.");
+    break;
+  case OUTPUT:
+    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_OUTPUT);
+    break;
+  case OUTPUT_OPEN_DRAIN:
+    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_OUTPUT);
     cntrlReg->setOpenDrain<MCP::REG::IOCON>(true);
     break;
   default:

@@ -52,8 +52,11 @@ public:
             bool pinA0 = false);
 
   void configure(const MCP::Settings &config);
+
   void pinMode(MCP::Pin pin, const uint8_t mode);
-  // void pinMode(int pin, const uint8_t mode);
+  void pinMode(const int pin, const uint8_t mode);
+  void pinMode(MCP::PORT port, uint8_t pinmask, const uint8_t mode);
+  void pinMode(MCP::PORT port, const uint8_t mode);
 
   void setupCommunication();
 
