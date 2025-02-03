@@ -82,12 +82,12 @@ void setup() {
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
   expander.dumpRegisters();
-  delay(1000);
-  // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
-  delay(2000);
-  MCP::Settings setting;
-  setting.opMode = MCP::OperationMode::SequentialMode8;
-  expander.configure(setting);
+  // delay(1000);
+  // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
+  // delay(2000);
+  // MCP::Settings setting;
+  // setting.opMode = MCP::OperationMode::SequentialMode16;
+  // expander.configure(setting);
 
   expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
 

@@ -49,6 +49,38 @@ public:
       return (byte & (1UL << bit)) != 0U;
     }
   };
+
+  class ToString {
+  public:
+    static const char *REG(MCP::REG reg) {
+      switch (reg) {
+      case MCP::REG::IODIR:
+        return "IODIR";
+      case MCP::REG::IPOL:
+        return "IPOL";
+      case MCP::REG::GPINTEN:
+        return "GPINTEN";
+      case MCP::REG::DEFVAL:
+        return "DEFVAL";
+      case MCP::REG::INTCON:
+        return "INTCON";
+      case MCP::REG::IOCON:
+        return "IOCON";
+      case MCP::REG::GPPU:
+        return "GPPU";
+      case MCP::REG::INTF:
+        return "INTF";
+      case MCP::REG::INTCAP:
+        return "INTCAP";
+      case MCP::REG::GPIO:
+        return "GPIO";
+      case MCP::REG::OLAT:
+        return "OLAT";
+      default:
+        return "UNKNOWN";
+      }
+    }
+  };
 };
 
 } // namespace MCP
