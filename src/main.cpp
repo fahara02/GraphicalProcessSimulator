@@ -216,7 +216,7 @@ void RunTask(void *param) {
   while (true) {
     Serial.println("....MAIN TASK......");
     uint8_t mask = 0b00011110;
-    expander->gpioBankA->setPinState(mask, true);
+    expander->gpioBankA->setPinState(true, GPA1, GPA2, GPA3, GPA4);
     // send_req += 1;
 
     // expander->gpioBankA->setPinState(mask, false);
@@ -227,7 +227,7 @@ void RunTask(void *param) {
     send_req += 1;
     if (send_req == 2) {
       send_req = 0;
-      expander->gpioBankA->setPinState(mask, false);
+      expander->gpioBankA->setPinState(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
     value = expander->gpioBankA->getPinState();

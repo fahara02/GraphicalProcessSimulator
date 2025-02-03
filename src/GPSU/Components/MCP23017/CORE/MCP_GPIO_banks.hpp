@@ -15,14 +15,11 @@ private:
   MCPRegisters regs;
 
 public:
-  GPIO_BANK(PORT port, MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017,
-            bool bankMerged = false, bool enableInterrupt = false)
+  GPIO_BANK(PORT port, MCP::MCP_MODEL m)
       : Pins(createPins(port)), pinInterruptState{false}, model(m),
-        bankMode(bankMerged), interruptEnabled(enableInterrupt),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), intr_type(INTR_TYPE::NONE),
         intr_out_type(INTR_OUTPUT_TYPE::NA) {
-    assert(isValidPort(port) && "Invalid PORT provided!");
 
     regs.setup(model, port_name, bankMode);
     init();
@@ -75,6 +72,11 @@ public:
     regs.iodir->setPinMode<REG::IODIR>(pinmask, m);
   }
 
+  template <typename... Pins> void setPinDirection(GPIO_MODE m, Pins... pins) {
+    uint8_t pinmask = generateMask(pins...);
+    regs.iodir->setPinMode<REG::IODIR>(pinmask, m);
+  }
+
   // PULLUP SELECTION
   void setPullup(PIN pin, PULL_MODE mode) {
     regs.gppu->setPullType<REG::GPPU>(pin, mode);
@@ -87,10 +89,9 @@ public:
   void setPullup(PULL_MODE mode) {
     regs.gppu->setPullType<REG::GPPU>(generalMask, mode);
   }
-
-  void setBankPullup(PULL_MODE mode) {
-    uint8_t pinMask = static_cast<uint8_t>(MASK::ALL);
-    regs.gppu->setPullType<REG::GPPU>(pinMask, mode);
+  template <typename... Pins> void setPullup(PULL_MODE mode, Pins... pins) {
+    uint8_t pinmask = generateMask(pins...);
+    regs.gppu->setPullType<REG::GPPU>(pinmask, mode);
   }
 
   // Get PIN VALUE
@@ -98,8 +99,12 @@ public:
     assert(Util::getPortFromPin(p) == port_name && "Invalid pin ");
     return regs.gpio->readPin<REG::GPIO>(p);
   }
+  uint8_t getPinState(uint8_t pinmask) {
+    return regs.gpio->readPins<REG::GPIO>(pinmask);
+  }
   uint8_t getPinState() { return regs.gpio->readPins<REG::GPIO>(); }
-  bool getPinState(uint8_t pinmask) {
+  template <typename... Pins> uint8_t getPinState(Pins... pins) {
+    uint8_t pinmask = generateMask(pins...);
     return regs.gpio->readPins<REG::GPIO>(pinmask);
   }
   // SET PIN POLARITY
@@ -112,6 +117,11 @@ public:
   }
   void setInputPolarity(INPUT_POLARITY pol) {
     regs.ipol->setInputPolarity<REG::IPOL>(generalMask, pol);
+  }
+  template <typename... Pins>
+  void setInputPolarity(INPUT_POLARITY pol, Pins... pins) {
+    uint8_t pinmask = generateMask(pins...);
+    regs.ipol->setInputPolarity<REG::IPOL>(pinmask, pol);
   }
   // SET PIN VALUE
   void setPinState(PIN pin, bool state) {
@@ -126,7 +136,11 @@ public:
   void setPinState(bool state) {
     regs.olat->setOutputLatch<REG::OLAT>(generalMask, state);
   }
-
+  template <typename... Pins> void setPinState(bool state, Pins... pins) {
+    uint8_t pinmask = generateMask(pins...);
+    regs.olat->setOutputLatch<REG::OLAT>(pinmask, state);
+  }
+  // Interrupt Setting
   void setupInterrupt(uint8_t pinMask = 0xFF,
                       INTR_TYPE intrType = INTR_TYPE::NONE,
                       INTR_OUTPUT_TYPE intrOutType = INTR_OUTPUT_TYPE::NA) {
@@ -150,19 +164,14 @@ public:
 
 private:
   MCP::MCP_MODEL model;
-  bool bankMode;
-  bool interruptEnabled;
+  bool bankMode = false;
+  bool interruptEnabled = false;
   uint8_t generalMask;
   uint8_t interruptMask;
   PORT port_name;
   INTR_TYPE intr_type;
   INTR_OUTPUT_TYPE intr_out_type;
-  void init() {
-    updatePins();
-    if (interruptEnabled) {
-      updatePinInterruptState();
-    }
-  }
+  void init() {}
 
   void setInterruptMask(uint8_t pinMask) {
     interruptMask = pinMask & 0xFF;
@@ -170,7 +179,6 @@ private:
       updatePinInterruptState();
     }
   }
-  void updatePins() {}
 
   void updatePinInterruptState() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
@@ -180,8 +188,10 @@ private:
     }
   }
 
-  static constexpr bool isValidPort(PORT port) {
-    return port == PORT::GPIOA || port == PORT::GPIOB;
+  template <typename... Pins> constexpr uint8_t generateMask(Pins... pins) {
+    static_assert(sizeof...(pins) <= 8, "Too many pins, max is 8");
+    assert(((pins.getPort() == port_name) && ...));
+    return (0 | ... | (1 << pins.getIndex()));
   }
 
   static constexpr std::array<Pin, PIN_PER_BANK> createPins(PORT port) {
@@ -197,44 +207,6 @@ private:
 } // namespace MCP
 #endif
 
-//  template <typename... PinType>
-//   constexpr GPIO_BANKS(PORT port, PinType... pins)
-//       : Pins(fillPinsArray(pins...)), pinInterruptState{false},
-//         interruptEnabled(false), generalMask(calculateMask(pins...)),
-//         interruptMask(0x00), port_name(port), ports(0), ddr(0), pull_ups(0),
-//         intr_type(INTR_TYPE::NONE), intr_out_type(INTR_OUTPUT_TYPE::NA) {
-//     // Validate port
-//     assert(isValidPort(port) && "Invalid PORT provided!");
+// Helper to calculate the general mask
 
-//     // Validate that all pins belong to the same port
-//     assert(validatePins(port, pins...) &&
-//            "All pins must belong to the same port!");
-//   }
-
-// // Helper to calculate the general mask
-// template <typename... PinType>
-// static constexpr uint8_t calculateMask(PinType... pins) {
-//   return (0 | ... | pins.getMask());
-// }
-
-// // Helper to validate pins belong to the same port
-// template <typename... PinType>
-// static constexpr bool validatePins(PORT port, PinType... pins) {
-//   return ((pins.getPort() == port) && ...);
-// }
-// template <typename... PinType>
-// static constexpr std::array<Pin, PIN_PER_BANK> fillPinsArray(PinType... pins)
-// {
-//   std::array<Pin, PIN_PER_BANK> pinArray = {};
-//   size_t i = 0;
-
-//   // Assign provided pins
-//   ((pinArray[i++] = pins), ...);
-
-//   // Fill remaining Pins with default
-//   while (i < PIN_PER_BANK) {
-//     pinArray[i++] = Pin();
-//   }
-
-//   return pinArray;
-// }
+// Helper to validate pins belong to the same port

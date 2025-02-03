@@ -45,6 +45,7 @@ struct Pin {
   constexpr uint8_t getPinNumber() const { return pinNumber; }
   constexpr uint8_t getMask() const { return mask; }
   constexpr PORT getPort() const { return port; }
+  constexpr uint8_t getIndex() const { return Util::getPinIndex(pinEnum); }
 
   // State management
   bool getState() const { return state; }
@@ -55,28 +56,26 @@ private:
   bool interruptEnabled;
 };
 
-// GPA Pins (PIN0 to PIN7)
-constexpr Pin GPA0(MCP::PIN::PIN0);
-constexpr Pin GPA1(MCP::PIN::PIN1);
-constexpr Pin GPA2(MCP::PIN::PIN2);
-constexpr Pin GPA3(MCP::PIN::PIN3);
-constexpr Pin GPA4(MCP::PIN::PIN4);
-constexpr Pin GPA5(MCP::PIN::PIN5);
-constexpr Pin GPA6(MCP::PIN::PIN6);
-constexpr Pin GPA7(MCP::PIN::PIN7);
-
-// GPB Pins (PIN8 to PIN15)
-constexpr Pin GPB0(MCP::PIN::PIN8);
-constexpr Pin GPB1(MCP::PIN::PIN9);
-constexpr Pin GPB2(MCP::PIN::PIN10);
-constexpr Pin GPB3(MCP::PIN::PIN11);
-constexpr Pin GPB4(MCP::PIN::PIN12);
-constexpr Pin GPB5(MCP::PIN::PIN13);
-constexpr Pin GPB6(MCP::PIN::PIN14);
-constexpr Pin GPB7(MCP::PIN::PIN15);
-
 //
 
 } // namespace MCP
+// GPA Pins (PIN0 to PIN7)
+constexpr MCP::Pin GPA0(MCP::PIN::PIN0);
+constexpr MCP::Pin GPA1(MCP::PIN::PIN1);
+constexpr MCP::Pin GPA2(MCP::PIN::PIN2);
+constexpr MCP::Pin GPA3(MCP::PIN::PIN3);
+constexpr MCP::Pin GPA4(MCP::PIN::PIN4);
+constexpr MCP::Pin GPA5(MCP::PIN::PIN5);
+constexpr MCP::Pin GPA6(MCP::PIN::PIN6);
+constexpr MCP::Pin GPA7(MCP::PIN::PIN7);
 
+// GPB Pins (PIN8 to PIN15)
+constexpr MCP::Pin GPB0(MCP::PIN::PIN8);
+constexpr MCP::Pin GPB1(MCP::PIN::PIN9);
+constexpr MCP::Pin GPB2(MCP::PIN::PIN10);
+constexpr MCP::Pin GPB3(MCP::PIN::PIN11);
+constexpr MCP::Pin GPB4(MCP::PIN::PIN12);
+constexpr MCP::Pin GPB5(MCP::PIN::PIN13);
+constexpr MCP::Pin GPB6(MCP::PIN::PIN14);
+constexpr MCP::Pin GPB7(MCP::PIN::PIN15);
 #endif

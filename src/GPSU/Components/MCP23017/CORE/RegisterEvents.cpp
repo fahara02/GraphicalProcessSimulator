@@ -1,7 +1,6 @@
 #include "RegisterEvents.hpp"
 
 EventGroupHandle_t EventManager::registerEventGroup = nullptr;
-SemaphoreHandle_t EventManager::eventMutex = xSemaphoreCreateMutex();
 
 std::array<currentEvent, EventManager::MAX_EVENTS> EventManager::eventBuffer;
 std::atomic<size_t> EventManager::head{0};

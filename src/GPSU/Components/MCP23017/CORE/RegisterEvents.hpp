@@ -85,7 +85,7 @@ public:
 
 private:
   static const EventBits_t REGISTER_EVENT_BITS_MASK;
-  static SemaphoreHandle_t eventMutex;
+
   static constexpr size_t MAX_EVENTS = MCP::MAX_EVENT;
   static std::array<currentEvent, MAX_EVENTS> eventBuffer;
   static std::atomic<size_t> head;
