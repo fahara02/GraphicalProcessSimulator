@@ -99,6 +99,21 @@ public:
     return digitalRead(port, pinmask);
   }
 
+  void invertInput(const int pin, bool invert);
+  void invertInput(const MCP::Pin pin, bool invert);
+  void invertInput(const MCP::PORT port, const uint8_t pinmask, bool invert);
+  void invertInput(const MCP::PORT port, bool invert);
+  template <
+      typename FirstPin, typename... RestPins,
+      typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
+                                   std::is_same_v<RestPins, MCP::Pin>)>>
+  void invertInput(FirstPin first, RestPins... rest, bool invert) {
+
+    uint8_t pinmask = generateMask(first, rest...);
+    MCP::PORT port = first.getPort();
+
+    return invertInput(port, pinmask, invert);
+  }
   void setupCommunication();
 
   void dumpRegisters() const;

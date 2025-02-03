@@ -287,6 +287,46 @@ uint8_t MCPDevice::digitalRead(const MCP::PORT port) {
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   return gpioBank->getPinState();
 }
+
+void MCPDevice::invertInput(const int pin, bool invert) {
+
+  MCP::PIN pinEnum;
+  if (0 <= pin && pin <= 15) {
+    pinEnum = static_cast<MCP::PIN>(pin);
+  } else {
+    assert(false && "Invalid pin");
+  }
+  MCP::PORT port = Util::getPortFromPin(pinEnum);
+
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+
+  return gpioBank->setInputPolarity(invert == true
+                                        ? MCP::INPUT_POLARITY::INVERTED
+                                        : MCP::INPUT_POLARITY::UNCHANGED);
+}
+
+void MCPDevice::invertInput(const MCP::Pin pin, bool invert) {
+  uint8_t pinIndex = Util::getPinIndex(pin.getEnum());
+  return invertInput(pinIndex, invert);
+}
+void MCPDevice::invertInput(const MCP::PORT port, const uint8_t pinmask,
+                            bool invert) {
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  return gpioBank->setInputPolarity(
+      pinmask, invert == true ? MCP::INPUT_POLARITY::INVERTED
+                              : MCP::INPUT_POLARITY::UNCHANGED);
+}
+void MCPDevice::invertInput(const MCP::PORT port, bool invert) {
+
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  return gpioBank->setInputPolarity(invert == true
+                                        ? MCP::INPUT_POLARITY::INVERTED
+                                        : MCP::INPUT_POLARITY::UNCHANGED);
+}
+
 int MCPDevice::read_mcp_register(const uint8_t reg) {
   uint8_t bytesToRead = 1;
   uint8_t regAddress = reg;
