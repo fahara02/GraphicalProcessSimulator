@@ -70,6 +70,21 @@ public:
     pinMode(port, pinmask, mode);
   }
 
+  void digitalWrite(const int pin, const uint8_t level);
+  void digitalWrite(const MCP::Pin pin, const uint8_t level);
+  void digitalWrite(const MCP::PORT port, const uint8_t pinmask,
+                    const uint8_t level);
+  void digitalWrite(const MCP::PORT port, const uint8_t level);
+  template <
+      typename FirstPin, typename... RestPins,
+      typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
+                                   std::is_same_v<RestPins, MCP::Pin>)>>
+  void digitalWrite(const uint8_t level, FirstPin first, RestPins... rest) {
+    uint8_t pinmask = generateMask(first, rest...);
+    MCP::PORT port = first.getPort();
+    return digitalWrite(port, pinmask, static_cast<bool>(level));
+  }
+
   void setupCommunication();
 
   void dumpRegisters() const;

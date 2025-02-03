@@ -83,6 +83,7 @@ void MCPDevice::loadSettings() {
     }
   }
 }
+
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
   if (!wire_->begin(sda_, scl_, 100000)) {
@@ -108,8 +109,6 @@ void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
   uint8_t pinIndex = Util::getPinIndex(pinEnum);
   return pinMode(pinIndex, mode);
 }
-
-
 
 void MCPDevice::pinMode(const int pin, const uint8_t mode) {
   MCP::PIN pinEnum;
@@ -227,6 +226,38 @@ void MCPDevice::pinMode(MCP::PORT port, const uint8_t mode) {
     assert(false && "Invalid mode");
     break;
   }
+}
+void MCPDevice::digitalWrite(const int pin, const uint8_t level) {
+
+  MCP::PIN pinEnum;
+  if (0 <= pin && pin <= 15) {
+    pinEnum = static_cast<MCP::PIN>(pin);
+  } else {
+    assert(false && "Invalid pin");
+    return;
+  }
+  MCP::PORT port = Util::getPortFromPin(pinEnum);
+
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  return gpioBank->setPinState(pinEnum, static_cast<bool>(level));
+}
+void MCPDevice::digitalWrite(const MCP::Pin pin, const uint8_t level) {
+  PIN pinEnum = pin.getEnum();
+  uint8_t pinIndex = Util::getPinIndex(pinEnum);
+  return digitalWrite(pinIndex, level);
+}
+void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t pinmask,
+                             const uint8_t level) {
+
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  return gpioBank->setPinState(pinmask, static_cast<bool>(level));
+}
+void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t level) {
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  return gpioBank->setPinState(static_cast<bool>(level));
 }
 
 int MCPDevice::read_mcp_register(const uint8_t reg) {
