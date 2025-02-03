@@ -66,6 +66,7 @@ COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 
 COMPONENT::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
+
 void RunTask(void *param);
 void setup() {
 
@@ -84,6 +85,10 @@ void setup() {
   delay(1000);
   // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   delay(2000);
+  MCP::Settings setting;
+  setting.opMode = MCP::OperationMode::SequentialMode8;
+  expander.configure(setting);
+
   expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
 
   delay(1000);
@@ -221,7 +226,7 @@ void RunTask(void *param) {
 
     // expander->gpioBankA->setPinState(mask, false);
     vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t value = expander->gpioBankA->getPinState();
+    uint8_t value = expander->digitalRead(MCP::PORT::GPIOA);
     Serial.printf("pins value is %d", value);
     vTaskDelay(pdMS_TO_TICKS(10));
     send_req += 1;
@@ -230,7 +235,7 @@ void RunTask(void *param) {
       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
-    value = expander->gpioBankA->getPinState();
+    value = expander->digitalRead(MCP::PORT::GPIOA);
     Serial.printf("pins value is %d", value);
     vTaskDelay(pdMS_TO_TICKS(10));
 

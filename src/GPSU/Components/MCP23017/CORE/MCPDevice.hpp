@@ -85,6 +85,20 @@ public:
     return digitalWrite(port, pinmask, static_cast<bool>(level));
   }
 
+  bool digitalRead(const int pin);
+  bool digitalRead(const MCP::Pin pin);
+  uint8_t digitalRead(const MCP::PORT port, const uint8_t pinmask);
+  uint8_t digitalRead(const MCP::PORT port);
+  template <
+      typename FirstPin, typename... RestPins,
+      typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
+                                   std::is_same_v<RestPins, MCP::Pin>)>>
+  uint8_t digitalRead(FirstPin first, RestPins... rest) {
+    uint8_t pinmask = generateMask(first, rest...);
+    MCP::PORT port = first.getPort();
+    return digitalRead(port, pinmask);
+  }
+
   void setupCommunication();
 
   void dumpRegisters() const;
