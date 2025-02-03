@@ -81,14 +81,16 @@ void setup() {
   bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
+  Serial.println("when Bank Mode is false");
   expander.dumpRegisters();
   // delay(1000);
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
   MCP::Settings setting;
-  setting.opMode = MCP::OperationMode::SequentialMode16;
+  setting.opMode = MCP::OperationMode::SequentialMode8;
   expander.configure(setting);
-
+  Serial.println("when Bank Mode is false");
+  expander.dumpRegisters();
   expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
 
   delay(1000);
@@ -225,9 +227,9 @@ void RunTask(void *param) {
     // send_req += 1;
 
     // expander->gpioBankA->setPinState(mask, false);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t value = expander->digitalRead(MCP::PORT::GPIOA);
-    Serial.printf("pins value is %d", value);
+    // vTaskDelay(pdMS_TO_TICKS(100));
+    // uint8_t value = expander->digitalRead(MCP::PORT::GPIOA);
+    // Serial.printf("pins value is %d", value);
     vTaskDelay(pdMS_TO_TICKS(10));
     send_req += 1;
     if (send_req == 2) {
@@ -235,8 +237,8 @@ void RunTask(void *param) {
       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
-    value = expander->digitalRead(MCP::PORT::GPIOA);
-    Serial.printf("pins value is %d", value);
+    // value = expander->digitalRead(MCP::PORT::GPIOA);
+    // Serial.printf("pins value is %d", value);
     vTaskDelay(pdMS_TO_TICKS(10));
 
     Serial.printf("Total send request=%d\n", send_req);

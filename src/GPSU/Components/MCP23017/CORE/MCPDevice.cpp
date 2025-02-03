@@ -39,7 +39,8 @@ void MCPDevice::loadSettings() {
     if (settings_.opMode == MCP::OperationMode::SequentialMode8 ||
         settings_.opMode == MCP::OperationMode::ByteMode8) {
       bankMode_ = true; // 8bitMapping
-      result |= write_mcp_register(cntrlRegA->getAddress(), 0x80);
+      result |= write_mcp_register(cntrlRegA->getAddress(),
+                                   static_cast<uint8_t>(0x80));
 
       gpioBankA->updateBankMode(bankMode_);
       gpioBankB->updateBankMode(bankMode_);
@@ -498,11 +499,13 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
   }
 
   if (!bankMode_) {
+    Serial.printf("Read event%d update for 16bit mode\n", ev->id);
     uint8_t valueA = value & 0xFF;
     uint8_t valueB = (value >> 8) & 0xFF;
     gpioBankA->updateRegisterValue(reg, valueA);
     gpioBankB->updateRegisterValue(reg + 1, valueB);
   } else {
+    Serial.printf("Read event%d update for 8bit mode\n", ev->id);
     if (port == MCP::PORT::GPIOA) {
       gpioBankA->updateRegisterValue(reg, value);
     } else {
@@ -526,7 +529,8 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t result = write_mcp_register(reg, value); // Handles 8-bit & 16-bit
 
   if (result == 0) {
-
+    ESP_LOGI(MCP_TAG, "New Write success for address 0x%02X for id=%d ; \n",
+             reg, ev->id);
     EventManager::acknowledgeEvent(ev);
   } else {
     ESP_LOGE(MCP_TAG, "New Write failed for id=%d ; \n", ev->id);
@@ -675,8 +679,8 @@ void MCPDevice::dumpRegisters() const {
     MCP::REG reg = static_cast<MCP::REG>(i);
     uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOA);
     uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOA);
-    ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
-             value);
+    ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
+             Util::ToString::REG(reg), address, value);
   }
 
   // Dump PORTB Registers
@@ -685,8 +689,8 @@ void MCPDevice::dumpRegisters() const {
     MCP::REG reg = static_cast<MCP::REG>(i);
     uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOB);
     uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOB);
-    ESP_LOGI(MCP_TAG, "Index: %d, Address: 0x%02X, Value: 0x%02X", i, address,
-             value);
+    ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
+             Util::ToString::REG(reg), address, value);
   }
 }
 void MCPDevice::updateRegisters(MCPDevice *device) {
