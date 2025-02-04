@@ -489,7 +489,7 @@ void MCPDevice::dumpRegisters() const {
       ESP_LOGI(MCP_TAG, "Register: %s (PORTB), Address: 0x%02X, Value: 0x%02X",
                Util::ToString::REG(regB), addressA + 1, highByte);
     }
-  } else { // <<<<< FIXED: `else` should be on the same line as `}`
+  } else {
     ESP_LOGI(MCP_TAG, "Register mapping: 8-bit mode");
 
     // Read PORTA Registers

@@ -244,8 +244,8 @@ void RunTask(void *param) {
       send_req = 0;
       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
-      // expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
-      // vTaskDelay(pdMS_TO_TICKS(10));
+      expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+      vTaskDelay(pdMS_TO_TICKS(10));
     }
     readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
     vTaskDelay(pdMS_TO_TICKS(10));
