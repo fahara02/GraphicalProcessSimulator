@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+#include "i2cBus.hpp"
 #include "oil.h"
 #include <Arduino.h>
 #include <ModbusClientTCP.h>
@@ -13,6 +14,7 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <WifiClient.h>
+
 
 TaskHandle_t runTaskhandle = nullptr;
 

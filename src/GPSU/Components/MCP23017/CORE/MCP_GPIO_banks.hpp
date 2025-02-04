@@ -3,8 +3,10 @@
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
 #include "esp_log.h"
+#include "i2cBus.hpp"
 #include "memory"
 #include <unordered_map>
+
 #define BANK_TAG "GPIO_BANK"
 namespace MCP {
 
@@ -15,11 +17,11 @@ private:
   MCPRegisters regs;
 
 public:
-  GPIO_BANK(PORT port, MCP::MCP_MODEL m)
+  GPIO_BANK(PORT port, MCP::MCP_MODEL m, I2CBus &bus)
       : Pins(createPins(port)), pinInterruptState{false}, model(m),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), intr_type(INTR_TYPE::NONE),
-        intr_out_type(INTR_OUTPUT_TYPE::NA) {
+        intr_out_type(INTR_OUTPUT_TYPE::NA), i2cBus_(bus) {
 
     regs.setup(model, port_name, bankMode);
     init();
@@ -171,6 +173,7 @@ private:
   PORT port_name;
   INTR_TYPE intr_type;
   INTR_OUTPUT_TYPE intr_out_type;
+  I2CBus &i2cBus_;
   void init() {}
 
   void setInterruptMask(uint8_t pinMask) {

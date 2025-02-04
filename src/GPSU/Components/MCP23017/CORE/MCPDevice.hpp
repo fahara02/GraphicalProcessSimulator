@@ -3,13 +3,13 @@
 
 #include "Arduino.h"
 #include "MCP_GPIO_banks.hpp"
-#include "MCP_I2Cbus.hpp"
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
 #include "RegisterEvents.hpp"
 #include "Wire.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "i2cBus.hpp"
 #include <array>
 #include <memory>
 #include <tuple>
@@ -27,10 +27,12 @@ private:
   MCP::Settings defaultSettings_;
   MCP::address_decoder_t decoder_;
   uint8_t address_;
+
   gpio_num_t sda_;
   gpio_num_t scl_;
   gpio_num_t cs_;
   gpio_num_t reset_;
+  MCP::I2CBus &i2cBus_;
   std::unique_ptr<TwoWire> wire_;
   bool bankMode_ = false;
   bool mirrorMode_ = false;

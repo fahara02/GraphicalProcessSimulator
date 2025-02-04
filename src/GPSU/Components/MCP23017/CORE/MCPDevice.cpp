@@ -12,9 +12,12 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       scl_(GPIO_NUM_33),                     //
       cs_(GPIO_NUM_NC),                      //
       reset_(GPIO_NUM_33),                   //
-      wire_(std::make_unique<TwoWire>(1)),   //
-      gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
-      gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
+      i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
+      wire_(std::make_unique<TwoWire>(1)), //
+      gpioBankA(
+          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, i2cBus_)),
+      gpioBankB(
+          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, i2cBus_)),
       cntrlRegA(gpioBankA->getControlRegister()),
       cntrlRegB(gpioBankB->getControlRegister())
 
