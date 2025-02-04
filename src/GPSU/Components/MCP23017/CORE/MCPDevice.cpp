@@ -467,21 +467,23 @@ void MCPDevice::dumpRegisters() const {
            address_);
 
   // Dump PORTA Registers
-  ESP_LOGI(MCP_TAG, "PORTA Registers:");
+  ESP_LOGI(MCP_TAG, "PORTA  for mapping of %s",
+           bankMode_ == true ? "8bit" : "16bit");
   for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
     MCP::REG reg = static_cast<MCP::REG>(i);
     uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOA);
-    uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOA);
+    uint8_t value = i2cBus_.read_mcp_register(address, bankMode_);
     ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
              Util::ToString::REG(reg), address, value);
   }
 
   // Dump PORTB Registers
-  ESP_LOGI(MCP_TAG, "PORTB Registers:");
+  ESP_LOGI(MCP_TAG, "PORTB  for mapping of %s",
+           bankMode_ == true ? "8bit" : "16bit");
   for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; ++i) {
     MCP::REG reg = static_cast<MCP::REG>(i);
     uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOB);
-    uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOB);
+    uint8_t value = i2cBus_.read_mcp_register(address, bankMode_);
     ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
              Util::ToString::REG(reg), address, value);
   }
