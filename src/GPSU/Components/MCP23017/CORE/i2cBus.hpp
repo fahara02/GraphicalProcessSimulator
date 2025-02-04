@@ -28,6 +28,10 @@ public:
 
   int read_mcp_register(const uint8_t reg, bool bankMode);
   int write_mcp_register(const uint8_t reg, uint16_t value, bool bankMode);
+  void read_mcp_registers_batch(uint8_t startReg, uint8_t *data, size_t length,
+                                bool bankMode);
+  void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
+                                 size_t length, bool bankMode);
   static SemaphoreHandle_t i2cMutex;
 
 private:

@@ -13,7 +13,6 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       cs_(GPIO_NUM_NC),                      //
       reset_(GPIO_NUM_33),                   //
       i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
-      wire_(std::make_unique<TwoWire>(1)), //
       gpioBankA(
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, i2cBus_)),
       gpioBankB(
@@ -108,9 +107,7 @@ void MCPDevice::loadSettings() {
 
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
-  // if (!wire_->begin(sda_, scl_, 100000)) {
-  //   ESP_LOGE(MCP_TAG, "i2c init failed");
-  // }
+
   i2cBus_.init();
   EventManager::initializeEventGroups();
 
@@ -349,58 +346,6 @@ void MCPDevice::invertInput(const MCP::PORT port, bool invert) {
                                         : MCP::INPUT_POLARITY::UNCHANGED);
 }
 
-int MCPDevice::read_mcp_register(const uint8_t reg) {
-  uint8_t bytesToRead = 1;
-  uint8_t regAddress = reg;
-
-  if (!bankMode_) {
-    // Default 16 bit mapping
-    bytesToRead = 2;
-    if ((reg % 2) != 0) {
-      regAddress = reg - 1; // Align with Port A
-    }
-  }
-
-  wire_->beginTransmission(address_);
-  wire_->write(regAddress);
-  wire_->endTransmission(false);
-  wire_->requestFrom((uint8_t)address_, bytesToRead, (uint8_t) true);
-
-  while (wire_->available() < bytesToRead)
-    ;
-
-  uint8_t low = wire_->read();
-  uint8_t high = (bytesToRead == 2) ? wire_->read() : 0;
-
-  return (bytesToRead == 2) ? ((high << 8) | low) : low;
-}
-
-uint8_t MCPDevice::write_mcp_register(const uint8_t reg, uint16_t value) {
-  uint8_t result = 0;
-  uint8_t regAddress = reg; // Default: Single register
-  uint8_t bytesToWrite = 1; //  8-bit mode
-
-  if (!bankMode_) {
-    // Default 16 Bit mode
-    bytesToWrite = 2;
-
-    // Only adjust for Port B if in 16-bit mode
-    if ((reg % 2) != 0) {
-      regAddress = reg - 1; // Align to Port A
-    }
-  }
-
-  wire_->beginTransmission(address_);
-  wire_->write(regAddress);
-  wire_->write(value & 0xFF); // Write low byte (Port A)
-  if (bytesToWrite == 2) {
-    wire_->write((value >> 8) & 0xFF); // Write high byte (Port B)
-  }
-  result = wire_->endTransmission(true);
-
-  return result;
-}
-
 void MCPDevice::EventMonitorTask(void *param) {
   MCPDevice *device = static_cast<MCPDevice *>(param);
 
@@ -581,36 +526,6 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   xSemaphoreGive(regRWmutex);
 }
 
-void MCPDevice::read_mcp_registers_batch(uint8_t startReg, uint8_t *buffer,
-                                         size_t length) {
-  if (!buffer || length == 0) {
-    Serial.println("Invalid buffer or length for batch read.");
-    return;
-  }
-
-  if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-    wire_->beginTransmission(address_);
-    wire_->write(startReg);        // Start at the first register address
-    wire_->endTransmission(false); // Restart condition to read
-
-    size_t bytesRead =
-        wire_->requestFrom((uint8_t)address_, (uint8_t)length, (uint8_t) true);
-    if (bytesRead == length) {
-      for (size_t i = 0; i < length; ++i) {
-        buffer[i] = wire_->read(); // Read each byte into buffer
-      }
-      Serial.printf("Batch read successful: %d bytes starting at 0x%X.\n",
-                    length, startReg);
-    } else {
-      Serial.printf("Batch read failed. Expected %d bytes, got %d.\n", length,
-                    bytesRead);
-    }
-
-    xSemaphoreGive(regRWmutex);
-  } else {
-    Serial.println("Failed to acquire mutex for batch read.");
-  }
-}
 // std::unordered_map<uint8_t, uint8_t> MCPDevice::batchReadRegisters() {
 //   std::unordered_map<uint8_t, uint8_t> registerValues;
 //   constexpr size_t totalRegisters = 2 * MCP::MAX_REG_PER_PORT;
@@ -634,34 +549,6 @@ void MCPDevice::read_mcp_registers_batch(uint8_t startReg, uint8_t *buffer,
 
 //   return registerValues;
 // }
-void MCPDevice::write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
-                                          size_t length) {
-  if (!data || length == 0) {
-    Serial.println("Invalid data or length for batch write.");
-    return;
-  }
-
-  if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-    wire_->beginTransmission(address_);
-    wire_->write(startReg); // Start at the first register address
-
-    for (size_t i = 0; i < length; ++i) {
-      wire_->write(data[i]); // Write each byte
-    }
-
-    esp_err_t result = wire_->endTransmission(true);
-    if (result == ESP_OK) {
-      Serial.printf("Batch write successful: %d bytes starting at 0x%X.\n",
-                    length, startReg);
-    } else {
-      Serial.printf("Batch write failed with error: %d.\n", result);
-    }
-
-    xSemaphoreGive(regRWmutex);
-  } else {
-    Serial.println("Failed to acquire mutex for batch write.");
-  }
-}
 
 MCP::MCPRegister *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
   if (port == MCP::PORT::GPIOA) {

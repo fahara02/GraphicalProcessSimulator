@@ -32,7 +32,7 @@ private:
   gpio_num_t cs_;
   gpio_num_t reset_;
   MCP::I2CBus &i2cBus_;
-  std::unique_ptr<TwoWire> wire_;
+
   bool bankMode_ = false;
   bool mirrorMode_ = false;
   bool byteMode_ = false;
@@ -135,12 +135,9 @@ private:
   void handleWriteEvent(currentEvent *ev);
   void handleSettingChangeEvent(currentEvent *ev);
   void handleBankModeEvent(currentEvent *ev);
-  int read_mcp_register(const uint8_t reg);
-  uint8_t write_mcp_register(const uint8_t reg, uint16_t value);
 
-  void read_mcp_registers_batch(uint8_t startReg, uint8_t *data, size_t length);
-  void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
-                                 size_t length);
+
+ 
 
   template <typename FirstPin, typename... RestPins>
   constexpr uint8_t generateMask(FirstPin first, RestPins... rest) {
