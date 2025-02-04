@@ -87,7 +87,7 @@ void setup() {
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
   MCP::Settings setting;
-  setting.opMode = MCP::OperationMode::SequentialMode8;
+  setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
 
   expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
@@ -244,8 +244,8 @@ void RunTask(void *param) {
       send_req = 0;
       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
-      expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
-      vTaskDelay(pdMS_TO_TICKS(10));
+      // expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+      // vTaskDelay(pdMS_TO_TICKS(10));
     }
     readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
     vTaskDelay(pdMS_TO_TICKS(10));

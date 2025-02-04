@@ -230,6 +230,8 @@ struct Register {
     if (reg == REG::IOCON) {
       return config_.configure(newValue);
     } else {
+      ESP_LOGI(REG_TAG, "updating value %02X set to  register 0x%02X", value_,
+               regAddress_);
       value_ = newValue;
       return true;
     }
@@ -287,6 +289,9 @@ struct Register {
     currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
     EventManager::acknowledgeEvent(event);
     EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
+
+    ESP_LOGI(REG_TAG, "Fecting value %02X from port %s", value_,
+             port == MCP::PORT::GPIOA ? "A" : "B");
 
     return value_;
   }
