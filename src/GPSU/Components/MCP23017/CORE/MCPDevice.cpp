@@ -376,16 +376,12 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
 
     uint8_t valueA = static_cast<uint16_t>(value) & 0xFF;
     uint8_t valueB = (static_cast<uint16_t>(value) >> 8) & 0xFF;
-    ESP_LOGI(MCP_TAG,
-             "Read Event16bit - Register: %s Address: 0x%02X ReadValue: 0x%04X "
-             "ValueA: 0x%02X - ValueB: 0x%02X",
-             Util::ToString::REG(reg), regAddress, value, valueA, valueB);
 
     gpioBankA->updateRegisterValue(regAddress, valueA);
     gpioBankB->updateRegisterValue(regAddress + 1, valueB);
 
   } else {
-    Serial.printf("Read event %d update for 8bit mode\n", ev->id);
+
     if (port == MCP::PORT::GPIOA) {
       gpioBankA->updateRegisterValue(currentAddress,
                                      static_cast<uint8_t>(value));

@@ -112,8 +112,7 @@ public:
     return regs.gpio->getBitField(static_cast<uint8_t>(p));
   }
   uint8_t getPinState(uint8_t pinmask) {
-    ESP_LOGI("GPIO_BANK", "pinmask is %02X with address %02X ", pinmask,
-             regs.gpio->getAddress());
+
     uint8_t value = (regs.gpio->getValue() & pinmask);
     return value;
   }
