@@ -922,5 +922,113 @@ public:
   }
 };
 
+struct Register {
+  const MCP::REG reg;
+  const MCP::PORT port;
+  Register(MCP::REG rg = MCP::REG::IODIR, MCP::PORT p = MCP::PORT::GPIOA,
+           bool readonly = false)
+      : reg(rg), port(p), value_(0),
+        regAddress_(Util::calculateAddress(reg, port, bankSeparated_)),
+        identity_(reg, port, regAddress_), readOnly_(readonly) {}
+
+  void updateBankMode(bool bankMode) {
+    bankSeparated_ = bankMode;
+    regAddress_ = Util::calculateAddress(reg, port, bankSeparated_);
+    identity_.regAddress = regAddress_;
+  }
+  void setValue(uint8_t newvalue) {
+    if (!readOnly_) {
+
+      value_ = newvalue;
+      if (reg == MCP::REG::IOCON) {
+        EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                  value_);
+      } else {
+        EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
+                                  value_);
+      }
+    }
+  }
+
+  void setBitField(uint8_t bit, bool bit_value) {
+
+    if (!readOnly_) {
+      if (bit < 8) {
+        if (bit_value) {
+          Util::BIT::set(value_, bit);
+        } else {
+          Util::BIT::clear(value_, bit);
+        }
+      }
+      if (reg == MCP::REG::IOCON) {
+        EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                                  value_);
+      } else {
+        EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
+                                  value_);
+      }
+    }
+  }
+  uint8_t getValue() {
+
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
+
+    EventBits_t bits = xEventGroupWaitBits(
+        EventManager::registerEventGroup,
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
+        pdFALSE, READ_TIMEOUT);
+
+    if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
+      ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
+      return 0xFF;
+    }
+    currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
+    EventManager::acknowledgeEvent(event);
+    EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
+
+    return value_;
+  }
+  bool getBitField(uint8_t bit) {
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
+
+    EventBits_t bits = xEventGroupWaitBits(
+        EventManager::registerEventGroup,
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
+        pdFALSE, READ_TIMEOUT);
+
+    if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
+      ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
+      return 0xFF;
+    }
+    currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
+    EventManager::acknowledgeEvent(event);
+    EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
+    return (bit < 8) ? Util::BIT::isSet(value_, bit) : false;
+  }
+  void applyMask(uint8_t mask) {
+
+    if (reg != REG::IOCON) {
+      value_ |= mask;
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
+                                value_);
+    }
+  }
+
+  void clearMask(uint8_t mask) {
+    if (reg != REG::IOCON) {
+      value_ &= ~mask;
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
+                                value_);
+    }
+  }
+
+private:
+  uint8_t value_;
+  uint8_t regAddress_;
+  registerIdentity identity_;
+  bool readOnly_ = false;
+  bool bankSeparated_ = false;
+};
+
 } // namespace MCP
 #endif
