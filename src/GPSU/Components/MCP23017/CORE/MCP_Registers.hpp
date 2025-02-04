@@ -1021,6 +1021,8 @@ struct Register {
                                 value_);
     }
   }
+  uint8_t getAddress() const { return regAddress_; }
+  registerIdentity getIdentity() const { return identity_; }
 
 private:
   uint8_t value_;
