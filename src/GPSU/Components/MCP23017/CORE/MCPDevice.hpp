@@ -55,15 +55,15 @@ public:
 
   void configure(const MCP::Settings &config);
 
-  void pinMode(MCP::Pin pin, const uint8_t mode);
+  void pinMode(const MCP::Pin pin, const uint8_t mode);
   void pinMode(const int pin, const uint8_t mode);
-  void pinMode(MCP::PORT port, uint8_t pinmask, const uint8_t mode);
-  void pinMode(MCP::PORT port, const uint8_t mode);
+  void pinMode(const MCP::PORT port, uint8_t pinmask, const uint8_t mode);
+  void pinMode(const MCP::PORT port, const uint8_t mode);
   template <
       typename FirstPin, typename... RestPins,
       typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
                                    std::is_same_v<RestPins, MCP::Pin>)>>
-  void pinMode(uint8_t mode, FirstPin first, RestPins... rest) {
+  void pinMode(const uint8_t mode, FirstPin first, RestPins... rest) {
 
     uint8_t pinmask = generateMask(first, rest...);
     MCP::PORT port = first.getPort();
@@ -125,7 +125,7 @@ private:
   void resetDevice();
   MCP::Register *getRegister(MCP::REG reg, MCP::PORT port);
   uint8_t getsavedSettings(MCP::PORT port) const;
-  void updateRegisters(MCPDevice *device);
+
   uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const;
 
   uint8_t getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const;

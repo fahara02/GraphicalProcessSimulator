@@ -140,3 +140,27 @@ void I2CBus::read_mcp_registers_batch(uint8_t startReg, uint8_t *buffer,
 }
 
 } // namespace MCP
+
+// std::unordered_map<uint8_t, uint8_t> MCPDevice::batchReadRegisters() {
+//   std::unordered_map<uint8_t, uint8_t> registerValues;
+//   constexpr size_t totalRegisters = 2 * MCP::MAX_REG_PER_PORT;
+
+//   uint8_t buffer[totalRegisters] = {0};
+
+//   uint8_t startRegAddress =
+//       Util::calculateAddress(MCP::REG::IODIR, MCP::PORT::GPIOA, bankMode_);
+//   read_mcp_registers_batch(startRegAddress, buffer, totalRegisters);
+
+//   // Map the buffer data to register addresses
+//   for (uint8_t i = 0; i < totalRegisters; ++i) {
+//     // Calculate the corresponding register address
+//     MCP::PORT port =
+//         (i < MCP::MAX_REG_PER_PORT) ? MCP::PORT::GPIOA : MCP::PORT::GPIOB;
+//     MCP::REG reg = static_cast<MCP::REG>(i % MCP::MAX_REG_PER_PORT);
+
+//     uint8_t address = Util::calculateAddress(reg, port, bankMode_);
+//     registerValues[address] = buffer[i];
+//   }
+
+//   return registerValues;
+// }

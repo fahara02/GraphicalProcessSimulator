@@ -122,59 +122,8 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   }
 }
 
-void MCPDevice::pinMode(MCP::Pin pin, const uint8_t mode) {
-
-  PIN pinEnum = pin.getEnum();
-  uint8_t pinIndex = Util::getPinIndex(pinEnum);
-  return pinMode(pinIndex, mode);
-}
-
-void MCPDevice::pinMode(const int pin, const uint8_t mode) {
-  MCP::PIN pinEnum;
-  if (0 <= pin && pin <= 15) {
-    pinEnum = static_cast<MCP::PIN>(pin);
-  } else {
-    assert(false && "Invalid pin");
-    return;
-  }
-  MCP::PORT port = Util::getPortFromPin(pinEnum);
-
-  GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  auto *cntrlReg =
-      (port == MCP::PORT::GPIOA) ? cntrlRegA.get() : cntrlRegB.get();
-
-  if (!gpioBank) {
-    assert(false && "Invalid port");
-    return;
-  }
-
-  switch (mode) {
-  case INPUT:
-    gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-    break;
-  case INPUT_PULLUP:
-    gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_INPUT);
-    gpioBank->setPullup(pinEnum, MCP::PULL_MODE::ENABLE_PULLUP);
-    break;
-  case INPUT_PULLDOWN:
-
-    ESP_LOGE(MCP_TAG,
-             "PullDown not available in MCP devices, defaulting to INPUT.");
-    break;
-  case OUTPUT:
-    gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
-    break;
-  case OUTPUT_OPEN_DRAIN:
-    gpioBank->setPinDirection(pinEnum, MCP::GPIO_MODE::GPIO_OUTPUT);
-    cntrlReg->setOpenDrain<MCP::REG::IOCON>(true);
-    break;
-  default:
-    assert(false && "Invalid mode");
-    break;
-  }
-}
-void MCPDevice::pinMode(MCP::PORT port, uint8_t pinmask, const uint8_t mode) {
+void MCPDevice::pinMode(const MCP::PORT port, const uint8_t pinmask,
+                        const uint8_t mode) {
 
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
@@ -210,96 +159,54 @@ void MCPDevice::pinMode(MCP::PORT port, uint8_t pinmask, const uint8_t mode) {
     break;
   }
 }
-void MCPDevice::pinMode(MCP::PORT port, const uint8_t mode) {
-
+void MCPDevice::pinMode(const MCP::PORT port, const uint8_t mode) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  auto *cntrlReg =
-      (port == MCP::PORT::GPIOA) ? cntrlRegA.get() : cntrlRegB.get();
-  if (!gpioBank) {
-    assert(false && "Invalid port");
-    return;
-  }
-
-  switch (mode) {
-  case INPUT:
-    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_INPUT);
-    break;
-  case INPUT_PULLUP:
-    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_INPUT);
-    gpioBank->setPullup(MCP::PULL_MODE::ENABLE_PULLUP);
-    break;
-  case INPUT_PULLDOWN:
-
-    ESP_LOGE(MCP_TAG,
-             "PullDown not available in MCP devices, defaulting to INPUT.");
-    break;
-  case OUTPUT:
-    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_OUTPUT);
-    break;
-  case OUTPUT_OPEN_DRAIN:
-    gpioBank->setPinDirection(MCP::GPIO_MODE::GPIO_OUTPUT);
-    cntrlReg->setOpenDrain<MCP::REG::IOCON>(true);
-    break;
-  default:
-    assert(false && "Invalid mode");
-    break;
-  }
+  return pinMode(port, gpioBank->getGeneralMask(), mode);
 }
-void MCPDevice::digitalWrite(const int pin, const uint8_t level) {
 
-  MCP::PIN pinEnum;
-  if (0 <= pin && pin <= 15) {
-    pinEnum = static_cast<MCP::PIN>(pin);
-  } else {
-    assert(false && "Invalid pin");
-    return;
-  }
+void MCPDevice::pinMode(const MCP::Pin pin, const uint8_t mode) {
+  pinMode(Util::getPortFromPin(pin.getEnum()), pin.getMask(), mode);
+}
+
+void MCPDevice::pinMode(const int pin, const uint8_t mode) {
+  assert(pin >= 0 && pin <= 15 && "Invalid pin");
+  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
   MCP::PORT port = Util::getPortFromPin(pinEnum);
-
-  GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return gpioBank->setPinState(pinEnum, static_cast<bool>(level));
+  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  pinMode(port, mask, mode);
 }
-void MCPDevice::digitalWrite(const MCP::Pin pin, const uint8_t level) {
 
-  uint8_t pinIndex = Util::getPinIndex(pin.getEnum());
-  return digitalWrite(pinIndex, level);
-}
 void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t pinmask,
                              const uint8_t level) {
-
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return gpioBank->setPinState(pinmask, static_cast<bool>(level));
+  gpioBank->setPinState(pinmask, static_cast<bool>(level));
 }
 void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t level) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return gpioBank->setPinState(static_cast<bool>(level));
+  gpioBank->setPinState(static_cast<bool>(level));
+}
+void MCPDevice::digitalWrite(const MCP::Pin pin, const uint8_t level) {
+  digitalWrite(Util::getPortFromPin(pin.getEnum()), pin.getMask(), level);
 }
 
-bool MCPDevice::digitalRead(const int pin) {
-  MCP::PIN pinEnum;
-  if (0 <= pin && pin <= 15) {
-    pinEnum = static_cast<MCP::PIN>(pin);
-  } else {
-    assert(false && "Invalid pin");
-  }
+void MCPDevice::digitalWrite(const int pin, const uint8_t level) {
+  assert(pin >= 0 && pin <= 15 && "Invalid pin");
+  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
   MCP::PORT port = Util::getPortFromPin(pinEnum);
+  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  digitalWrite(port, mask, level);
+}
 
-  GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return gpioBank->getPinState(pinEnum);
-}
-bool MCPDevice::digitalRead(const MCP::Pin pin) {
-  uint8_t pinIndex = Util::getPinIndex(pin.getEnum());
-  return digitalRead(pinIndex);
-}
 uint8_t MCPDevice::digitalRead(const MCP::PORT port, const uint8_t pinmask) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   return gpioBank->getPinState(pinmask);
+}
+bool MCPDevice::digitalRead(const MCP::Pin pin) {
+  return digitalRead(Util::getPortFromPin(pin.getEnum()), pin.getMask());
 }
 uint8_t MCPDevice::digitalRead(const MCP::PORT port) {
   GPIO_BANK *gpioBank =
@@ -307,43 +214,38 @@ uint8_t MCPDevice::digitalRead(const MCP::PORT port) {
   return gpioBank->getPinState();
 }
 
-void MCPDevice::invertInput(const int pin, bool invert) {
-
-  MCP::PIN pinEnum;
-  if (0 <= pin && pin <= 15) {
-    pinEnum = static_cast<MCP::PIN>(pin);
-  } else {
-    assert(false && "Invalid pin");
-  }
+bool MCPDevice::digitalRead(const int pin) {
+  assert(pin >= 0 && pin <= 15 && "Invalid pin");
+  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
   MCP::PORT port = Util::getPortFromPin(pinEnum);
-
-  GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-
-  return gpioBank->setInputPolarity(invert == true
-                                        ? MCP::INPUT_POLARITY::INVERTED
-                                        : MCP::INPUT_POLARITY::UNCHANGED);
+  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  return digitalRead(port, mask);
 }
 
-void MCPDevice::invertInput(const MCP::Pin pin, bool invert) {
-  uint8_t pinIndex = Util::getPinIndex(pin.getEnum());
-  return invertInput(pinIndex, invert);
-}
 void MCPDevice::invertInput(const MCP::PORT port, const uint8_t pinmask,
                             bool invert) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return gpioBank->setInputPolarity(
-      pinmask, invert == true ? MCP::INPUT_POLARITY::INVERTED
-                              : MCP::INPUT_POLARITY::UNCHANGED);
+  gpioBank->setInputPolarity(pinmask, invert ? MCP::INPUT_POLARITY::INVERTED
+                                             : MCP::INPUT_POLARITY::UNCHANGED);
 }
 void MCPDevice::invertInput(const MCP::PORT port, bool invert) {
-
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return gpioBank->setInputPolarity(invert == true
-                                        ? MCP::INPUT_POLARITY::INVERTED
-                                        : MCP::INPUT_POLARITY::UNCHANGED);
+  gpioBank->setInputPolarity(invert ? MCP::INPUT_POLARITY::INVERTED
+                                    : MCP::INPUT_POLARITY::UNCHANGED);
+}
+
+void MCPDevice::invertInput(const MCP::Pin pin, bool invert) {
+  invertInput(Util::getPortFromPin(pin.getEnum()), pin.getMask(), invert);
+}
+
+void MCPDevice::invertInput(int pin, bool invert) {
+  assert(pin >= 0 && pin <= 15 && "Invalid pin");
+  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
+  MCP::PORT port = Util::getPortFromPin(pinEnum);
+  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  invertInput(port, mask, invert);
 }
 
 void MCPDevice::EventMonitorTask(void *param) {
@@ -526,30 +428,6 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   xSemaphoreGive(regRWmutex);
 }
 
-// std::unordered_map<uint8_t, uint8_t> MCPDevice::batchReadRegisters() {
-//   std::unordered_map<uint8_t, uint8_t> registerValues;
-//   constexpr size_t totalRegisters = 2 * MCP::MAX_REG_PER_PORT;
-
-//   uint8_t buffer[totalRegisters] = {0};
-
-//   uint8_t startRegAddress =
-//       Util::calculateAddress(MCP::REG::IODIR, MCP::PORT::GPIOA, bankMode_);
-//   read_mcp_registers_batch(startRegAddress, buffer, totalRegisters);
-
-//   // Map the buffer data to register addresses
-//   for (uint8_t i = 0; i < totalRegisters; ++i) {
-//     // Calculate the corresponding register address
-//     MCP::PORT port =
-//         (i < MCP::MAX_REG_PER_PORT) ? MCP::PORT::GPIOA : MCP::PORT::GPIOB;
-//     MCP::REG reg = static_cast<MCP::REG>(i % MCP::MAX_REG_PER_PORT);
-
-//     uint8_t address = Util::calculateAddress(reg, port, bankMode_);
-//     registerValues[address] = buffer[i];
-//   }
-
-//   return registerValues;
-// }
-
 MCP::Register *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
   if (port == MCP::PORT::GPIOA) {
 
@@ -603,10 +481,6 @@ void MCPDevice::dumpRegisters() const {
     uint8_t value = getRegisterSavedValue(reg, MCP::PORT::GPIOB);
     ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
              Util::ToString::REG(reg), address, value);
-  }
-}
-void MCPDevice::updateRegisters(MCPDevice *device) {
-  if (device) {
   }
 }
 
