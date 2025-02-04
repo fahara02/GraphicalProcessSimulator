@@ -81,8 +81,6 @@ void MCPDevice::loadSettings() {
       result |= write_mcp_register(cntrlRegA->getAddress() + 1, updatedSetting);
     }
 
-    
-
     // Step 4: Update other MCP settings
     mirrorMode_ = (settings_.mirror == MCP::PairedInterrupt::Enabled);
     slewrateDisabled_ = (settings_.slew == MCP::Slew::Disabled);
@@ -100,65 +98,6 @@ void MCPDevice::loadSettings() {
     }
   }
 }
-
-// void MCPDevice::loadSettings() {
-
-//   uint8_t result = 0;
-
-//   if (settings_ != defaultSettings_) {
-
-//     if (settings_.opMode == MCP::OperationMode::SequentialMode8 ||
-//         settings_.opMode == MCP::OperationMode::ByteMode8) {
-//       bankMode_ = true; // 8bitMapping
-//       result |= write_mcp_register(cntrlRegA->getAddress(),
-//                                    static_cast<uint8_t>(0x80));
-
-//       gpioBankA->updateBankMode(bankMode_);
-//       gpioBankB->updateBankMode(bankMode_);
-//     }
-
-//     if (settings_.opMode == MCP::OperationMode::ByteMode16 ||
-//         settings_.opMode == MCP::OperationMode::ByteMode8) {
-//       byteMode_ = true; // Adress pointer dont increment ,continous poll
-//     }
-//     mirrorMode_ =
-//         settings_.mirror == MCP::PairedInterrupt::Enabled ? true : false;
-//     slewrateDisabled_ = settings_.slew == MCP::Slew::Disabled ? true : false;
-
-//     hardwareAddressing_ =
-//         settings_.haen == MCP::HardwareAddr::Enabled ? true : false;
-
-//     opendrainEnabled_ = settings_.odr == MCP::OpenDrain::Enabled ? true :
-//     false; interruptPolarityHigh_ =
-//         settings_.intpol == MCP::InterruptPolarity::ActiveHigh ? true :
-//         false;
-
-//     // Send the Settings To MCP Register
-//     uint8_t updatedSetting = configuration_.getSettingValue();
-//     if (bankMode_) {
-//       // Delay the Register address update before sending as
-//       // default is bankMode= false i.e 16 bit mapping address
-//       // write 8 bit value to both port
-//       result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
-//       result |= write_mcp_register(cntrlRegB->getAddress(), updatedSetting);
-
-//     } else {
-//       // if not writing 16 bit to A port is enough and no address change
-
-//       result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
-//       result |= write_mcp_register(cntrlRegA->getAddress() + 1,
-//       updatedSetting);
-//     }
-//     cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
-//     cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
-//     if (result != 0) {
-//       ESP_LOGE(MCP_TAG, "new_Setting changed failed , going back to
-//       defaults"); configuration_.configureDefault();
-//     } else {
-//       ESP_LOGI(MCP_TAG, "succefully changed the settings");
-//     }
-//   }
-// }
 
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {

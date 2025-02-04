@@ -13,37 +13,32 @@
 
 #define REG_TAG "MCP_REGISTERS"
 namespace MCP {
+
 struct Settings {
-  // Default Settings
-  OperationMode opMode = OperationMode::SequentialMode16;  // 00
-  PairedInterrupt mirror = PairedInterrupt::Disabled;      // 0
-  Slew slew = Slew::Enabled;                               // 0
-  HardwareAddr haen = HardwareAddr::Disabled;              // 0
-  OpenDrain odr = OpenDrain::Disabled;                     // 0
-  InterruptPolarity intpol = InterruptPolarity::ActiveLow; // 0
+  OperationMode opMode = OperationMode::SequentialMode16;
+  PairedInterrupt mirror = PairedInterrupt::Disabled;
+  Slew slew = Slew::Enabled;
+  HardwareAddr haen = HardwareAddr::Disabled;
+  OpenDrain odr = OpenDrain::Disabled;
+  InterruptPolarity intpol = InterruptPolarity::ActiveLow;
 
-  // Copy constructor
-  Settings(const Settings &other) = default;
+  explicit Settings(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : model_(m) {}
 
-  // Equality operator
   bool operator==(const Settings &other) const {
     return opMode == other.opMode && mirror == other.mirror &&
            slew == other.slew && haen == other.haen && odr == other.odr &&
            intpol == other.intpol && model_ == other.model_;
   }
 
-  // Inequality operator
   bool operator!=(const Settings &other) const { return !(*this == other); }
 
-  explicit Settings(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : model_(m) {}
-
   uint8_t getSetting() const {
-    return (static_cast<uint8_t>((opMode == OperationMode::SequentialMode8 ||
-                                  opMode == OperationMode::ByteMode8))
+    return (static_cast<uint8_t>(opMode == OperationMode::SequentialMode8 ||
+                                 opMode == OperationMode::ByteMode8)
             << 7) |
            (static_cast<uint8_t>(mirror) << 6) |
-           (static_cast<uint8_t>((opMode == OperationMode::ByteMode16 ||
-                                  opMode == OperationMode::ByteMode8))
+           (static_cast<uint8_t>(opMode == OperationMode::ByteMode16 ||
+                                 opMode == OperationMode::ByteMode8)
             << 5) |
            (static_cast<uint8_t>(slew) << 4) |
            (static_cast<uint8_t>(haen) << 3) |
@@ -51,9 +46,8 @@ struct Settings {
            (static_cast<uint8_t>(intpol) << 1);
   }
 
-  void setModel(MCP_MODEL m) { model_ = m; }
-
-  MCP_MODEL getModel() const { return model_; }
+  void setModel(MCP::MCP_MODEL m) { model_ = m; }
+  MCP::MCP_MODEL getModel() const { return model_; }
 
 private:
   MCP::MCP_MODEL model_;
@@ -61,22 +55,21 @@ private:
 
 // ================= Config Struct ==================
 struct Config {
-
   enum Field : uint8_t {
-    RESERVED = 0,
+    RESERVED,
     INTPOL,
     ODR,
     HAEN,
     DISSLW,
     SEQOP,
     MIRROR,
-    BANK,
+    BANK
   };
 
-  Config(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017) : config_(m), value(0) {}
-  void configureDefault() { validate_update(config_); }
+  explicit Config(MCP::MCP_MODEL m = MCP::MCP_MODEL::MCP23017)
+      : config_(m), value(0) {}
 
-  void setModel(MCP::MCP_MODEL m) { config_.setModel(m); }
+  void configureDefault() { validate_update(config_); }
 
   bool configure(const Settings &setting) {
     Settings validated = setting;
@@ -85,17 +78,13 @@ struct Config {
   }
 
   bool configure(uint8_t new_setting) {
-    Settings new_config = extractSettings(new_setting);
-    applyValidationRules(new_config);
-    return validate_update(new_config);
+    return configure(extractSettings(new_setting));
   }
 
   uint8_t getSettingValue() const { return value; }
   Settings getSettings() const { return config_; }
 
-  bool getBitField(Field field) const {
-    return (value & (1 << static_cast<uint8_t>(field))) != 0;
-  }
+  bool getBitField(Field field) const { return value & (1 << field); }
 
   void setOperationMode(bool byteMode, bool mapping8Bit) {
     config_.opMode = byteMode ? (mapping8Bit ? OperationMode::ByteMode8
@@ -105,69 +94,32 @@ struct Config {
     updateConfig();
   }
 
-  // **Interrupt Mirror Setter**
-  void setMirror(bool enable) {
-    config_.mirror =
-        enable ? PairedInterrupt::Enabled : PairedInterrupt::Disabled;
-    updateConfig();
+  void setMirror(bool enable) { updateSetting(config_.mirror, enable); }
+  void setSlewRate(bool enable) { updateSetting(config_.slew, enable); }
+  void setOpenDrain(bool enable) { updateSetting(config_.odr, enable); }
+  void setInterruptPolarity(bool activeHigh) {
+    updateSetting(config_.intpol, activeHigh);
   }
 
-  // **Slew Rate Setter**
-  void setSlewRate(bool enable) {
-    config_.slew = enable ? Slew::Enabled : Slew::Disabled;
-    updateConfig();
-  }
-
-  // **Hardware Addressing Setter**
   void setHardwareAddressing(bool enable) {
     if (config_.getModel() == MCP_MODEL::MCP23017 ||
         config_.getModel() == MCP_MODEL::MCP23018) {
       enable = false;
     }
-    config_.haen = enable ? HardwareAddr::Enabled : HardwareAddr::Disabled;
-    updateConfig();
-  }
-
-  // **Open-Drain Interrupt Output Setter**
-  void setOpenDrain(bool enable) {
-    config_.odr = enable ? OpenDrain::Enabled : OpenDrain::Disabled;
-    updateConfig();
-  }
-
-  // **Interrupt Polarity Setter**
-  void setInterruptPolarity(bool activeHigh) {
-    config_.intpol = activeHigh ? InterruptPolarity::ActiveHigh
-                                : InterruptPolarity::ActiveLow;
-
-    updateConfig();
+    updateSetting(config_.haen, enable);
   }
 
 private:
   Settings config_;
-
-  union {
-    uint8_t value; // Full register value
-    struct __attribute__((packed)) {
-      uint8_t RESERVED : 1; //!< Reserved bit (unused) (bit 0)
-      uint8_t INTPOL : 1;   //!< Interrupt Polarity (bit 1)
-      uint8_t ODR : 1;      //!< Open Drain (bit 2)
-      uint8_t HAEN : 1;     //!< Hardware Addressing Enable (bit 3)
-      uint8_t DISSLW : 1;   //!< Slew Rate (bit 4)
-      uint8_t SEQOP : 1;    //!< Sequential Operation mode (bit 5)
-      uint8_t MIRROR : 1;   //!< Mirror INT pins (bit 6)
-      uint8_t BANK : 1;     //!< Register Bank (bit 7)
-    } bits;
-  };
+  uint8_t value;
 
   void updateConfig() { value = config_.getSetting(); }
 
   void applyValidationRules(Settings &setting) {
-    // Enforce HAEN is disabled for MCP23017/MCP23018
-    if ((setting.getModel() == MCP_MODEL::MCP23017) ||
-        (setting.getModel() == MCP_MODEL::MCP23018)) {
+    if (setting.getModel() == MCP_MODEL::MCP23017 ||
+        setting.getModel() == MCP_MODEL::MCP23018) {
       setting.haen = HardwareAddr::Disabled;
     }
-    // ODR forces INTPOL to ActiveLow
     if (setting.odr == OpenDrain::Enabled &&
         setting.intpol == InterruptPolarity::ActiveHigh) {
       setting.intpol = InterruptPolarity::ActiveLow;
@@ -175,64 +127,35 @@ private:
   }
 
   bool validate_update(Settings &setting) {
-    return updateSettingsIfChanged(setting);
+    if (config_ == setting)
+      return false;
+    config_ = setting;
+    updateConfig();
+    return true;
   }
 
   Settings extractSettings(uint8_t setting) {
     Settings new_config(config_.getModel());
-
     new_config.opMode =
         (setting & (1 << 7))
             ? ((setting & (1 << 5)) ? OperationMode::ByteMode8
                                     : OperationMode::SequentialMode8)
             : ((setting & (1 << 5)) ? OperationMode::ByteMode16
                                     : OperationMode::SequentialMode16);
-
-    new_config.mirror = (setting & (1 << 6)) ? PairedInterrupt::Enabled
-                                             : PairedInterrupt::Disabled;
-    new_config.slew = (setting & (1 << 4)) ? Slew::Disabled : Slew::Enabled;
-    new_config.haen =
-        (setting & (1 << 3)) ? HardwareAddr::Enabled : HardwareAddr::Disabled;
-    new_config.odr =
-        (setting & (1 << 2)) ? OpenDrain::Enabled : OpenDrain::Disabled;
-    new_config.intpol = (setting & (1 << 1)) ? InterruptPolarity::ActiveHigh
-                                             : InterruptPolarity::ActiveLow;
+    new_config.mirror = static_cast<PairedInterrupt>(setting & (1 << 6));
+    new_config.slew = static_cast<Slew>(!(setting & (1 << 4)));
+    new_config.haen = static_cast<HardwareAddr>(setting & (1 << 3));
+    new_config.odr = static_cast<OpenDrain>(setting & (1 << 2));
+    new_config.intpol = static_cast<InterruptPolarity>(setting & (1 << 1));
 
     return new_config;
   }
 
-  bool updateSettingsIfChanged(const Settings &new_config) {
-    bool changed = false;
-
-    if (config_.opMode != new_config.opMode) {
-      config_.opMode = new_config.opMode;
-      changed = true;
-    }
-    if (config_.mirror != new_config.mirror) {
-      config_.mirror = new_config.mirror;
-      changed = true;
-    }
-    if (config_.slew != new_config.slew) {
-      config_.slew = new_config.slew;
-      changed = true;
-    }
-    if (config_.haen != new_config.haen) {
-      config_.haen = new_config.haen;
-      changed = true;
-    }
-    if (config_.odr != new_config.odr) {
-      config_.odr = new_config.odr;
-      changed = true;
-    }
-    if (config_.intpol != new_config.intpol) {
-      config_.intpol = new_config.intpol;
-      changed = true;
-    }
-
-    if (changed) {
+  template <typename T> void updateSetting(T &field, bool enable) {
+    if (field != static_cast<T>(enable)) {
+      field = static_cast<T>(enable);
       updateConfig();
     }
-    return changed;
   }
 };
 
@@ -332,12 +255,8 @@ public:
   void useDefaultConfiguration() { return config_.configureDefault(); }
 
   uint8_t getSavedValue() const {
-    if (reg_ == REG::IOCON) {
-      return config_.getSettingValue();
 
-    } else {
-      return value;
-    }
+    return reg_ == REG::IOCON ? config_.getSettingValue() : value;
   }
   uint8_t getSavedSettings() const { return config_.getSettingValue(); }
   void updateState(currentEvent &ev) {
@@ -346,6 +265,14 @@ public:
       if (reg_ == REG::IOCON) {
         config_.configure(ev.data);
       }
+    }
+  }
+  bool updateState(uint8_t newValue) {
+    if (reg_ == REG::IOCON) {
+      return config_.configure(newValue);
+    } else {
+      value = newValue;
+      return true;
     }
   }
 
@@ -366,30 +293,19 @@ public:
 
   virtual void applyMask(uint8_t mask) {
 
-    if (reg_ == REG::IOCON) {
-      ESP_LOGE(REG_TAG, "MASK is not appropriate for control register");
-    } else {
+    if (reg_ != REG::IOCON) {
       value |= mask;
       EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
     }
   }
 
   virtual void clearMask(uint8_t mask) {
-    if (reg_ == REG::IOCON) {
-      ESP_LOGE(REG_TAG, "MASK is not appropriate for control register");
-    } else {
+    if (reg_ != REG::IOCON) {
       value &= ~mask;
       EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value);
     }
   }
-  bool updateState(uint8_t newValue) {
-    if (reg_ == REG::IOCON) {
-      return config_.configure(newValue);
-    } else {
-      value = newValue;
-      return true;
-    }
-  }
+
   bool setValue(uint8_t newValue) {
     if (reg_ == REG::INTF) {
       return false;
@@ -407,27 +323,24 @@ public:
       value = newValue;
       EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                                 newValue);
-
       return true;
     }
   }
 
   void setBitField(Field field, bool value) {
-    // Check if the register is read-only or unsupported for modification
+
     if (readOnly || (reg_ == REG::IOCON) || (reg_ == REG::INTF)) {
       ESP_LOGW("RegisterBase",
                "Attempted to modify a read-only or unsupported register");
       return;
     }
 
-    // Update the specific bit in the register's value
     if (value) {
       this->value |= (1 << static_cast<uint8_t>(field));
     } else {
       this->value &= ~(1 << static_cast<uint8_t>(field));
     }
 
-    // Trigger an event to notify about the change
     EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                               this->value);
 
@@ -438,18 +351,14 @@ public:
   bool getBitField(Field field) const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
 
-    // Wait for the DATA_RECEIVED event
     EventBits_t bits = xEventGroupWaitBits(
         EventManager::registerEventGroup,
-        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED),
-        pdFALSE,     // Clear the bit after processing
-        pdFALSE,     // Don't wait for all bits
-        READ_TIMEOUT // Timeout
-    );
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
+        pdFALSE, READ_TIMEOUT);
 
     if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
       ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
-      return false; // Return default (safe) value
+      return false;
     }
     currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
     EventManager::acknowledgeEvent(event);
@@ -480,7 +389,6 @@ public:
   uint8_t getValue() const {
     EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
 
-    // Wait for the DATA_RECEIVED event
     EventBits_t bits = xEventGroupWaitBits(
         EventManager::registerEventGroup,
         static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
@@ -488,7 +396,7 @@ public:
 
     if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
       ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
-      return 0xFF; // Return error code
+      return 0xFF;
     }
     currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
     EventManager::acknowledgeEvent(event);
