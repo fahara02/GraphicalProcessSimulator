@@ -63,8 +63,8 @@ void MCPDevice::loadSettings() {
 
     // Step 1: If switching to banked mode, write only BANK bit first
     if (bankMode_) {
-      result |= write_mcp_register(cntrlRegA->getAddress(),
-                                   static_cast<uint8_t>(0x80));
+      result |= i2cBus_.write_mcp_register(
+          cntrlRegA->getAddress(), static_cast<uint8_t>(0x80), bankMode_);
       gpioBankA->updateBankMode(bankMode_);
       gpioBankB->updateBankMode(bankMode_);
     }
@@ -76,12 +76,16 @@ void MCPDevice::loadSettings() {
 
     if (bankMode_) {
       // In BANK mode (8-bit register mapping), write separately to each bank
-      result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
-      result |= write_mcp_register(cntrlRegB->getAddress(), updatedSetting);
+      result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
+                                           updatedSetting, bankMode_);
+      result |= i2cBus_.write_mcp_register(cntrlRegB->getAddress(),
+                                           updatedSetting, bankMode_);
     } else {
       // In 16-bit register mapping, write to both registers in sequence
-      result |= write_mcp_register(cntrlRegA->getAddress(), updatedSetting);
-      result |= write_mcp_register(cntrlRegA->getAddress() + 1, updatedSetting);
+      result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
+                                           updatedSetting, bankMode_);
+      result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress() + 1,
+                                           updatedSetting, bankMode_);
     }
 
     // Step 4: Update other MCP settings
@@ -104,10 +108,10 @@ void MCPDevice::loadSettings() {
 
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
-  if (!wire_->begin(sda_, scl_, 100000)) {
-    ESP_LOGE(MCP_TAG, "i2c init failed");
-  }
-
+  // if (!wire_->begin(sda_, scl_, 100000)) {
+  //   ESP_LOGE(MCP_TAG, "i2c init failed");
+  // }
+  i2cBus_.init();
   EventManager::initializeEventGroups();
 
   startEventMonitorTask(this);
@@ -495,7 +499,7 @@ void MCPDevice::handleBankModeEvent(currentEvent *ev) {
 
   uint8_t regAddress = ev->regIdentity.regAddress;
   uint8_t settings = ev->data;
-  write_mcp_register(regAddress, settings);
+  i2cBus_.write_mcp_register(regAddress, settings, bankMode_);
 
   Serial.printf("New Event %d BankMode changed \n", ev->id);
   EventManager::acknowledgeEvent(ev);
@@ -509,7 +513,7 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
   MCP::PORT port = ev->regIdentity.port;
   uint8_t regAddress = 0;
 
-  int value = read_mcp_register(currentAddress);
+  int value = i2cBus_.read_mcp_register(currentAddress, bankMode_);
   if (value == -1) {
     Serial.printf("Read failed for id=%d ; Invalid data received\n", ev->id);
     return;
@@ -547,7 +551,7 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   uint16_t value = ev->data; // Use 16-bit storage
 
-  uint8_t result = write_mcp_register(reg, value); // Handles 8-bit & 16-bit
+  uint8_t result = i2cBus_.write_mcp_register(reg, value, bankMode_);
 
   if (result == 0) {
     ESP_LOGI(MCP_TAG, "New Write success for address 0x%02X for id=%d ; \n",
@@ -565,7 +569,7 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   MCP::PORT port = ev->regIdentity.port;
   uint8_t reg = ev->regIdentity.regAddress;
   uint16_t settings = ev->data;
-  uint8_t result = write_mcp_register(reg, settings);
+  uint8_t result = i2cBus_.write_mcp_register(reg, settings, bankMode_);
   if (result == 0) {
     Serial.printf("New Setting Event sucessfull id=%d ; \n", ev->id);
     EventManager::acknowledgeEvent(ev);

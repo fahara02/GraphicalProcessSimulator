@@ -27,7 +27,6 @@ private:
   MCP::Settings defaultSettings_;
   MCP::address_decoder_t decoder_;
   uint8_t address_;
-
   gpio_num_t sda_;
   gpio_num_t scl_;
   gpio_num_t cs_;

@@ -2,7 +2,7 @@
 #define I2C_BUS_HPP
 #include "Arduino.h"
 #include "MCP_Constants.hpp"
-#include "RegisterEvents.hpp"
+
 #include "Wire.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -26,15 +26,9 @@ public:
   I2CBus(I2CBus &&) = delete;
   I2CBus &operator=(I2CBus &&) = delete;
 
-  void startEventMonitorTask(I2CBus *bus);
-  static void EventMonitorTask(void *param);
-  void handleReadEvent(currentEvent *ev);
-  void handleWriteEvent(currentEvent *ev);
-  void handleSettingChangeEvent(currentEvent *ev);
-  void handleBankModeEvent(currentEvent *ev);
   int read_mcp_register(const uint8_t reg, bool bankMode);
-  uint8_t write_mcp_register(const uint8_t reg, uint16_t value, bool bankMode);
-  static SemaphoreHandle_t regRWmutex;
+  int write_mcp_register(const uint8_t reg, uint16_t value, bool bankMode);
+  static SemaphoreHandle_t i2cMutex;
 
 private:
   I2CBus(uint8_t addr, int sda, int scl);
@@ -42,8 +36,6 @@ private:
   int sda_;
   int scl_;
   std::unique_ptr<TwoWire> wire_;
-
-  TaskHandle_t eventTaskHandle;
 };
 
 } // namespace MCP
