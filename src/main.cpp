@@ -89,7 +89,9 @@ void setup() {
   setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
 
-  expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+  expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
+  delay(1000);
+  expander.invertInput(MCP::PORT::GPIOB, true);
   expander.dumpRegisters();
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
@@ -220,23 +222,30 @@ void RunTask(void *param) {
   COMPONENT::MCPDevice *expander = static_cast<COMPONENT::MCPDevice *>(param);
   while (true) {
     Serial.println("....MAIN TASK......");
-    uint8_t mask = 0b00011110;
-    expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
+    // uint8_t readmask = 0;
+    // readmask = expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+
+    // vTaskDelay(pdMS_TO_TICKS(10));
+
+    // expander->digitalWrite(MCP::PORT::GPIOA, readmask, true);
+    // vTaskDelay(pdMS_TO_TICKS(10));
+
+    // expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
     // send_req += 1;
 
     // expander->gpioBankA->setPinState(mask, false);
     vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t value = expander->digitalRead(MCP::PORT::GPIOA);
-    Serial.printf("pins value is %d", value);
+    uint8_t readmask = expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+    Serial.printf("pins value is %d", readmask);
     vTaskDelay(pdMS_TO_TICKS(10));
     send_req += 1;
     if (send_req == 2) {
       send_req = 0;
-      expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
+      expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
-    value = expander->digitalRead(MCP::PORT::GPIOA);
-    Serial.printf("pins value is %d", value);
+    expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
+
     vTaskDelay(pdMS_TO_TICKS(10));
 
     Serial.printf("Total send request=%d\n", send_req);

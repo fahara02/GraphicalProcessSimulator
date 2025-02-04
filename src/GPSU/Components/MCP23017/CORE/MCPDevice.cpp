@@ -501,27 +501,33 @@ void MCPDevice::handleBankModeEvent(currentEvent *ev) {
 }
 
 void MCPDevice::handleReadEvent(currentEvent *ev) {
-  uint8_t reg = ev->regIdentity.regAddress;
+  MCP::REG reg = ev->regIdentity.reg;
+  uint8_t currentAddress = ev->regIdentity.regAddress;
   MCP::PORT port = ev->regIdentity.port;
+  uint8_t regAddress = 0;
 
-  int value = read_mcp_register(reg);
+  int value = read_mcp_register(currentAddress);
   if (value == -1) {
     Serial.printf("Read failed for id=%d ; Invalid data received\n", ev->id);
     return;
   }
 
   if (!bankMode_) {
-    Serial.printf("Read event%d update for 16bit mode\n", ev->id);
+    if ((currentAddress % 2) != 0) {
+      regAddress = currentAddress - 1; // Align with Port A
+    }
+
     uint8_t valueA = value & 0xFF;
     uint8_t valueB = (value >> 8) & 0xFF;
-    gpioBankA->updateRegisterValue(reg, valueA);
-    gpioBankB->updateRegisterValue(reg + 1, valueB);
+    gpioBankA->updateRegisterValue(regAddress, valueA);
+    gpioBankB->updateRegisterValue(regAddress + 1, valueB);
+
   } else {
     Serial.printf("Read event%d update for 8bit mode\n", ev->id);
     if (port == MCP::PORT::GPIOA) {
-      gpioBankA->updateRegisterValue(reg, value);
+      gpioBankA->updateRegisterValue(regAddress, value);
     } else {
-      gpioBankB->updateRegisterValue(reg, value);
+      gpioBankB->updateRegisterValue(regAddress, value);
     }
   }
 
