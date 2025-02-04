@@ -550,7 +550,7 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
 //   return registerValues;
 // }
 
-MCP::MCPRegister *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
+MCP::Register *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
   if (port == MCP::PORT::GPIOA) {
 
     return gpioBankA->getRegisterForUpdate(reg);

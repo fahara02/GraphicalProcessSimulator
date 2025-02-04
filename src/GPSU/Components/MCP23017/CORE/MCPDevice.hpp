@@ -47,8 +47,8 @@ private:
 public:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
-  std::shared_ptr<MCP::MCPRegister> cntrlRegA;
-  std::shared_ptr<MCP::MCPRegister> cntrlRegB;
+  std::shared_ptr<MCP::Register> cntrlRegA;
+  std::shared_ptr<MCP::Register> cntrlRegB;
 
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
@@ -123,7 +123,7 @@ private:
   void init();
   void loadSettings();
   void resetDevice();
-  MCP::MCPRegister *getRegister(MCP::REG reg, MCP::PORT port);
+  MCP::Register *getRegister(MCP::REG reg, MCP::PORT port);
   uint8_t getsavedSettings(MCP::PORT port) const;
   void updateRegisters(MCPDevice *device);
   uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const;
@@ -135,9 +135,6 @@ private:
   void handleWriteEvent(currentEvent *ev);
   void handleSettingChangeEvent(currentEvent *ev);
   void handleBankModeEvent(currentEvent *ev);
-
-
- 
 
   template <typename FirstPin, typename... RestPins>
   constexpr uint8_t generateMask(FirstPin first, RestPins... rest) {
