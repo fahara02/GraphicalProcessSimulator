@@ -13,7 +13,28 @@
 
 #define REG_TAG "MCP_REGISTERS"
 namespace MCP {
+struct address_decoder_t {
+  const MCP::MCP_MODEL model_;
+  const bool A2_;
+  const bool A1_;
+  const bool A0_;
 
+  address_decoder_t(MCP::MCP_MODEL m, bool A2, bool A1, bool A0)
+      : model_(m), A2_(A2), A1_(A1), A0_(A0),
+        device_i2c_address(decodeDeviceAddress()) {}
+
+  constexpr uint8_t decodeDeviceAddress() {
+    if (model_ == MCP::MCP_MODEL::MCP23017 ||
+        model_ == MCP::MCP_MODEL::MCP23S17) {
+      return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
+    }
+    return MCP_ADDRESS_BASE;
+  }
+  uint8_t getDeviceAddress() const { return device_i2c_address; }
+
+private:
+  uint8_t device_i2c_address;
+};
 struct Settings {
   OperationMode opMode = OperationMode::SequentialMode16;
   PairedInterrupt mirror = PairedInterrupt::Disabled;
@@ -159,29 +180,6 @@ private:
   }
 };
 
-struct address_decoder_t {
-  const MCP::MCP_MODEL model_;
-  const bool A2_;
-  const bool A1_;
-  const bool A0_;
-
-  address_decoder_t(MCP::MCP_MODEL m, bool A2, bool A1, bool A0)
-      : model_(m), A2_(A2), A1_(A1), A0_(A0),
-        device_i2c_address(decodeDeviceAddress()) {}
-
-  constexpr uint8_t decodeDeviceAddress() {
-    if (model_ == MCP::MCP_MODEL::MCP23017 ||
-        model_ == MCP::MCP_MODEL::MCP23S17) {
-      return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
-    }
-    return MCP_ADDRESS_BASE;
-  }
-  uint8_t getDeviceAddress() const { return device_i2c_address; }
-
-private:
-  uint8_t device_i2c_address;
-};
-
 struct Register {
   using configField = MCP::Config::Field;
   const MCP_MODEL model;
@@ -238,7 +236,8 @@ struct Register {
   }
   void setValue(uint8_t newvalue) {
     if (!readOnly_) {
-
+      ESP_LOGI(REG_TAG, "value %d set to  register 0x%02X", value_,
+               regAddress_);
       value_ = newvalue;
       if (reg == MCP::REG::IOCON) {
         EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
@@ -260,6 +259,9 @@ struct Register {
           Util::BIT::clear(value_, bit);
         }
       }
+
+      ESP_LOGI(REG_TAG, "Bit field %d set to %d in register 0x%02X", bit,
+               value_, regAddress_);
       if (reg == MCP::REG::IOCON) {
         EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
                                   value_);
@@ -309,6 +311,8 @@ struct Register {
 
     if (reg != REG::IOCON) {
       value_ |= mask;
+      ESP_LOGI(REG_TAG, "New Value %d set  in register 0x%02X", value_,
+               regAddress_);
       EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                                 value_);
     }
@@ -317,10 +321,13 @@ struct Register {
   void clearMask(uint8_t mask) {
     if (reg != REG::IOCON) {
       value_ &= ~mask;
+      ESP_LOGI(REG_TAG, "New Value %d set  in register 0x%02X", value_,
+               regAddress_);
       EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
                                 value_);
     }
   }
+  void setAsReadOnly() { readOnly_ = true; }
   uint8_t getAddress() const { return regAddress_; }
   registerIdentity getIdentity() const { return identity_; }
 
@@ -506,6 +513,8 @@ public:
     defval = regMap[MCP::REG::DEFVAL].get();
     intf = regMap[MCP::REG::INTF].get();
     intcap = regMap[MCP::REG::INTCAP].get();
+
+    intf->setAsReadOnly();
   }
   void updateAddress(bool bankMode) {
 

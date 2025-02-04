@@ -112,7 +112,7 @@ public:
     return regs.gpio->getBitField(static_cast<uint8_t>(p));
   }
   uint8_t getPinState(uint8_t pinmask) {
-    return regs.gpio->getValue() | pinmask;
+    return regs.gpio->getValue() & pinmask;
   }
   uint8_t getPinState() { return regs.gpio->getValue(); }
 

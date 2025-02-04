@@ -15,7 +15,6 @@
 #include <WiFiManager.h>
 #include <WifiClient.h>
 
-
 TaskHandle_t runTaskhandle = nullptr;
 
 TFT_eSPI tft = TFT_eSPI();
@@ -88,12 +87,12 @@ void setup() {
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
   MCP::Settings setting;
-  setting.opMode = MCP::OperationMode::SequentialMode16;
+  setting.opMode = MCP::OperationMode::SequentialMode8;
   expander.configure(setting);
 
   expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
   delay(1000);
-  expander.invertInput(MCP::PORT::GPIOB, true);
+  // expander.invertInput(MCP::PORT::GPIOB, true);
   expander.dumpRegisters();
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
@@ -232,21 +231,23 @@ void RunTask(void *param) {
     // expander->digitalWrite(MCP::PORT::GPIOA, readmask, true);
     // vTaskDelay(pdMS_TO_TICKS(10));
 
-    // expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
-    // send_req += 1;
+    expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
+    send_req += 1;
 
     // expander->gpioBankA->setPinState(mask, false);
     vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t readmask = expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+    uint8_t readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
     Serial.printf("pins value is %d", readmask);
     vTaskDelay(pdMS_TO_TICKS(10));
     send_req += 1;
     if (send_req == 2) {
       send_req = 0;
-      expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
+      expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
-    expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
+    readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    Serial.printf("pins value is %d", readmask);
 
     vTaskDelay(pdMS_TO_TICKS(10));
 

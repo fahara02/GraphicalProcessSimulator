@@ -21,6 +21,7 @@ int I2CBus::read_mcp_register(const uint8_t reg, bool bankMode) {
 
   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
     xSemaphoreGive(i2cMutex);
+    ESP_LOGE("I2CBUS", "Failed to take mutex");
     return -1;
   }
   uint8_t bytesToRead = 1;
@@ -53,9 +54,10 @@ int I2CBus::write_mcp_register(const uint8_t reg, uint16_t value,
                                bool bankMode) {
   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
     xSemaphoreGive(i2cMutex);
+    ESP_LOGE("I2CBUS", "Failed to take mutex");
     return -1;
   }
-  uint8_t result = 0;
+  int result = 0;
   uint8_t regAddress = reg; // Default: Single register
   uint8_t bytesToWrite = 1; //  8-bit mode
 

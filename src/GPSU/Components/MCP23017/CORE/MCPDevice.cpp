@@ -362,7 +362,8 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
 
   int value = i2cBus_.read_mcp_register(currentAddress, bankMode_);
   if (value == -1) {
-    Serial.printf("Read failed for id=%d ; Invalid data received\n", ev->id);
+    ESP_LOGE(MCP_TAG, "Read failed for id=%d ; Invalid data received\n",
+             ev->id);
     return;
   }
 
@@ -377,11 +378,13 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
     gpioBankB->updateRegisterValue(regAddress + 1, valueB);
 
   } else {
-    Serial.printf("Read event%d update for 8bit mode\n", ev->id);
+    Serial.printf("Read event %d update for 8bit mode\n", ev->id);
     if (port == MCP::PORT::GPIOA) {
-      gpioBankA->updateRegisterValue(regAddress, value);
+      gpioBankA->updateRegisterValue(currentAddress,
+                                     static_cast<uint8_t>(value));
     } else {
-      gpioBankB->updateRegisterValue(regAddress, value);
+      gpioBankB->updateRegisterValue(currentAddress,
+                                     static_cast<uint8_t>(value));
     }
   }
 
