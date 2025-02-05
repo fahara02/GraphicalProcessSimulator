@@ -381,92 +381,6 @@ struct Register {
     return false;
   }
 
-  // INTERRUPT SPECIFIC
-  template <REG T>
-  typename std::enable_if<T == REG::GPINTEN, bool>::type
-  setInterruptOnChange(PIN pin, INTR_ON_CHANGE_ENABLE en) {
-
-    if (port != Util::getPortFromPin(pin)) {
-      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
-               static_cast<int>(pin));
-      return false;
-    }
-    uint8_t index = Util::getPinIndex(pin);
-    setBitField(index, en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE);
-
-    return true;
-  }
-  template <REG T>
-  typename std::enable_if<T == REG::GPINTEN, bool>::type
-  setInterruptOnChange(uint8_t pinmask, INTR_ON_CHANGE_ENABLE en) {
-
-    if (en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE) {
-      applyMask(pinmask);
-    } else {
-      clearMask(pinmask);
-    }
-    return true;
-  }
-  template <REG T>
-  typename std::enable_if<T == REG::INTCON, bool>::type
-  setInterruptType(PIN pin, INTR_ON_CHANGE_CONTROL cntrl) {
-
-    if (port != Util::getPortFromPin(pin)) {
-      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
-               static_cast<int>(pin));
-      return false;
-    }
-    uint8_t index = Util::getPinIndex(pin);
-    setBitField(index, cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL);
-
-    return true;
-  }
-  template <REG T>
-  typename std::enable_if<T == REG::INTCON, bool>::type
-  setInterruptType(uint8_t pinmask, INTR_ON_CHANGE_CONTROL cntrl) {
-
-    if (cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL) {
-      applyMask(pinmask);
-    } else {
-      clearMask(pinmask);
-    }
-
-    return true;
-  }
-  template <REG T>
-  typename std::enable_if<T == REG::DEFVAL, bool>::type
-  saveCompareValue(PIN pin, DEF_VAL_COMPARE cmp) {
-    if (port != Util::getPortFromPin(pin)) {
-      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
-      return false;
-    }
-    uint8_t index = Util::getPinIndex(pin);
-    setBitField(index, cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH);
-
-    return true;
-  }
-  template <REG T>
-  typename std::enable_if<T == REG::DEFVAL, bool>::type
-  saveCompareValue(uint8_t pinmask, DEF_VAL_COMPARE cmp) {
-
-    if (cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH) {
-      applyMask(pinmask);
-    } else {
-      clearMask(pinmask);
-    }
-
-    return true;
-  }
-  template <REG T>
-  typename std::enable_if<T == REG::INTCAP, bool>::type clearInterrupt() {
-
-    if (getValue()) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-
 private:
   bool readOnly_ = false;
   bool bankSeparated_ = false;
@@ -475,127 +389,7 @@ private:
   registerIdentity identity_;
   Config config_;
 };
-class MCPRegisters {
-private:
-  std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> regMap;
 
-public:
-  std::shared_ptr<MCP::Register> iocon;
-  // Raw pointers for easier access
-  MCP::Register *iodir{};
-  MCP::Register *gppu{};
-  MCP::Register *ipol{};
-  MCP::Register *gpio{};
-  MCP::Register *olat{};
-  MCP::Register *gpinten{};
-  MCP::Register *intcon{};
-  MCP::Register *defval{};
-  MCP::Register *intf{};
-  MCP::Register *intcap{};
-
-  MCPRegisters() = default;
-
-  void setup(MCP::MCP_MODEL model, PORT port, bool bankMode) {
-    iocon =
-        std::make_shared<MCP::Register>(model, MCP::REG::IOCON, port, bankMode);
-
-    for (auto regType :
-         {MCP::REG::IODIR, MCP::REG::GPPU, MCP::REG::IPOL, MCP::REG::GPIO,
-          MCP::REG::OLAT, MCP::REG::GPINTEN, MCP::REG::INTCON, MCP::REG::DEFVAL,
-          MCP::REG::INTF, MCP::REG::INTCAP}) {
-      regMap[regType] =
-          std::make_unique<MCP::Register>(model, regType, port, bankMode);
-    }
-
-    assign(); // Assign raw pointers
-  }
-
-  void assign() {
-    iodir = regMap[MCP::REG::IODIR].get();
-    gppu = regMap[MCP::REG::GPPU].get();
-    ipol = regMap[MCP::REG::IPOL].get();
-    gpio = regMap[MCP::REG::GPIO].get();
-    olat = regMap[MCP::REG::OLAT].get();
-    gpinten = regMap[MCP::REG::GPINTEN].get();
-    intcon = regMap[MCP::REG::INTCON].get();
-    defval = regMap[MCP::REG::DEFVAL].get();
-    intf = regMap[MCP::REG::INTF].get();
-    intcap = regMap[MCP::REG::INTCAP].get();
-
-    intf->setAsReadOnly();
-  }
-  void updateAddress(bool bankMode) {
-
-    if (iocon) {
-      iocon->updateBankMode(bankMode);
-    }
-
-    for (auto &[regType, regPtr] : regMap) {
-      regPtr->updateBankMode(bankMode);
-    }
-  }
-
-  std::shared_ptr<MCP::Register> const getIOCON() { return iocon; }
-
-  // Getter for read-only access
-  const MCP::Register *getRegister(MCP::REG regType) const {
-    if (regType == MCP::REG::IOCON)
-      return iocon.get();
-    auto it = regMap.find(regType);
-    return (it != regMap.end()) ? it->second.get() : nullptr;
-  }
-
-  //  Getter for modifying the register
-  MCP::Register *getRegisterForUpdate(MCP::REG regType) {
-    if (regType == MCP::REG::IOCON)
-      return iocon.get();
-    auto it = regMap.find(regType);
-    return (it != regMap.end()) ? it->second.get() : nullptr;
-  }
-  const MCP::Register *getRegister(uint8_t address) const {
-
-    for (auto &[regType, regPtr] : regMap) {
-      if (regPtr->getAddress() == address) {
-        return regPtr.get();
-      }
-    }
-    return nullptr;
-  }
-
-  uint8_t getSavedValue(MCP::REG reg) const {
-    if (reg == MCP::REG::IOCON) {
-      return iocon->getSavedValue();
-    } else {
-      auto it = regMap.find(reg);
-      return it != regMap.end() ? it->second->getSavedValue() : 0;
-    }
-  }
-
-  uint8_t getAddress(MCP::REG reg) const {
-    if (reg == MCP::REG::IOCON) {
-      return iocon->getAddress();
-    } else {
-      auto it = regMap.find(reg);
-      return it != regMap.end() ? it->second->getAddress() : 0;
-    }
-  }
-  bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
-    if (iocon->getAddress() == reg_address) {
-      return iocon->updateState(value);
-    }
-
-    for (auto &[regType, regPtr] : regMap) {
-      if (regPtr->getAddress() == reg_address) {
-        return regPtr->updateState(value);
-      }
-    }
-
-    ESP_LOGE("MCPRegisters",
-             "Failed to update register: Invalid address (0x%02X)",
-             reg_address);
-    return false;
-  }
-};
 class RegistersCollection {
 protected:
   virtual std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
@@ -657,17 +451,20 @@ public:
     }
   }
 
-  // Update a register value given a register address.
   bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
     if (iocon->getAddress() == reg_address) {
       return iocon->updateState(value);
     }
-    for (auto &[regType, regPtr] : getRegMap()) {
+
+    for (auto &[regType, regPtr] : regMap) {
       if (regPtr->getAddress() == reg_address) {
         return regPtr->updateState(value);
       }
     }
 
+    ESP_LOGE("MCPRegisters",
+             "Failed to update register: Invalid address (0x%02X)",
+             reg_address);
     return false;
   }
 
@@ -783,3 +580,126 @@ public:
 
 } // namespace MCP
 #endif
+
+// class MCPRegisters {
+// private:
+//   std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> regMap;
+
+// public:
+//   std::shared_ptr<MCP::Register> iocon;
+//   // Raw pointers for easier access
+//   MCP::Register *iodir{};
+//   MCP::Register *gppu{};
+//   MCP::Register *ipol{};
+//   MCP::Register *gpio{};
+//   MCP::Register *olat{};
+//   MCP::Register *gpinten{};
+//   MCP::Register *intcon{};
+//   MCP::Register *defval{};
+//   MCP::Register *intf{};
+//   MCP::Register *intcap{};
+
+//   MCPRegisters() = default;
+
+//   void setup(MCP::MCP_MODEL model, PORT port, bool bankMode) {
+//     iocon =
+//         std::make_shared<MCP::Register>(model, MCP::REG::IOCON, port,
+//         bankMode);
+
+//     for (auto regType :
+//          {MCP::REG::IODIR, MCP::REG::GPPU, MCP::REG::IPOL, MCP::REG::GPIO,
+//           MCP::REG::OLAT, MCP::REG::GPINTEN, MCP::REG::INTCON,
+//           MCP::REG::DEFVAL, MCP::REG::INTF, MCP::REG::INTCAP}) {
+//       regMap[regType] =
+//           std::make_unique<MCP::Register>(model, regType, port, bankMode);
+//     }
+
+//     assign(); // Assign raw pointers
+//   }
+
+//   void assign() {
+//     iodir = regMap[MCP::REG::IODIR].get();
+//     gppu = regMap[MCP::REG::GPPU].get();
+//     ipol = regMap[MCP::REG::IPOL].get();
+//     gpio = regMap[MCP::REG::GPIO].get();
+//     olat = regMap[MCP::REG::OLAT].get();
+//     gpinten = regMap[MCP::REG::GPINTEN].get();
+//     intcon = regMap[MCP::REG::INTCON].get();
+//     defval = regMap[MCP::REG::DEFVAL].get();
+//     intf = regMap[MCP::REG::INTF].get();
+//     intcap = regMap[MCP::REG::INTCAP].get();
+
+//     intf->setAsReadOnly();
+//   }
+//   void updateAddress(bool bankMode) {
+
+//     if (iocon) {
+//       iocon->updateBankMode(bankMode);
+//     }
+
+//     for (auto &[regType, regPtr] : regMap) {
+//       regPtr->updateBankMode(bankMode);
+//     }
+//   }
+
+//   std::shared_ptr<MCP::Register> const getIOCON() { return iocon; }
+
+//   // Getter for read-only access
+//   const MCP::Register *getRegister(MCP::REG regType) const {
+//     if (regType == MCP::REG::IOCON)
+//       return iocon.get();
+//     auto it = regMap.find(regType);
+//     return (it != regMap.end()) ? it->second.get() : nullptr;
+//   }
+
+//   //  Getter for modifying the register
+//   MCP::Register *getRegisterForUpdate(MCP::REG regType) {
+//     if (regType == MCP::REG::IOCON)
+//       return iocon.get();
+//     auto it = regMap.find(regType);
+//     return (it != regMap.end()) ? it->second.get() : nullptr;
+//   }
+//   const MCP::Register *getRegister(uint8_t address) const {
+
+//     for (auto &[regType, regPtr] : regMap) {
+//       if (regPtr->getAddress() == address) {
+//         return regPtr.get();
+//       }
+//     }
+//     return nullptr;
+//   }
+
+//   uint8_t getSavedValue(MCP::REG reg) const {
+//     if (reg == MCP::REG::IOCON) {
+//       return iocon->getSavedValue();
+//     } else {
+//       auto it = regMap.find(reg);
+//       return it != regMap.end() ? it->second->getSavedValue() : 0;
+//     }
+//   }
+
+//   uint8_t getAddress(MCP::REG reg) const {
+//     if (reg == MCP::REG::IOCON) {
+//       return iocon->getAddress();
+//     } else {
+//       auto it = regMap.find(reg);
+//       return it != regMap.end() ? it->second->getAddress() : 0;
+//     }
+//   }
+//   bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
+//     if (iocon->getAddress() == reg_address) {
+//       return iocon->updateState(value);
+//     }
+
+//     for (auto &[regType, regPtr] : regMap) {
+//       if (regPtr->getAddress() == reg_address) {
+//         return regPtr->updateState(value);
+//       }
+//     }
+
+//     ESP_LOGE("MCPRegisters",
+//              "Failed to update register: Invalid address (0x%02X)",
+//              reg_address);
+//     return false;
+//   }
+// };
