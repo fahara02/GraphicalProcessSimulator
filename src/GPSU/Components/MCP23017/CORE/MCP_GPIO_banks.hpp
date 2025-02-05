@@ -57,6 +57,7 @@ public:
   // Pin masks
   void setGeneralMask(MASK mask) { generalMask = static_cast<uint8_t>(mask); }
   void setGeneralMask(uint8_t mask) { generalMask = mask; }
+  void setInterruptMask(uint8_t mask) { interruptMask = mask; }
   uint8_t getGeneralMask() const { return generalMask; }
   uint8_t getInterruptMask() const { return interruptMask; }
 
@@ -195,12 +196,12 @@ private:
 
   void init() {}
 
-  void setInterruptMask(uint8_t pinMask) {
-    interruptMask = pinMask & 0xFF;
-    if (interruptEnabled) {
-      updatePinInterruptState();
-    }
-  }
+  // void setInterruptMask(uint8_t pinMask) {
+  //   interruptMask = pinMask & 0xFF;
+  //   if (interruptEnabled) {
+  //     updatePinInterruptState();
+  //   }
+  // }
 
   void updatePinInterruptState() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {

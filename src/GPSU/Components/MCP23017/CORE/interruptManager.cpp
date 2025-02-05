@@ -14,10 +14,10 @@ InterruptManager::InterruptManager(COMPONENT::MCPDevice *owner)
       defValA(owner_->gpioBankA->getRegisterForUpdate(REG::DEFVAL)),
       defValB(owner_->gpioBankB->getRegisterForUpdate(REG::DEFVAL)) {}
 
-void InterruptManager::setup(INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
-                             PairedInterrupt sharedIntr, uint8_t mask_A,
-                             uint8_t mask_B, int pinA, int pinB) {
-
+void InterruptManager::setup(uint8_t mask_A, uint8_t mask_B, int pinA, int pinB,
+                             INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
+                             PairedInterrupt sharedIntr) {
+  ESP_LOGI(INT_TAG, "setting up intterupts");
   setting_.intrType = type;
   setting_.intrOutputType = outtype;
   setting_.intrSharing = sharedIntr == PairedInterrupt::Enabled ? true : false;
@@ -28,6 +28,7 @@ void InterruptManager::setup(INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
 }
 bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;
+  ESP_LOGI(INT_TAG, "enabling intterupt");
   if (updateInterrputSetting()) {
     ESP_LOGI(REG_TAG, "SuccessFully intterrupt is set");
     return true;
@@ -48,7 +49,7 @@ bool InterruptManager::updateInterrputSetting() {
       vTaskDelay(10);
     }
     switch (setting_.intrType) {
-
+      ESP_LOGI(INT_TAG, "checking intterupt types");
     case INTR_TYPE::INTR_ON_CHANGE:
       success = setupIntteruptOnChnage();
 
@@ -85,6 +86,9 @@ bool InterruptManager::setupIntteruptOnChnage() {
 
 bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
   bool success = false;
+  if (!checkRegistersExists()) {
+    return false;
+  }
   setting_.icoControl = INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL;
   // ACTIVATE defval comparison first
   IntConA->applyMask(maskA_);
@@ -126,6 +130,9 @@ bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
 }
 bool InterruptManager::setupEnableRegister() {
   bool success = false;
+  if (!checkRegistersExists()) {
+    return false;
+  }
   gpIntEnA->applyMask(maskA_);
   vTaskDelay(10);
   success = confirmRegisterIsSet(PORT::GPIOA, REG::GPINTEN, maskA_);
@@ -140,6 +147,9 @@ bool InterruptManager::setupEnableRegister() {
 }
 bool InterruptManager::setupIntrOutput() {
   bool success = false;
+  if (!checkRegistersExists()) {
+    return false;
+  }
   if (setting_.intrOutputType == INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
     owner_->cntrlRegA->setInterruptPolarity<REG::IOCON>(true);
     vTaskDelay(10);
@@ -164,6 +174,9 @@ bool InterruptManager::setupIntrOutput() {
 bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
                                             uint8_t bitMask) {
   bool success = false;
+  if (!checkRegistersExists()) {
+    return false;
+  }
   int currentValue = owner_->readRegister(port, regType);
   if (currentValue == -1) {
     ESP_LOGE(INT_TAG, "Error setting reg %s", Util::ToString::REG(regType));
@@ -179,5 +192,23 @@ bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
   }
   return success;
 }
-
+bool InterruptManager::checkRegistersExists() {
+  bool regExist = false;
+  if (gpIntEnA && gpIntEnB) {
+    regExist = true;
+  }
+  if (IntConA && IntConB) {
+    regExist = true;
+  }
+  if (intFA && intFB) {
+    regExist = true;
+  }
+  if (defValA && defValB) {
+    regExist = true;
+  }
+  if (intCapA && intCapB) {
+    regExist = true;
+  }
+  return regExist;
+}
 } // namespace MCP

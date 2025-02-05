@@ -14,6 +14,7 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       scl_(GPIO_NUM_33),                     //
       cs_(GPIO_NUM_NC),                      //
       reset_(GPIO_NUM_33),                   //
+      intA_(GPIO_NUM_NC), intB_(GPIO_NUM_NC),
       i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
       interruptManager_(std::make_unique<MCP::InterruptManager>(this)),
       gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
@@ -114,6 +115,11 @@ void MCPDevice::init() {
   EventManager::initializeEventGroups();
 
   startEventMonitorTask(this);
+  // gpioBankB->setInterruptMask(0xFF);
+  // setupIntterupt();
+}
+bool MCPDevice::enableInterrupt() {
+  return interruptManager_->enableInterrupt();
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   if (!device) {
@@ -520,6 +526,16 @@ void MCPDevice::dumpRegisters() const {
                Util::ToString::REG(reg), address, value);
     }
   }
+}
+
+void MCPDevice::setupIntterupt(MCP::INTR_TYPE type,
+                               MCP::INTR_OUTPUT_TYPE outtype,
+                               MCP::PairedInterrupt sharedIntr) {
+
+  interruptManager_->setup(gpioBankA->getInterruptMask(),
+                           gpioBankB->getInterruptMask(),
+                           static_cast<int>(intA_), static_cast<int>(intB_),
+                           type, outtype, sharedIntr);
 }
 
 } // namespace COMPONENT

@@ -89,8 +89,10 @@ void setup() {
   MCP::Settings setting;
   setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
-
-  expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
+  delay(1000);
+  // expander.enableInterrupt();
+  delay(1000);
+  expander.pinMode(MCP::PORT::GPIOA, OUTPUT);
   delay(1000);
   // expander.invertInput(MCP::PORT::GPIOB, true);
   expander.dumpRegisters();
@@ -232,6 +234,7 @@ void RunTask(void *param) {
     // vTaskDelay(pdMS_TO_TICKS(10));
 
     expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
+
     send_req += 1;
 
     // expander->gpioBankA->setPinState(mask, false);

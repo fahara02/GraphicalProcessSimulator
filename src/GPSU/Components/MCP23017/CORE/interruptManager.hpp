@@ -26,11 +26,10 @@ class InterruptManager {
 
 public:
   explicit InterruptManager(COMPONENT::MCPDevice *owner);
-  void setup(INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
+  void setup(uint8_t mask_A = 0XFF, uint8_t mask_B = 0XFF, int pinA = -1,
+             int pinB = -1, INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
              INTR_OUTPUT_TYPE outtype = INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
-             PairedInterrupt sharedIntr = PairedInterrupt::Disabled,
-             uint8_t mask_A = 0XFF, uint8_t mask_B = 0XFF, int pinA = -1,
-             int pinB = -1);
+             PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
   bool enableInterrupt();
   uint8_t getIntrFlagA();
   uint8_t getIntrFlagB();
@@ -61,6 +60,7 @@ private:
   bool setupIntrOutput();
   bool setupIntteruptWithDefval(bool savedValue);
   bool confirmRegisterIsSet(PORT port, REG regTpe, uint8_t bitMask);
+  bool checkRegistersExists();
   using Field = Config::Field;
 };
 

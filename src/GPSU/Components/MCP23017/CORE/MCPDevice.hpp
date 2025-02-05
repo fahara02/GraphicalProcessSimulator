@@ -33,6 +33,8 @@ private:
   gpio_num_t scl_;
   gpio_num_t cs_;
   gpio_num_t reset_;
+  gpio_num_t intA_;
+  gpio_num_t intB_;
   MCP::I2CBus &i2cBus_;
   std::unique_ptr<MCP::InterruptManager> interruptManager_;
 
@@ -58,6 +60,11 @@ public:
   ~MCPDevice();
 
   void configure(const MCP::Settings &config);
+  void setupIntterupt(
+      MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
+      MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
+      MCP::PairedInterrupt sharedIntr = MCP::PairedInterrupt::Disabled);
+  bool enableInterrupt();
 
   void pinMode(const MCP::Pin pin, const uint8_t mode);
   void pinMode(const int pin, const uint8_t mode);
