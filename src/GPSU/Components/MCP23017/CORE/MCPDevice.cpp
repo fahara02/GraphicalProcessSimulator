@@ -122,11 +122,11 @@ void MCPDevice::init() {
 
   startEventMonitorTask(this);
   // gpioBankB->setInterruptMask(0xFF);
-  // setupIntterupt();
+  interruptManager_->setupIntteruptMask(0X00, 0XFF);
+  setupIntterupt();
 }
 bool MCPDevice::enableInterrupt() {
-  // return interruptManager_->enableInterrupt();
-  return false;
+  return interruptManager_->enableInterrupt();
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   if (!device) {
@@ -536,10 +536,8 @@ void MCPDevice::dumpRegisters() const {
 void MCPDevice::setupIntterupt(MCP::INTR_TYPE type,
                                MCP::INTR_OUTPUT_TYPE outtype,
                                MCP::PairedInterrupt sharedIntr) {
-  // interruptManager_->setup(gpioBankA->getInterruptMask(),
-  //                          gpioBankB->getInterruptMask(),
-  //                          static_cast<int>(intA_), static_cast<int>(intB_),
-  //                          type, outtype, sharedIntr);
+  interruptManager_->setup(static_cast<int>(intA_), static_cast<int>(intB_),
+                           type, outtype, sharedIntr);
 }
 
 } // namespace COMPONENT

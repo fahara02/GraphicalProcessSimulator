@@ -90,8 +90,8 @@ void setup() {
   setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
   delay(1000);
-  // expander.enableInterrupt();
-  // delay(1000);
+  expander.enableInterrupt();
+  delay(1000);
   expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
   delay(1000);
   // expander.invertInput(MCP::PORT::GPIOB, true);

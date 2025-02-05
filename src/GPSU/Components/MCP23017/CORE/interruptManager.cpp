@@ -178,11 +178,10 @@ bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
     return false;
   }
 
-  auto reg =
+  uint8_t address =
       port == PORT::GPIOA ? regA.getAddress(regType) : regB.getAddress(regType);
 
-  int currentValue = 0;
-  //  i2cBus_.read_mcp_register(reg.getAddress(regType), bankMode);
+  int currentValue = i2cBus_.read_mcp_register(address, bankMode);
   if (currentValue == -1) {
     ESP_LOGE(INT_TAG, "Error setting reg %s", Util::ToString::REG(regType));
   } else {
