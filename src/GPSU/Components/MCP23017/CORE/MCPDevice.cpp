@@ -16,10 +16,8 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       reset_(GPIO_NUM_33),                   //
       i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
       interruptManager_(std::make_unique<MCP::InterruptManager>(this)),
-      gpioBankA(
-          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, i2cBus_)),
-      gpioBankB(
-          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, i2cBus_)),
+      gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
+      gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
       cntrlRegA(gpioBankA->getControlRegister()),
       cntrlRegB(gpioBankB->getControlRegister())
 
@@ -250,6 +248,12 @@ void MCPDevice::invertInput(int pin, bool invert) {
   MCP::PORT port = Util::getPortFromPin(pinEnum);
   uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
   invertInput(port, mask, invert);
+}
+
+int MCPDevice::readRegister(MCP::PORT port, MCP::REG regType) const {
+  GPIO_BANK *gpioBank =
+      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  return i2cBus_.read_mcp_register(gpioBank->getAddress(regType), bankMode_);
 }
 
 void MCPDevice::EventMonitorTask(void *param) {

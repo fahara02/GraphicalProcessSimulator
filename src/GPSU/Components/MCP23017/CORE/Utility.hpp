@@ -48,6 +48,16 @@ public:
     static bool isSet(const uint8_t &byte, uint8_t bit) {
       return (byte & (1UL << bit)) != 0U;
     }
+    static bool isAllSet(const uint8_t &byte, uint8_t mask) {
+      return (byte & mask) == mask;
+    }
+    static bool isAnySet(const uint8_t &byte, uint8_t mask) {
+      return (byte & mask) != 0;
+    }
+
+    static bool isSingleBit(uint8_t mask) {
+      return (mask != 0) && ((mask & (mask - 1)) == 0);
+    }
   };
 
   class ToString {

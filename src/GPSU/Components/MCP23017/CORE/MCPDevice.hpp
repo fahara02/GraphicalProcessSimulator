@@ -119,9 +119,13 @@ public:
 
     return invertInput(port, pinmask, invert);
   }
+
+  int readRegister(MCP::PORT port, MCP::REG regType) const;
+
   void setupCommunication();
 
   void dumpRegisters() const;
+  MCP::I2CBus &getBus() { return i2cBus_; }
 
 private:
   void init();
