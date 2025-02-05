@@ -341,6 +341,14 @@ struct Register {
   configure(const Settings &setting) {
     return config_.configure(setting);
   }
+
+  template <REG T>
+  typename std::enable_if<T == REG::IOCON, void>::type
+  setInterruptSahring(bool enable) {
+    config_.setMirror(enable);
+    EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
+                              config_.getSettingValue());
+  }
   template <REG T>
   typename std::enable_if<T == REG::IOCON, bool>::type
   setOpenDrain(bool enable) {
