@@ -40,6 +40,7 @@ bool InterruptManager::updateInterrputSetting() {
   bool success = false;
   if (setting_.isEnabled) {
     if (setting_.intrSharing) {
+      // setting mirror in just one ICON is enough
       owner_->cntrlRegA->setInterruptSahring<REG::IOCON>(true);
       vTaskDelay(10);
       success = confirmRegisterIsSet(PORT::GPIOA, REG::IOCON,
@@ -100,12 +101,21 @@ bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
   defValA->saveCompareValue<REG::DEFVAL>(
       maskA_, savedValue ? DEF_VAL_COMPARE::SAVE_LOGIC_HIGH
                          : DEF_VAL_COMPARE::SAVE_LOGIC_LOW);
+
   vTaskDelay(10);
+  if (savedValue) {
+    success = confirmRegisterIsSet(PORT::GPIOA, REG::DEFVAL, maskA_);
+    vTaskDelay(10);
+  }
   if (!setting_.intrSharing) {
     defValB->saveCompareValue<REG::DEFVAL>(
         maskB_, savedValue ? DEF_VAL_COMPARE::SAVE_LOGIC_HIGH
                            : DEF_VAL_COMPARE::SAVE_LOGIC_LOW);
     vTaskDelay(10);
+    if (savedValue) {
+      success = confirmRegisterIsSet(PORT::GPIOB, REG::DEFVAL, maskB_);
+      vTaskDelay(10);
+    }
   }
   // Enable Intterupt
   success = setupEnableRegister();
@@ -143,6 +153,7 @@ bool InterruptManager::setupIntrOutput() {
     success = confirmRegisterIsSet(PORT::GPIOA, REG::IOCON,
                                    static_cast<uint8_t>(Field::ODR));
     vTaskDelay(10);
+    // Setting in ICONA will have same reflection on ICONB so redundant
   } else {
     // No need to write and read IOCON intpol as it is default 0
     success = true;
