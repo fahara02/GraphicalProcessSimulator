@@ -7,9 +7,6 @@
 #include "i2cBus.hpp"
 
 #define INT_TAG "INTR_MANAGER"
-namespace COMPONENT {
-class MCPDevice;
-}
 
 namespace MCP {
 struct InterruptSetting {
@@ -25,35 +22,34 @@ struct InterruptSetting {
 class InterruptManager {
 
 public:
-  explicit InterruptManager(COMPONENT::MCPDevice *owner);
-  void setup(uint8_t mask_A = 0XFF, uint8_t mask_B = 0XFF, int pinA = -1,
-             int pinB = -1, INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
+  explicit InterruptManager(MCP::MCP_MODEL m,
+                            std::shared_ptr<MCP::Register> iconA,
+                            std::shared_ptr<MCP::Register> iconB);
+  void setup(int pinA = -1, int pinB = -1,
+             INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
              INTR_OUTPUT_TYPE outtype = INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
              PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
   bool enableInterrupt();
+  void setupIntteruptMask(uint8_t maskA, uint8_t maskB = 0X00);
+
+  bool updateBankMode(bool value);
+
   uint8_t getIntrFlagA();
   uint8_t getIntrFlagB();
 
 private:
-  COMPONENT::MCPDevice *owner_;
-
-  Register *gpIntEnA;
-  Register *gpIntEnB;
-  Register *IntConA;
-  Register *IntConB;
-
-  Register *intFA;
-  Register *intFB;
-  Register *intCapA;
-  Register *intCapB;
-  Register *defValA;
-  Register *defValB;
+  MCP::MCP_MODEL model;
+  bool bankMode = false;
+  // I2CBus &i2cBus_;
+  InterruptRegisters regA;
+  InterruptRegisters regB;
 
   InterruptSetting setting_;
   uint8_t maskA_ = 0x00;
   uint8_t maskB_ = 0x00;
   int pinA_ = 0;
   int pinB_ = 0;
+
   bool updateInterrputSetting();
   bool setupIntteruptOnChnage();
   bool setupEnableRegister();

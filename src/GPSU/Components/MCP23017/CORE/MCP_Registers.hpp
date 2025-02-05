@@ -596,6 +596,190 @@ public:
     return false;
   }
 };
+class RegistersCollection {
+protected:
+  virtual std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
+  getRegMap() = 0;
+  virtual const std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
+  getRegMap() const = 0;
+
+public:
+  RegistersCollection(std::shared_ptr<MCP::Register> icon) { iocon = icon; }
+  RegistersCollection(const RegistersCollection &) = delete;
+  RegistersCollection &operator=(const RegistersCollection &) = delete;
+
+  std::shared_ptr<MCP::Register> iocon;
+  virtual void setup(MCP::MCP_MODEL model, MCP::PORT port, bool bankMode) = 0;
+  virtual void assign() = 0;
+
+  void updateAddress(bool bankMode) {
+    if (iocon) {
+      iocon->updateBankMode(bankMode);
+    }
+    for (auto &[regType, regPtr] : getRegMap()) {
+      regPtr->updateBankMode(bankMode);
+    }
+  }
+  std::shared_ptr<MCP::Register> const getIOCON() { return iocon; }
+  // Get a register (read-only) by its type.
+  const MCP::Register *getRegister(MCP::REG regType) const {
+    if (regType == MCP::REG::IOCON)
+      return iocon.get();
+    auto it = getRegMap().find(regType);
+    return (it != getRegMap().end()) ? it->second.get() : nullptr;
+  }
+
+  // Get a register (for update) by its type.
+  MCP::Register *getRegisterForUpdate(MCP::REG regType) {
+    if (regType == MCP::REG::IOCON)
+      return iocon.get();
+    auto it = getRegMap().find(regType);
+    return (it != getRegMap().end()) ? it->second.get() : nullptr;
+  }
+
+  // Retrieve the saved value from a given register.
+  uint8_t getSavedValue(MCP::REG reg) const {
+    if (reg == MCP::REG::IOCON) {
+      return iocon->getSavedValue();
+    } else {
+      auto it = getRegMap().find(reg);
+      return (it != getRegMap().end()) ? it->second->getSavedValue() : 0;
+    }
+  }
+
+  // Retrieve the address of a given register.
+  uint8_t getAddress(MCP::REG reg) const {
+    if (reg == MCP::REG::IOCON) {
+      return iocon->getAddress();
+    } else {
+      auto it = getRegMap().find(reg);
+      return (it != getRegMap().end()) ? it->second->getAddress() : 0;
+    }
+  }
+
+  // Update a register value given a register address.
+  bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
+    if (iocon->getAddress() == reg_address) {
+      return iocon->updateState(value);
+    }
+    for (auto &[regType, regPtr] : getRegMap()) {
+      if (regPtr->getAddress() == reg_address) {
+        return regPtr->updateState(value);
+      }
+    }
+
+    return false;
+  }
+
+  virtual ~RegistersCollection() = default;
+};
+
+// =================== GPIORegisters Class ===================
+
+class GPIORegisters : public RegistersCollection {
+private:
+  // Register map for GPIO-related registers.
+  std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> regMap;
+
+public:
+  GPIORegisters(std::shared_ptr<MCP::Register> icon)
+      : RegistersCollection(icon) {}
+  // Raw pointers for easier access to GPIO registers.
+  MCP::Register *iodir{};
+  MCP::Register *gppu{};
+  MCP::Register *ipol{};
+  MCP::Register *gpio{};
+  MCP::Register *olat{};
+
+  GPIORegisters() = default;
+
+  // Provide access to the register map.
+  std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
+  getRegMap() override {
+    return regMap;
+  }
+  const std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
+  getRegMap() const override {
+    return regMap;
+  }
+
+  // Override setup: Create the IOCON register and the GPIO-specific registers.
+  void setup(MCP::MCP_MODEL model, MCP::PORT port, bool bankMode) override {
+    // Create the common IOCON register.
+
+    // Create the GPIO registers.
+    for (auto regType : {MCP::REG::IODIR, MCP::REG::GPPU, MCP::REG::IPOL,
+                         MCP::REG::GPIO, MCP::REG::OLAT}) {
+      regMap[regType] =
+          std::make_unique<MCP::Register>(model, regType, port, bankMode);
+    }
+    assign();
+  }
+
+  // Override assign: Set raw pointers from the register map.
+  void assign() override {
+    iodir = regMap[MCP::REG::IODIR].get();
+    gppu = regMap[MCP::REG::GPPU].get();
+    ipol = regMap[MCP::REG::IPOL].get();
+    gpio = regMap[MCP::REG::GPIO].get();
+    olat = regMap[MCP::REG::OLAT].get();
+  }
+};
+
+// =================== InterruptRegisters Class ===================
+
+class InterruptRegisters : public RegistersCollection {
+private:
+  std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> regMap;
+
+public:
+  InterruptRegisters(std::shared_ptr<MCP::Register> icon)
+      : RegistersCollection(icon) {
+
+  } // Raw pointers for easier access to the interrupt registers.
+  MCP::Register *gpinten{};
+  MCP::Register *intcon{};
+  MCP::Register *defval{};
+  MCP::Register *intf{};
+  MCP::Register *intcap{};
+
+  InterruptRegisters() = default;
+
+  // Provide access to the register map.
+  std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
+  getRegMap() override {
+    return regMap;
+  }
+  const std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
+  getRegMap() const override {
+    return regMap;
+  }
+
+  // registers.
+  void setup(MCP::MCP_MODEL model, MCP::PORT port, bool bankMode) override {
+
+    // Create the interrupt registers.
+    for (auto regType : {MCP::REG::GPINTEN, MCP::REG::INTCON, MCP::REG::DEFVAL,
+                         MCP::REG::INTF, MCP::REG::INTCAP}) {
+      regMap[regType] =
+          std::make_unique<MCP::Register>(model, regType, port, bankMode);
+    }
+    assign();
+  }
+
+  // Override assign: Set raw pointers from the register map.
+  void assign() override {
+    gpinten = regMap[MCP::REG::GPINTEN].get();
+    intcon = regMap[MCP::REG::INTCON].get();
+    defval = regMap[MCP::REG::DEFVAL].get();
+    intf = regMap[MCP::REG::INTF].get();
+    intcap = regMap[MCP::REG::INTCAP].get();
+
+    if (intf) {
+      intf->setAsReadOnly();
+    }
+  }
+};
 
 } // namespace MCP
 #endif

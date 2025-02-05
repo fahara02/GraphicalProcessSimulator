@@ -10,15 +10,14 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "i2cBus.hpp"
+#include "interruptManager.hpp"
 #include <array>
 #include <memory>
 #include <tuple>
 #include <variant>
 
 #define MCP_TAG "MCPDevice"
-namespace MCP {
-class InterruptManager;
-}
+
 namespace COMPONENT {
 
 class MCPDevice {
@@ -36,7 +35,6 @@ private:
   gpio_num_t intA_;
   gpio_num_t intB_;
   MCP::I2CBus &i2cBus_;
-  std::unique_ptr<MCP::InterruptManager> interruptManager_;
 
   bool bankMode_ = false;
   bool mirrorMode_ = false;
@@ -50,10 +48,11 @@ private:
   TaskHandle_t eventTaskHandle;
 
 public:
-  std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
-  std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
   std::shared_ptr<MCP::Register> cntrlRegA;
   std::shared_ptr<MCP::Register> cntrlRegB;
+  std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
+  std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
+  std::unique_ptr<MCP::InterruptManager> interruptManager_;
 
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);

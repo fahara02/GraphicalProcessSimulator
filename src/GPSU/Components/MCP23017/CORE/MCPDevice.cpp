@@ -1,5 +1,5 @@
 #include "MCPDevice.hpp"
-#include "InterruptManager.hpp"
+
 #include "climits"
 
 using namespace MCP;
@@ -16,11 +16,18 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       reset_(GPIO_NUM_33),                   //
       intA_(GPIO_NUM_NC), intB_(GPIO_NUM_NC),
       i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
-      interruptManager_(std::make_unique<MCP::InterruptManager>(this)),
-      gpioBankA(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model)),
-      gpioBankB(std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model)),
-      cntrlRegA(gpioBankA->getControlRegister()),
-      cntrlRegB(gpioBankB->getControlRegister())
+      //
+      cntrlRegA(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
+                                                MCP::PORT::GPIOA, bankMode_)),
+      cntrlRegB(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
+                                                MCP::PORT::GPIOB, bankMode_)),
+      gpioBankA(
+          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, cntrlRegA)),
+      gpioBankB(
+          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
+
+      interruptManager_(
+          std::make_unique<MCP::InterruptManager>(model, cntrlRegA, cntrlRegB))
 
 {
   init();
@@ -110,7 +117,6 @@ void MCPDevice::loadSettings() {
 
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
-
   i2cBus_.init();
   EventManager::initializeEventGroups();
 
@@ -119,7 +125,8 @@ void MCPDevice::init() {
   // setupIntterupt();
 }
 bool MCPDevice::enableInterrupt() {
-  return interruptManager_->enableInterrupt();
+  // return interruptManager_->enableInterrupt();
+  return false;
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   if (!device) {
@@ -132,7 +139,6 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
 
 void MCPDevice::pinMode(const MCP::PORT port, const uint8_t pinmask,
                         const uint8_t mode) {
-
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   auto *cntrlReg =
@@ -355,7 +361,6 @@ void MCPDevice::EventMonitorTask(void *param) {
   vTaskDelete(NULL);
 }
 void MCPDevice::handleBankModeEvent(currentEvent *ev) {
-
   MCP::PORT port = ev->regIdentity.port;
 
   uint8_t regAddress = ev->regIdentity.regAddress;
@@ -531,11 +536,10 @@ void MCPDevice::dumpRegisters() const {
 void MCPDevice::setupIntterupt(MCP::INTR_TYPE type,
                                MCP::INTR_OUTPUT_TYPE outtype,
                                MCP::PairedInterrupt sharedIntr) {
-
-  interruptManager_->setup(gpioBankA->getInterruptMask(),
-                           gpioBankB->getInterruptMask(),
-                           static_cast<int>(intA_), static_cast<int>(intB_),
-                           type, outtype, sharedIntr);
+  // interruptManager_->setup(gpioBankA->getInterruptMask(),
+  //                          gpioBankB->getInterruptMask(),
+  //                          static_cast<int>(intA_), static_cast<int>(intB_),
+  //                          type, outtype, sharedIntr);
 }
 
 } // namespace COMPONENT

@@ -14,11 +14,12 @@ class GPIO_BANK {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
   std::array<bool, PIN_PER_BANK> pinInterruptState;
-  MCPRegisters regs;
+  GPIORegisters regs;
 
 public:
-  GPIO_BANK(PORT port, MCP::MCP_MODEL m)
-      : Pins(createPins(port)), pinInterruptState{false}, model(m),
+  GPIO_BANK(PORT port, MCP::MCP_MODEL m, std::shared_ptr<MCP::Register> icon)
+      : Pins(createPins(port)), pinInterruptState{false},
+        regs(GPIORegisters(icon)), model(m),
         generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
         port_name(port), intr_type(INTR_TYPE::NONE),
         intr_out_type(INTR_OUTPUT_TYPE::NA) {

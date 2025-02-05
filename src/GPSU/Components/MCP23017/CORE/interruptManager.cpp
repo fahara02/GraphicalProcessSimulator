@@ -1,30 +1,30 @@
 #include "interruptManager.hpp"
-#include "MCPDevice.hpp"
-namespace MCP {
-InterruptManager::InterruptManager(COMPONENT::MCPDevice *owner)
-    : owner_(owner),
-      gpIntEnA(owner_->gpioBankA->getRegisterForUpdate(REG::GPINTEN)),
-      gpIntEnB(owner_->gpioBankB->getRegisterForUpdate(REG::GPINTEN)),
-      IntConA(owner_->gpioBankA->getRegisterForUpdate(REG::INTCON)),
-      IntConB(owner_->gpioBankB->getRegisterForUpdate(REG::INTCON)),
-      intFA(owner_->gpioBankA->getRegisterForUpdate(REG::INTF)),
-      intFB(owner_->gpioBankB->getRegisterForUpdate(REG::INTF)),
-      intCapA(owner_->gpioBankA->getRegisterForUpdate(REG::INTCAP)),
-      intCapB(owner_->gpioBankB->getRegisterForUpdate(REG::INTCAP)),
-      defValA(owner_->gpioBankA->getRegisterForUpdate(REG::DEFVAL)),
-      defValB(owner_->gpioBankB->getRegisterForUpdate(REG::DEFVAL)) {}
 
-void InterruptManager::setup(uint8_t mask_A, uint8_t mask_B, int pinA, int pinB,
-                             INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
+namespace MCP {
+InterruptManager::InterruptManager(MCP::MCP_MODEL m,
+                                   std::shared_ptr<MCP::Register> iconA,
+                                   std::shared_ptr<MCP::Register> iconB)
+    : model(m), regA(InterruptRegisters(iconA)),
+      regB(InterruptRegisters(iconB)) {
+
+  regA.setup(model, PORT::GPIOA, bankMode);
+  regB.setup(model, PORT::GPIOA, bankMode);
+}
+
+void InterruptManager::setup(int pinA, int pinB, INTR_TYPE type,
+                             INTR_OUTPUT_TYPE outtype,
                              PairedInterrupt sharedIntr) {
   ESP_LOGI(INT_TAG, "setting up intterupts");
   setting_.intrType = type;
   setting_.intrOutputType = outtype;
   setting_.intrSharing = sharedIntr == PairedInterrupt::Enabled ? true : false;
-  maskA_ = mask_A;
-  maskB_ = mask_B;
+
   pinA_ = pinA != -1 ? pinA : -1;
   pinB_ = pinB != -1 ? pinB : -1;
+}
+void InterruptManager::setupIntteruptMask(uint8_t maskA, uint8_t maskB) {
+  maskA_ = maskA;
+  maskB_ = maskB;
 }
 bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;
@@ -42,7 +42,7 @@ bool InterruptManager::updateInterrputSetting() {
   if (setting_.isEnabled) {
     if (setting_.intrSharing) {
       // setting mirror in just one ICON is enough
-      owner_->cntrlRegA->setInterruptSahring<REG::IOCON>(true);
+      regA.iocon->setInterruptSahring<REG::IOCON>(true);
       vTaskDelay(10);
       success = confirmRegisterIsSet(PORT::GPIOA, REG::IOCON,
                                      static_cast<uint8_t>(Field::MIRROR));
@@ -91,18 +91,18 @@ bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
   }
   setting_.icoControl = INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL;
   // ACTIVATE defval comparison first
-  IntConA->applyMask(maskA_);
+  regA.intcon->applyMask(maskA_);
   vTaskDelay(10);
   success = confirmRegisterIsSet(PORT::GPIOA, REG::INTCON, maskA_);
   vTaskDelay(10);
   if (!setting_.intrSharing) {
-    IntConB->applyMask(maskB_);
+    regB.intcon->applyMask(maskB_);
     vTaskDelay(10);
     success = confirmRegisterIsSet(PORT::GPIOB, REG::INTCON, maskB_);
     vTaskDelay(10);
   }
   // Save the value to be compared with in DEFVAL
-  defValA->saveCompareValue<REG::DEFVAL>(
+  regA.defval->saveCompareValue<REG::DEFVAL>(
       maskA_, savedValue ? DEF_VAL_COMPARE::SAVE_LOGIC_HIGH
                          : DEF_VAL_COMPARE::SAVE_LOGIC_LOW);
 
@@ -112,7 +112,7 @@ bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
     vTaskDelay(10);
   }
   if (!setting_.intrSharing) {
-    defValB->saveCompareValue<REG::DEFVAL>(
+    regB.defval->saveCompareValue<REG::DEFVAL>(
         maskB_, savedValue ? DEF_VAL_COMPARE::SAVE_LOGIC_HIGH
                            : DEF_VAL_COMPARE::SAVE_LOGIC_LOW);
     vTaskDelay(10);
@@ -133,12 +133,12 @@ bool InterruptManager::setupEnableRegister() {
   if (!checkRegistersExists()) {
     return false;
   }
-  gpIntEnA->applyMask(maskA_);
+  regA.gpinten->applyMask(maskA_);
   vTaskDelay(10);
   success = confirmRegisterIsSet(PORT::GPIOA, REG::GPINTEN, maskA_);
   vTaskDelay(10);
   if (!setting_.intrSharing) {
-    gpIntEnB->applyMask(maskB_);
+    regB.gpinten->applyMask(maskB_);
     vTaskDelay(10);
     success = confirmRegisterIsSet(PORT::GPIOB, REG::GPINTEN, maskB_);
     vTaskDelay(10);
@@ -151,13 +151,13 @@ bool InterruptManager::setupIntrOutput() {
     return false;
   }
   if (setting_.intrOutputType == INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
-    owner_->cntrlRegA->setInterruptPolarity<REG::IOCON>(true);
+    regA.iocon->setInterruptPolarity<REG::IOCON>(true);
     vTaskDelay(10);
     success = confirmRegisterIsSet(PORT::GPIOA, REG::IOCON,
                                    static_cast<uint8_t>(Field::INTPOL));
     vTaskDelay(10);
   } else if (setting_.intrOutputType == INTR_OUTPUT_TYPE::INTR_OPEN_DRAIN) {
-    owner_->cntrlRegA->setOpenDrain<REG::IOCON>(true);
+    regA.iocon->setOpenDrain<REG::IOCON>(true);
     // No Need to change INTPOL as it is default 0
     vTaskDelay(10);
     success = confirmRegisterIsSet(PORT::GPIOA, REG::IOCON,
@@ -177,7 +177,12 @@ bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
   if (!checkRegistersExists()) {
     return false;
   }
-  int currentValue = owner_->readRegister(port, regType);
+
+  auto reg =
+      port == PORT::GPIOA ? regA.getAddress(regType) : regB.getAddress(regType);
+
+  int currentValue = 0;
+  //  i2cBus_.read_mcp_register(reg.getAddress(regType), bankMode);
   if (currentValue == -1) {
     ESP_LOGE(INT_TAG, "Error setting reg %s", Util::ToString::REG(regType));
   } else {
@@ -193,22 +198,17 @@ bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
   return success;
 }
 bool InterruptManager::checkRegistersExists() {
-  bool regExist = false;
-  if (gpIntEnA && gpIntEnB) {
-    regExist = true;
-  }
-  if (IntConA && IntConB) {
-    regExist = true;
-  }
-  if (intFA && intFB) {
-    regExist = true;
-  }
-  if (defValA && defValB) {
-    regExist = true;
-  }
-  if (intCapA && intCapB) {
-    regExist = true;
-  }
+  bool regExist = true;
+
   return regExist;
 }
+bool InterruptManager::updateBankMode(bool value) {
+  // icon register not need to be invoked again as this method is already
+  // invoked and icon is updated  ,just notify this class for updating address
+  bankMode = value;
+  regA.updateAddress(bankMode);
+  regB.updateAddress(bankMode);
+  return true;
+}
+
 } // namespace MCP
