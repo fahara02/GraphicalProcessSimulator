@@ -19,9 +19,8 @@ private:
 public:
   GPIO_BANK(PORT port, MCP::MCP_MODEL m, std::shared_ptr<MCP::Register> icon)
       : Pins(createPins(port)), pinInterruptState{false},
-        regs(GPIORegisters(icon)), model(m),
-        generalMask(static_cast<uint8_t>(MASK::ALL)), interruptMask(0x00),
-        port_name(port), intr_type(INTR_TYPE::NONE),
+        regs(GPIORegisters(icon)), model(m), generalMask(0XFF),
+        interruptMask(0x00), port_name(port), intr_type(INTR_TYPE::NONE),
         intr_out_type(INTR_OUTPUT_TYPE::NA) {
 
     regs.setup(model, port_name, bankMode);

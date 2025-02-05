@@ -26,6 +26,17 @@ void InterruptManager::setupIntteruptMask(uint8_t maskA, uint8_t maskB) {
   maskA_ = maskA;
   maskB_ = maskB;
 }
+
+Register *InterruptManager::getRegister(PORT port, REG reg) {
+  return port == PORT::GPIOA ? regA.getRegisterForUpdate(reg)
+                             : regB.getRegisterForUpdate(reg);
+}
+bool InterruptManager::updateRegisterValue(PORT port, uint8_t reg_address,
+                                           uint8_t value) {
+  return port == PORT::GPIOA ? regA.updateRegisterValue(reg_address, value)
+                             : regB.updateRegisterValue(reg_address, value);
+}
+
 bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;
   ESP_LOGI(INT_TAG, "enabling intterupt");

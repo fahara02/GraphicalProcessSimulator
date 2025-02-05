@@ -17,7 +17,7 @@ void I2CBus::setPin(int sda, int scl) {
   scl_ = scl;
 }
 
-int I2CBus::read_mcp_register(const uint8_t reg, bool bankMode) {
+int I2CBus::read_mcp_register(const uint8_t reg, bool map8Bit) {
 
   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
     xSemaphoreGive(i2cMutex);
@@ -27,7 +27,7 @@ int I2CBus::read_mcp_register(const uint8_t reg, bool bankMode) {
   uint8_t bytesToRead = 1;
   uint8_t regAddress = reg;
 
-  if (!bankMode) {
+  if (!map8Bit) {
     // Default 16 bit mapping
     bytesToRead = 2;
     if ((reg % 2) != 0) {
@@ -42,16 +42,16 @@ int I2CBus::read_mcp_register(const uint8_t reg, bool bankMode) {
 
   while (wire_->available() < bytesToRead)
     ;
-
-  uint8_t low = wire_->read();
-  uint8_t high = (bytesToRead == 2) ? wire_->read() : 0;
+  // as we are align to PORT A
+  uint8_t firstByte = wire_->read();
+  uint8_t secondByte = (bytesToRead == 2) ? wire_->read() : 0;
   xSemaphoreGive(i2cMutex);
 
-  return (bytesToRead == 2) ? ((high << 8) | low) : low;
+  return (bytesToRead == 2) ? ((firstByte) | (secondByte << 8)) : firstByte;
 }
 
 int I2CBus::write_mcp_register(const uint8_t reg, uint16_t value,
-                               bool bankMode) {
+                               bool map8Bit) {
   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
     xSemaphoreGive(i2cMutex);
     ESP_LOGE("I2CBUS", "Failed to take mutex");
@@ -61,7 +61,7 @@ int I2CBus::write_mcp_register(const uint8_t reg, uint16_t value,
   uint8_t regAddress = reg; // Default: Single register
   uint8_t bytesToWrite = 1; //  8-bit mode
 
-  if (!bankMode) {
+  if (!map8Bit) {
     // Default 16 Bit mode
     bytesToWrite = 2;
 

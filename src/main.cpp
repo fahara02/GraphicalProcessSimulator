@@ -86,17 +86,22 @@ void setup() {
   // delay(1000);
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
+  expander.dumpRegisters();
+  delay(1000);
   MCP::Settings setting;
   setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
   delay(1000);
-  expander.enableInterrupt();
-  delay(1000);
+  // expander.enableInterrupt();
+
   expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
   delay(1000);
-  // expander.invertInput(MCP::PORT::GPIOB, true);
-  expander.dumpRegisters();
+  expander.pinMode(MCP::PORT::GPIOB, INPUT);
   delay(1000);
+  expander.invertInput(MCP::PORT::GPIOB, true);
+  delay(1000);
+  expander.dumpRegisters();
+
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);
 
@@ -248,6 +253,7 @@ void RunTask(void *param) {
       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
       expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+      // Serial.printf("pins value is %d", readmask);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
     readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);

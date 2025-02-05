@@ -394,11 +394,16 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
     uint8_t valueA = static_cast<uint16_t>(value) & 0xFF;
     uint8_t valueB = (static_cast<uint16_t>(value) >> 8) & 0xFF;
 
-    if (intrFunctions) {
+    ESP_LOGI(MCP_TAG,
+             "Read succes for id=%d ; address %02X with value %02X PORTA =%02X "
+             "and PORTB =%02X  \n",
+             ev->id, currentAddress, value, valueA, valueB);
 
-      interruptManager_->updateRegisterValue(PORT::GPIOA, regAddress, valueA);
-      interruptManager_->updateRegisterValue(PORT::GPIOB, regAddress + 1,
-                                             valueB);
+    if (intrFunctions) {
+      uint8_t newValue = port == MCP::PORT::GPIOA ? valueA : valueB;
+
+      interruptManager_->updateRegisterValue(port, currentAddress, newValue);
+
     } else {
       gpioBankA->updateRegisterValue(regAddress, valueA);
       gpioBankB->updateRegisterValue(regAddress + 1, valueB);
@@ -432,7 +437,7 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   uint16_t value = ev->data; // Use 16-bit storage
 
-  uint8_t result = i2cBus_.write_mcp_register(reg, value, bankMode_);
+  uint8_t result = i2cBus_.write_mcp_register(reg, value, true);
 
   if (result == 0) {
     ESP_LOGI(MCP_TAG, "New Write success for address 0x%02X for id=%d ; \n",
@@ -539,16 +544,18 @@ void MCPDevice::dumpRegisters() const {
       MCP::REG regB = static_cast<MCP::REG>(i);
 
       uint8_t addressA = getRegisterAddress(regA, MCP::PORT::GPIOA);
-      int combinedValue = i2cBus_.read_mcp_register(addressA, bankMode_);
-
-      uint8_t lowByte = combinedValue & 0xFF;  // Extract PORTA value
-      uint8_t highByte = (combinedValue >> 8); // Extract PORTB value
+      uint8_t valueA = i2cBus_.read_mcp_register(addressA, true);
+      uint8_t valueB = i2cBus_.read_mcp_register(addressA + 1, true);
+      // // Extract PORTA value
+      // uint8_t valueA = static_cast<uint16_t>(value) & 0xFF;
+      // // Extract PORTB value
+      // uint8_t valueB = (static_cast<uint16_t>(value) >> 8) & 0xFF;
 
       ESP_LOGI(MCP_TAG, "Register: %s (PORTA), Address: 0x%02X, Value: 0x%02X",
-               Util::ToString::REG(regA), addressA, lowByte);
+               Util::ToString::REG(regA), addressA, valueA);
 
       ESP_LOGI(MCP_TAG, "Register: %s (PORTB), Address: 0x%02X, Value: 0x%02X",
-               Util::ToString::REG(regB), addressA + 1, highByte);
+               Util::ToString::REG(regB), addressA + 1, valueB);
     }
   } else {
     ESP_LOGI(MCP_TAG, "Register mapping: 8-bit mode");
