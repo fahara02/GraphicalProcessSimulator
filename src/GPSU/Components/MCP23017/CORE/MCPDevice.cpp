@@ -119,11 +119,11 @@ void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
   i2cBus_.init();
   EventManager::initializeEventGroups();
+  interruptManager_->setupIntteruptMask(0X00, 0XFF);
+  setupIntterupt();
 
   startEventMonitorTask(this);
   // gpioBankB->setInterruptMask(0xFF);
-  interruptManager_->setupIntteruptMask(0X00, 0XFF);
-  setupIntterupt();
 }
 bool MCPDevice::enableInterrupt() {
   return interruptManager_->enableInterrupt();

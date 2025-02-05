@@ -30,10 +30,10 @@ bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;
   ESP_LOGI(INT_TAG, "enabling intterupt");
   if (updateInterrputSetting()) {
-    ESP_LOGI(REG_TAG, "SuccessFully intterrupt is set");
+    ESP_LOGI(INT_TAG, "SuccessFully intterrupt is set");
     return true;
   } else {
-    ESP_LOGE(REG_TAG, "Error in intterupt setup");
+    ESP_LOGE(INT_TAG, "Error in intterupt setup");
     return false;
   }
 }
@@ -86,9 +86,7 @@ bool InterruptManager::setupIntteruptOnChnage() {
 
 bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
   bool success = false;
-  if (!checkRegistersExists()) {
-    return false;
-  }
+
   setting_.icoControl = INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL;
   // ACTIVATE defval comparison first
   regA.intcon->applyMask(maskA_);
@@ -130,9 +128,7 @@ bool InterruptManager::setupIntteruptWithDefval(bool savedValue) {
 }
 bool InterruptManager::setupEnableRegister() {
   bool success = false;
-  if (!checkRegistersExists()) {
-    return false;
-  }
+
   regA.gpinten->applyMask(maskA_);
   vTaskDelay(10);
   success = confirmRegisterIsSet(PORT::GPIOA, REG::GPINTEN, maskA_);
@@ -147,9 +143,7 @@ bool InterruptManager::setupEnableRegister() {
 }
 bool InterruptManager::setupIntrOutput() {
   bool success = false;
-  if (!checkRegistersExists()) {
-    return false;
-  }
+
   if (setting_.intrOutputType == INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
     regA.iocon->setInterruptPolarity<REG::IOCON>(true);
     vTaskDelay(10);
@@ -174,9 +168,6 @@ bool InterruptManager::setupIntrOutput() {
 bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
                                             uint8_t bitMask) {
   bool success = false;
-  if (!checkRegistersExists()) {
-    return false;
-  }
 
   uint8_t address =
       port == PORT::GPIOA ? regA.getAddress(regType) : regB.getAddress(regType);
