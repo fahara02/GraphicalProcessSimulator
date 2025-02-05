@@ -123,10 +123,12 @@ enum class INTR_TYPE {
 enum class INTR_ON_CHANGE_ENABLE {
   DISABLE_INTR_ON_CHANGE = 0,
   ENABLE_INTR_ON_CHANGE = 1,
+  NA = -1,
 };
 enum class INTR_ON_CHANGE_CONTROL {
   COMPARE_WITH_OLD_VALUE = 0,
   COMPARE_WITH_DEFVAL = 1,
+  NA = -1,
 };
 enum class INTR_OUTPUT_TYPE {
   INTR_ACTIVE_HIGH = 0, // CONTROLS VIA INTPOL REG when ODR=0
@@ -137,6 +139,7 @@ enum class INTR_OUTPUT_TYPE {
 enum class DEF_VAL_COMPARE {
   SAVE_LOGIC_LOW = 0,
   SAVE_LOGIC_HIGH = 1,
+  NA = -1,
 };
 
 enum class OperationMode {

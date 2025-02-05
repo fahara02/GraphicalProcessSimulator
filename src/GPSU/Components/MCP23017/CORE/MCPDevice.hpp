@@ -16,7 +16,9 @@
 #include <variant>
 
 #define MCP_TAG "MCPDevice"
-
+namespace MCP {
+class InterruptManager;
+}
 namespace COMPONENT {
 
 class MCPDevice {
@@ -32,6 +34,7 @@ private:
   gpio_num_t cs_;
   gpio_num_t reset_;
   MCP::I2CBus &i2cBus_;
+  std::unique_ptr<MCP::InterruptManager> interruptManager_;
 
   bool bankMode_ = false;
   bool mirrorMode_ = false;
@@ -52,6 +55,7 @@ public:
 
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
+  ~MCPDevice();
 
   void configure(const MCP::Settings &config);
 

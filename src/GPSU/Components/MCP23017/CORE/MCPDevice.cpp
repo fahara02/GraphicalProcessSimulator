@@ -1,5 +1,7 @@
 #include "MCPDevice.hpp"
+#include "InterruptManager.hpp"
 #include "climits"
+
 using namespace MCP;
 namespace COMPONENT {
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
@@ -13,6 +15,7 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       cs_(GPIO_NUM_NC),                      //
       reset_(GPIO_NUM_33),                   //
       i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
+      interruptManager_(std::make_unique<MCP::InterruptManager>(this)),
       gpioBankA(
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, i2cBus_)),
       gpioBankB(
@@ -24,6 +27,7 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
   init();
   loadSettings();
 }
+MCPDevice::~MCPDevice() = default;
 void MCPDevice::configure(const MCP::Settings &setting) {
   if (cntrlRegA && cntrlRegB) {
     if (configuration_.configure(setting)) {
