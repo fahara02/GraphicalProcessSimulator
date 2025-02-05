@@ -26,8 +26,8 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       gpioBankB(
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
 
-      interruptManager_(
-          std::make_unique<MCP::InterruptManager>(model, cntrlRegA, cntrlRegB))
+      interruptManager_(std::make_unique<MCP::InterruptManager>(
+          model, i2cBus_, cntrlRegA, cntrlRegB))
 
 {
   init();

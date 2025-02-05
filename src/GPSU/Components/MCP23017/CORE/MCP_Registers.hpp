@@ -381,6 +381,92 @@ struct Register {
     return false;
   }
 
+  // INTERRUPT SPECIFIC
+  template <REG T>
+  typename std::enable_if<T == REG::GPINTEN, bool>::type
+  setInterruptOnChange(PIN pin, INTR_ON_CHANGE_ENABLE en) {
+
+    if (port != Util::getPortFromPin(pin)) {
+      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
+               static_cast<int>(pin));
+      return false;
+    }
+    uint8_t index = Util::getPinIndex(pin);
+    setBitField(index, en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE);
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::GPINTEN, bool>::type
+  setInterruptOnChange(uint8_t pinmask, INTR_ON_CHANGE_ENABLE en) {
+
+    if (en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE) {
+      applyMask(pinmask);
+    } else {
+      clearMask(pinmask);
+    }
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::INTCON, bool>::type
+  setInterruptType(PIN pin, INTR_ON_CHANGE_CONTROL cntrl) {
+
+    if (port != Util::getPortFromPin(pin)) {
+      ESP_LOGE(REG_TAG, "Pin %d does not belong to the expected port",
+               static_cast<int>(pin));
+      return false;
+    }
+    uint8_t index = Util::getPinIndex(pin);
+    setBitField(index, cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL);
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::INTCON, bool>::type
+  setInterruptType(uint8_t pinmask, INTR_ON_CHANGE_CONTROL cntrl) {
+
+    if (cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL) {
+      applyMask(pinmask);
+    } else {
+      clearMask(pinmask);
+    }
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::DEFVAL, bool>::type
+  saveCompareValue(PIN pin, DEF_VAL_COMPARE cmp) {
+    if (port != Util::getPortFromPin(pin)) {
+      ESP_LOGE(REG_TAG, "Pinmask does not belong to the expected port");
+      return false;
+    }
+    uint8_t index = Util::getPinIndex(pin);
+    setBitField(index, cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH);
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::DEFVAL, bool>::type
+  saveCompareValue(uint8_t pinmask, DEF_VAL_COMPARE cmp) {
+
+    if (cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH) {
+      applyMask(pinmask);
+    } else {
+      clearMask(pinmask);
+    }
+
+    return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::INTCAP, bool>::type clearInterrupt() {
+
+    if (getValue()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
 private:
   bool readOnly_ = false;
   bool bankSeparated_ = false;
@@ -405,7 +491,7 @@ public:
   std::shared_ptr<MCP::Register> iocon;
   virtual void setup(MCP::MCP_MODEL model, MCP::PORT port, bool bankMode) = 0;
   virtual void assign() = 0;
-
+  virtual bool updateRegisterValue(uint8_t reg_address, uint8_t value) = 0;
   void updateAddress(bool bankMode) {
     if (iocon) {
       iocon->updateBankMode(bankMode);
@@ -451,23 +537,6 @@ public:
     }
   }
 
-  bool updateRegisterValue(uint8_t reg_address, uint8_t value) {
-    if (iocon->getAddress() == reg_address) {
-      return iocon->updateState(value);
-    }
-
-    for (auto &[regType, regPtr] : regMap) {
-      if (regPtr->getAddress() == reg_address) {
-        return regPtr->updateState(value);
-      }
-    }
-
-    ESP_LOGE("MCPRegisters",
-             "Failed to update register: Invalid address (0x%02X)",
-             reg_address);
-    return false;
-  }
-
   virtual ~RegistersCollection() = default;
 };
 
@@ -498,6 +567,23 @@ public:
   const std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
   getRegMap() const override {
     return regMap;
+  }
+
+  bool updateRegisterValue(uint8_t reg_address, uint8_t value) override {
+    if (iocon->getAddress() == reg_address) {
+      return iocon->updateState(value);
+    }
+
+    for (auto &[regType, regPtr] : regMap) {
+      if (regPtr->getAddress() == reg_address) {
+        return regPtr->updateState(value);
+      }
+    }
+
+    ESP_LOGE("MCPRegisters",
+             "Failed to update register: Invalid address (0x%02X)",
+             reg_address);
+    return false;
   }
 
   // Override setup: Create the IOCON register and the GPIO-specific registers.
@@ -550,6 +636,22 @@ public:
   const std::unordered_map<MCP::REG, std::unique_ptr<MCP::Register>> &
   getRegMap() const override {
     return regMap;
+  }
+  bool updateRegisterValue(uint8_t reg_address, uint8_t value) override {
+    if (iocon->getAddress() == reg_address) {
+      return iocon->updateState(value);
+    }
+
+    for (auto &[regType, regPtr] : regMap) {
+      if (regPtr->getAddress() == reg_address) {
+        return regPtr->updateState(value);
+      }
+    }
+
+    ESP_LOGE("MCPRegisters",
+             "Failed to update register: Invalid address (0x%02X)",
+             reg_address);
+    return false;
   }
 
   // registers.

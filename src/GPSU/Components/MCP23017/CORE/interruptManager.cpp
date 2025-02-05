@@ -1,10 +1,10 @@
 #include "interruptManager.hpp"
 
 namespace MCP {
-InterruptManager::InterruptManager(MCP::MCP_MODEL m,
+InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                                    std::shared_ptr<MCP::Register> iconA,
                                    std::shared_ptr<MCP::Register> iconB)
-    : model(m), regA(InterruptRegisters(iconA)),
+    : model(m), i2cBus_(bus), regA(InterruptRegisters(iconA)),
       regB(InterruptRegisters(iconB)) {
 
   regA.setup(model, PORT::GPIOA, bankMode);

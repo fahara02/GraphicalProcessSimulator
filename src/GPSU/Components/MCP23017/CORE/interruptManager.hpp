@@ -22,7 +22,7 @@ struct InterruptSetting {
 class InterruptManager {
 
 public:
-  explicit InterruptManager(MCP::MCP_MODEL m,
+  explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                             std::shared_ptr<MCP::Register> iconA,
                             std::shared_ptr<MCP::Register> iconB);
   void setup(int pinA = -1, int pinB = -1,
@@ -40,7 +40,7 @@ public:
 private:
   MCP::MCP_MODEL model;
   bool bankMode = false;
-  // I2CBus &i2cBus_;
+  I2CBus &i2cBus_;
   InterruptRegisters regA;
   InterruptRegisters regB;
 
