@@ -52,13 +52,15 @@ struct currentEvent {
   registerIdentity regIdentity;
   uint16_t data;
   int id;
+  bool intteruptFunction_;
   bool acknowledged_;
 
   currentEvent(RegisterEvent e = RegisterEvent::MAX,
                registerIdentity identity = registerIdentity{},
-               uint16_t valueOrSettings = 0, uint8_t _id = 0)
+               uint16_t valueOrSettings = 0, uint8_t _id = 0,
+               bool intrFn = false)
       : event(e), regIdentity(identity), data(valueOrSettings), id(_id),
-        acknowledged_(false) {}
+        intteruptFunction_(intrFn), acknowledged_(false) {}
 
   bool isIdentical(const RegisterEvent &e, const registerIdentity &identity,
                    uint8_t valueOrSettings) const {
@@ -78,7 +80,7 @@ public:
   static void clearBits(RegisterEvent e);
   static void initializeEventGroups();
   static bool createEvent(registerIdentity identity, RegisterEvent e,
-                          uint16_t valueOrSettings = 0);
+                          uint16_t valueOrSettings = 0, bool intrFn = false);
   static currentEvent *getEvent(RegisterEvent eventType);
   static bool acknowledgeEvent(currentEvent *event);
   static size_t getQueueSize();

@@ -95,7 +95,7 @@ void setup() {
   expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
   delay(1000);
   // expander.invertInput(MCP::PORT::GPIOB, true);
-  // expander.dumpRegisters();
+  expander.dumpRegisters();
   delay(1000);
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
                           &runTaskhandle, 0);

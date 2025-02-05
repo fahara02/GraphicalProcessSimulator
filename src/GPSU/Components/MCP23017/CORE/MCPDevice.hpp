@@ -14,9 +14,19 @@
 #include <array>
 #include <memory>
 #include <tuple>
-#include <variant>
+#include <unordered_map>
+#include <vector>
 
 #define MCP_TAG "MCPDevice"
+namespace std {
+template <> struct hash<std::tuple<MCP::PORT, MCP::REG>> {
+  std::size_t
+  operator()(const std::tuple<MCP::PORT, MCP::REG> &key) const noexcept {
+    return std::hash<int>()(static_cast<int>(std::get<0>(key))) ^
+           (std::hash<int>()(static_cast<int>(std::get<1>(key))) << 1);
+  }
+};
+} // namespace std
 
 namespace COMPONENT {
 
@@ -53,6 +63,7 @@ public:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
   std::unique_ptr<MCP::InterruptManager> interruptManager_;
+  std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
 
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
@@ -126,8 +137,6 @@ public:
     return invertInput(port, pinmask, invert);
   }
 
-  int readRegister(MCP::PORT port, MCP::REG regType) const;
-
   void setupCommunication();
 
   void dumpRegisters() const;
@@ -137,7 +146,8 @@ private:
   void init();
   void loadSettings();
   void resetDevice();
-  MCP::Register *getRegister(MCP::REG reg, MCP::PORT port);
+  MCP::Register *getGPIORegister(MCP::REG reg, MCP::PORT port);
+  MCP::Register *getIntRegister(MCP::REG reg, MCP::PORT port);
   uint8_t getsavedSettings(MCP::PORT port) const;
 
   uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const;
@@ -158,6 +168,11 @@ private:
 
     return (1 << first.getIndex()) | (0 | ... | (1 << rest.getIndex()));
   }
+
+  std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t>
+  populateAddressMap(bool bankMode);
+
+  void updateAddressMap(bool bankMode);
 };
 
 } // namespace COMPONENT

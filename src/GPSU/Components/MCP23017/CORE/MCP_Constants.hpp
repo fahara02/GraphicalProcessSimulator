@@ -27,6 +27,9 @@ enum class REG : uint8_t {
   GPIO,         //!< General Purpose I/O Register
   OLAT          //!< Output Latch Register
 };
+
+
+
 enum class PIN {
   PIN0 = 0,
   PIN1 = 1,

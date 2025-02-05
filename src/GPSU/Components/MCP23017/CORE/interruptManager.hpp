@@ -36,6 +36,14 @@ public:
 
   uint8_t getIntrFlagA();
   uint8_t getIntrFlagB();
+  Register *getRegister(PORT port, REG reg) {
+    return port == PORT::GPIOA ? regA.getRegisterForUpdate(reg)
+                               : regB.getRegisterForUpdate(reg);
+  }
+  bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value) {
+    return port == PORT::GPIOA ? regA.updateRegisterValue(reg_address, value)
+                               : regB.updateRegisterValue(reg_address, value);
+  }
 
 private:
   MCP::MCP_MODEL model;

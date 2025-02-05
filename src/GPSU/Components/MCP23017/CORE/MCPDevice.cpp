@@ -27,7 +27,8 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
 
       interruptManager_(std::make_unique<MCP::InterruptManager>(
-          model, i2cBus_, cntrlRegA, cntrlRegB))
+          model, i2cBus_, cntrlRegA, cntrlRegB)),
+      addressMap_(populateAddressMap(bankMode_))
 
 {
   init();
@@ -74,8 +75,10 @@ void MCPDevice::loadSettings() {
     if (bankMode_) {
       result |= i2cBus_.write_mcp_register(
           cntrlRegA->getAddress(), static_cast<uint8_t>(0x80), bankMode_);
+      updateAddressMap(bankMode_);
       gpioBankA->updateBankMode(bankMode_);
       gpioBankB->updateBankMode(bankMode_);
+      interruptManager_->updateBankMode(bankMode_);
     }
 
     // Step 2: Update remaining settings using configuration struct value
@@ -262,12 +265,6 @@ void MCPDevice::invertInput(int pin, bool invert) {
   invertInput(port, mask, invert);
 }
 
-int MCPDevice::readRegister(MCP::PORT port, MCP::REG regType) const {
-  GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  return i2cBus_.read_mcp_register(gpioBank->getAddress(regType), bankMode_);
-}
-
 void MCPDevice::EventMonitorTask(void *param) {
   MCPDevice *device = static_cast<MCPDevice *>(param);
 
@@ -377,6 +374,7 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
   MCP::REG reg = ev->regIdentity.reg;
   uint8_t currentAddress = ev->regIdentity.regAddress;
   MCP::PORT port = ev->regIdentity.port;
+  bool intrFunctions = ev->intteruptFunction_;
   uint8_t regAddress = 0;
 
   int value = i2cBus_.read_mcp_register(currentAddress, bankMode_);
@@ -396,17 +394,28 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
     uint8_t valueA = static_cast<uint16_t>(value) & 0xFF;
     uint8_t valueB = (static_cast<uint16_t>(value) >> 8) & 0xFF;
 
-    gpioBankA->updateRegisterValue(regAddress, valueA);
-    gpioBankB->updateRegisterValue(regAddress + 1, valueB);
+    if (intrFunctions) {
+
+      interruptManager_->updateRegisterValue(PORT::GPIOA, regAddress, valueA);
+      interruptManager_->updateRegisterValue(PORT::GPIOB, regAddress + 1,
+                                             valueB);
+    } else {
+      gpioBankA->updateRegisterValue(regAddress, valueA);
+      gpioBankB->updateRegisterValue(regAddress + 1, valueB);
+    }
 
   } else {
-
-    if (port == MCP::PORT::GPIOA) {
-      gpioBankA->updateRegisterValue(currentAddress,
-                                     static_cast<uint8_t>(value));
+    if (intrFunctions) {
+      interruptManager_->updateRegisterValue(port, currentAddress,
+                                             static_cast<uint8_t>(value));
     } else {
-      gpioBankB->updateRegisterValue(currentAddress,
-                                     static_cast<uint8_t>(value));
+      if (port == MCP::PORT::GPIOA) {
+        gpioBankA->updateRegisterValue(currentAddress,
+                                       static_cast<uint8_t>(value));
+      } else {
+        gpioBankB->updateRegisterValue(currentAddress,
+                                       static_cast<uint8_t>(value));
+      }
     }
   }
 
@@ -453,7 +462,7 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   xSemaphoreGive(regRWmutex);
 }
 
-MCP::Register *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
+MCP::Register *MCPDevice::getGPIORegister(MCP::REG reg, MCP::PORT port) {
   if (port == MCP::PORT::GPIOA) {
 
     return gpioBankA->getRegisterForUpdate(reg);
@@ -463,16 +472,24 @@ MCP::Register *MCPDevice::getRegister(MCP::REG reg, MCP::PORT port) {
     return gpioBankB->getRegisterForUpdate(reg);
   }
 }
+MCP::Register *MCPDevice::getIntRegister(MCP::REG reg, MCP::PORT port) {
+
+  return interruptManager_->getRegister(port, reg);
+}
 uint8_t MCPDevice::getsavedSettings(MCP::PORT port) const {
   return port == MCP::PORT::GPIOA ? cntrlRegA->getSavedValue()
                                   : cntrlRegB->getSavedValue();
 }
 
 uint8_t MCPDevice::getRegisterAddress(MCP::REG reg, MCP::PORT port) const {
-  if (port == MCP::PORT::GPIOA) {
-    return gpioBankA->getAddress(reg);
+  auto key = std::make_tuple(port, reg);
+  auto it = addressMap_.find(key);
+
+  if (it != addressMap_.end()) {
+    return it->second;
   } else {
-    return gpioBankB->getAddress(reg);
+
+    return 0xFF;
   }
 }
 
@@ -483,6 +500,31 @@ uint8_t MCPDevice::getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const {
     return gpioBankB->getSavedValue(reg);
   }
 }
+
+std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t>
+MCPDevice::populateAddressMap(bool bankMode) {
+  std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap;
+
+  const std::vector<MCP::REG> registers = {
+      MCP::REG::IODIR,  MCP::REG::IPOL,  MCP::REG::GPINTEN, MCP::REG::DEFVAL,
+      MCP::REG::INTCON, MCP::REG::IOCON, MCP::REG::GPPU,    MCP::REG::INTF,
+      MCP::REG::INTCAP, MCP::REG::GPIO,  MCP::REG::OLAT};
+
+  for (const auto reg : registers) {
+    addressMap[{MCP::PORT::GPIOA, reg}] =
+        MCP::Util::calculateAddress(reg, MCP::PORT::GPIOA, bankMode);
+    addressMap[{MCP::PORT::GPIOB, reg}] =
+        MCP::Util::calculateAddress(reg, MCP::PORT::GPIOB, bankMode);
+  }
+
+  return addressMap;
+}
+
+void MCPDevice::updateAddressMap(bool bankMode) {
+  addressMap_.clear();
+  addressMap_ = populateAddressMap(bankMode);
+}
+
 void MCPDevice::dumpRegisters() const {
   ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
            address_);

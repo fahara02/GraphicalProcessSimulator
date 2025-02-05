@@ -62,7 +62,7 @@ bool EventManager::acknowledgeEvent(currentEvent *event) {
 }
 
 bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
-                               uint16_t valueOrSettings) {
+                               uint16_t valueOrSettings, bool intrFn) {
   size_t currentTail = tail.load(std::memory_order_relaxed);
   size_t nextTail = (currentTail + 1) % MAX_EVENTS;
 
@@ -78,7 +78,7 @@ bool EventManager::createEvent(registerIdentity identity, RegisterEvent e,
   }
 
   eventBuffer[currentTail] =
-      currentEvent(e, identity, valueOrSettings, currentTail);
+      currentEvent(e, identity, valueOrSettings, currentTail, intrFn);
   eventIndexMap[identity] = currentTail;
 
   tail.store(nextTail, std::memory_order_release);
