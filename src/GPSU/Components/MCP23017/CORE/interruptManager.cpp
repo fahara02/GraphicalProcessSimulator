@@ -24,6 +24,7 @@ void InterruptManager::setup(InterruptSetting &setting) {
   setting_.intrType = setting.intrType;
   setting_.intrOutputType = setting.intrOutputType;
   setting_.intrSharing = setting.intrSharing;
+
   ESP_LOGI(INT_TAG, "setting loaded");
 }
 void InterruptManager::setupIntteruptMask(PORT port, uint8_t mask) {
@@ -226,11 +227,7 @@ bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
   }
   return success;
 }
-bool InterruptManager::checkRegistersExists() {
-  bool regExist = true;
 
-  return regExist;
-}
 bool InterruptManager::updateBankMode(bool value) {
   // icon register not need to be invoked again as this method is already
   // invoked and icon is updated  ,just notify this class for updating address

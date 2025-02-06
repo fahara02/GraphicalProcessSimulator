@@ -60,7 +60,6 @@ private:
   std::function<void(void *)> customIntAHandler_;
   std::function<void(void *)> customIntBHandler_;
 
-public:
   std::shared_ptr<MCP::Register> cntrlRegA;
   std::shared_ptr<MCP::Register> cntrlRegB;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
@@ -68,6 +67,7 @@ public:
   std::unique_ptr<MCP::InterruptManager> interruptManager_;
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
 
+public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
   ~MCPDevice();

@@ -63,7 +63,7 @@ private:
   bool setupIntrOutput();
   bool setupIntteruptWithDefval(bool savedValue);
   bool confirmRegisterIsSet(PORT port, REG regTpe, uint8_t bitMask);
-  bool checkRegistersExists();
+
   static void IRAM_ATTR globalInterruptHandler(void *arg);
   using Field = Config::Field;
 };
