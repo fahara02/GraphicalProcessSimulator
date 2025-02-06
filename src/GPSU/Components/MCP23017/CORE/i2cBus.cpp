@@ -21,7 +21,7 @@ void I2CBus::setPin(int sda, int scl) {
 int I2CBus::read_mcp_register(const uint8_t reg, bool map8Bit) {
 
   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
-    xSemaphoreGive(i2cMutex);
+
     ESP_LOGE("I2CBUS", "Failed to take mutex");
     return -1;
   }
@@ -43,45 +43,83 @@ int I2CBus::read_mcp_register(const uint8_t reg, bool map8Bit) {
 
   while (wire_->available() < bytesToRead)
     ;
-  // as we are align to PORT A
-  uint8_t firstByte = wire_->read();
-  uint8_t secondByte = (bytesToRead == 2) ? wire_->read() : 0;
+  // as address pointer increases first byte is portA
+  uint8_t lowByte = wire_->read();                           // PORT A
+  uint8_t highByte = (bytesToRead == 2) ? wire_->read() : 0; // PORT B
   xSemaphoreGive(i2cMutex);
 
-  return (bytesToRead == 2) ? ((firstByte) | (secondByte << 8)) : firstByte;
+  return (bytesToRead == 2) ? ((highByte << 8) | (lowByte)) : lowByte;
 }
-
 int I2CBus::write_mcp_register(const uint8_t reg, uint16_t value,
                                bool map8Bit) {
   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
-    xSemaphoreGive(i2cMutex);
+    // Don’t call xSemaphoreGive here since we never took it.
     ESP_LOGE("I2CBUS", "Failed to take mutex");
     return -1;
   }
+
   int result = 0;
-  uint8_t regAddress = reg; // Default: Single register
-  uint8_t bytesToWrite = 1; //  8-bit mode
-
-  if (!map8Bit) {
-    // Default 16 Bit mode
-    bytesToWrite = 2;
-
-    // Only adjust for Port B if in 16-bit mode
-    if ((reg % 2) != 0) {
-      regAddress = reg - 1; // Align to Port A
-    }
-  }
+  uint8_t regAddress = reg; // Default: single register
+  uint8_t bytesToWrite = map8Bit ? 1 : 2;
 
   wire_->beginTransmission(address_);
-  wire_->write(regAddress);
-  wire_->write(value & 0xFF); // Write low byte (Port A)
+  // For 16-bit mode, adjust and determine order based on parity.
   if (bytesToWrite == 2) {
-    wire_->write((value >> 8) & 0xFF); // Write high byte (Port B)
+    if ((reg % 2) == 0) {
+      // Even: assume reg is Port A; low byte -> A, high byte -> B
+      regAddress = reg;
+      wire_->write(regAddress);
+      wire_->write(value & 0xFF);        // Port A
+      wire_->write((value >> 8) & 0xFF); // Port B
+    } else {
+      // Odd: assume reg is Port B; subtract 1 to get base and swap order.
+      regAddress = reg - 1;
+      wire_->write(regAddress);
+      wire_->write((value >> 8) & 0xFF); // Port B now comes first
+      wire_->write(value & 0xFF);        // Port A second
+    }
+  } else {
+    // 8-bit mode: simply write one byte.
+    wire_->write(regAddress);
+    wire_->write(value & 0xFF);
   }
+
   result = wire_->endTransmission(true);
   xSemaphoreGive(i2cMutex);
   return result;
 }
+
+// int I2CBus::write_mcp_register(const uint8_t reg, uint16_t value,
+//                                bool map8Bit) {
+//   if (xSemaphoreTake(i2cMutex, I2C_MUTEX_TIMEOUT) != pdTRUE) {
+
+//     ESP_LOGE("I2CBUS", "Failed to take mutex");
+//     return -1;
+//   }
+//   int result = 0;
+//   uint8_t regAddress = reg; // Default: Single register
+//   uint8_t bytesToWrite = 1; //  8-bit mode
+
+//   if (!map8Bit) {
+//     // Default 16 Bit mode
+//     bytesToWrite = 2;
+
+//     // Only adjust for Port B if in 16-bit mode
+//     if ((reg % 2) != 0) {
+//       regAddress = reg - 1; // Align to Port A
+//     }
+//   }
+
+//   wire_->beginTransmission(address_);
+//   wire_->write(regAddress);
+//   wire_->write(value & 0xFF); // Write low byte (Port A)
+//   if (bytesToWrite == 2) {
+//     wire_->write((value >> 8) & 0xFF); // Write high byte (Port B)
+//   }
+//   result = wire_->endTransmission(true);
+//   xSemaphoreGive(i2cMutex);
+//   return result;
+// }
 void I2CBus::write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
                                        size_t length, bool bankMode) {
   if (!data || length == 0) {

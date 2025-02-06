@@ -396,8 +396,9 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
       regAddress = currentAddress;
     }
 
-    uint8_t valueA = static_cast<uint16_t>(value) & 0xFF;
-    uint8_t valueB = (static_cast<uint16_t>(value) >> 8) & 0xFF;
+    uint8_t valueA = static_cast<uint16_t>(value) & 0xFF; // extract lowByte
+    uint8_t valueB =
+        (static_cast<uint16_t>(value) >> 8) & 0xFF; // extract highbyte
 
     ESP_LOGI(MCP_TAG,
              "Read succes for id=%d ; address %02X with value %02X PORTA =%02X "
@@ -442,7 +443,7 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
   uint8_t reg = ev->regIdentity.regAddress;
   uint16_t value = ev->data; // Use 16-bit storage
 
-  uint8_t result = i2cBus_.write_mcp_register(reg, value, true);
+  uint8_t result = i2cBus_.write_mcp_register(reg, value, bankMode_);
 
   if (result == 0) {
     ESP_LOGI(MCP_TAG, "New Write success for address 0x%02X for id=%d ; \n",
