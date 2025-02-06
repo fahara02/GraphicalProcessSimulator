@@ -67,7 +67,12 @@ COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 void RunTask(void *param);
 COMPONENT::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
-
+// void cb1(void *param);
+// void cb2(void *param);
+void exampleCallback(void *param) { Serial.println("hello"); }
+void example2Callback(void *param) { Serial.println("hello"); }
+std::function<void(void *)> cb1 = exampleCallback;
+std::function<void(void *)> cb2 = example2Callback;
 void setup() {
 
   Serial.begin(115200);
@@ -101,6 +106,7 @@ void setup() {
   delay(1000);
   expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
   delay(1000);
+  expander.setupInterrupts(GPB5, cb1, GPB6, cb2);
   expander.dumpRegisters();
 
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,

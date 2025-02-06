@@ -14,7 +14,9 @@
 #include <array>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #define MCP_TAG "MCPDevice"
@@ -68,6 +70,8 @@ private:
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
   std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
   std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
+  uint8_t maskA_ = 0x00;
+  uint8_t maskB_ = 0x00;
 
 public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
@@ -159,35 +163,33 @@ public:
     setIntteruptPin(port, pinmask, mcpIntrmode, intrOutMode);
   }
 
-  template <typename FirstCallback, typename... RestCallbacks>
-  void setupInterrupts(MCP::Pin pin, FirstCallback first, RestCallbacks... rest,
-                       uint8_t mcpIntrmode = CHANGE,
-                       MCP::INTR_OUTPUT_TYPE intrOutMode =
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
-
+  template <typename Pin, typename Callback, typename... Rest>
+  auto setupInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
+      -> std::enable_if_t<
+          std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
+          std::is_same_v<std::decay_t<Callback>, std::function<void(void *)>>> {
+    // Store callback for the pin
     MCP::PORT port = pin.getPort();
     uint8_t localIndex = pin.getIndex();
     uint8_t mask = (1 << localIndex);
 
-    uint8_t maskA = getInterruptMask(MCP::PORT::GPIOA);
-    uint8_t maskB = getInterruptMask(MCP::PORT::GPIOB);
-
     if (port == MCP::PORT::GPIOA) {
-      portACallbacks_[localIndex] = first;
-      maskA = maskA | mask;
-
+      portACallbacks_[localIndex] = std::forward<Callback>(callback);
+      maskA_ |= mask;
     } else {
-      portBCallbacks_[localIndex] = first;
-      maskB = maskB | mask;
+      portBCallbacks_[localIndex] = std::forward<Callback>(callback);
+      maskB_ |= mask;
     }
 
-    if constexpr (sizeof...(rest) > 0) {
-      setInterruptCallbacks(rest...);
-    }
+    setupInterrupts(std::forward<Rest>(rest)...);
+  }
 
-    interruptManager_->setupIntteruptMask(MCP::PORT::GPIOA, maskA);
-    interruptManager_->setupIntteruptMask(MCP::PORT::GPIOB, maskB);
-
+  // Base case: Process configuration settings
+  void setupInterrupts(uint8_t mcpIntrmode = CHANGE,
+                       MCP::INTR_OUTPUT_TYPE intrOutMode =
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
+    interruptManager_->setupInterruptMask(MCP::PORT::GPIOA, maskA_);
+    interruptManager_->setupInterruptMask(MCP::PORT::GPIOB, maskB_);
     updateInterruptSetting(mcpIntrmode, intrOutMode);
   }
 

@@ -122,7 +122,7 @@ void MCPDevice::init() {
   i2cBus_.init();
   EventManager::initializeEventGroups();
   startEventMonitorTask(this);
-  interruptManager_->setupIntteruptMask(MCP::PORT::GPIOB, 0XFF);
+  interruptManager_->setupInterruptMask(MCP::PORT::GPIOB, 0XFF);
   setupDefaultIntterupt();
   resetInterruptRegisters();
 }
@@ -610,7 +610,7 @@ void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
                                 uint8_t mcpIntrmode,
                                 MCP::INTR_OUTPUT_TYPE intrOutMode) {
 
-  interruptManager_->setupIntteruptMask(port, pinmask);
+  interruptManager_->setupInterruptMask(port, pinmask);
   updateInterruptSetting(mcpIntrmode, intrOutMode);
 }
 

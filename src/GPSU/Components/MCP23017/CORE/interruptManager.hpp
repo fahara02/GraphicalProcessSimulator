@@ -39,7 +39,7 @@ public:
   bool resetInterruptRegisters();
   void attachInterrupt(int pin, std::function<void(void *)>);
 
-  void setupIntteruptMask(PORT port, uint8_t mask = 0x00);
+  void setupInterruptMask(PORT port, uint8_t mask = 0x00);
   bool updateBankMode(bool value);
 
   uint8_t getMask(PORT p) { return p == PORT::GPIOA ? maskA_ : maskB_; }

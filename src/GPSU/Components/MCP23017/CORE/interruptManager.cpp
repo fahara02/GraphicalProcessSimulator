@@ -27,7 +27,7 @@ void InterruptManager::setup(InterruptSetting &setting) {
 
   ESP_LOGI(INT_TAG, "setting loaded");
 }
-void InterruptManager::setupIntteruptMask(PORT port, uint8_t mask) {
+void InterruptManager::setupInterruptMask(PORT port, uint8_t mask) {
   if (port == PORT::GPIOA) {
     maskA_ = mask;
   } else {
