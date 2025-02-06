@@ -26,10 +26,10 @@ public:
   explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                             std::shared_ptr<MCP::Register> iconA,
                             std::shared_ptr<MCP::Register> iconB);
-  void setup(int pinA = -1, int pinB = -1,
-             INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
+  void setup(INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
              INTR_OUTPUT_TYPE outtype = INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
              PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
+  void setup(InterruptSetting &setting);
   bool enableInterrupt();
   void setupIntteruptMask(uint8_t maskA, uint8_t maskB = 0X00);
 
@@ -39,7 +39,7 @@ public:
   uint8_t getIntrFlagB();
   Register *getRegister(PORT port, REG reg);
   bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value);
-  bool resetIntteruptRegisters();
+  bool resetInterruptRegisters();
   void attachInterrupt(int pin, std::function<void(void *)>);
 
 private:
@@ -52,8 +52,8 @@ private:
   InterruptSetting setting_;
   uint8_t maskA_ = 0x00;
   uint8_t maskB_ = 0x00;
-  int pinA_ = 0;
-  int pinB_ = 0;
+  int pinA_ = -1;
+  int pinB_ = -1;
   std::function<void(void *)> callbackA_;
   std::function<void(void *)> callbackB_;
 

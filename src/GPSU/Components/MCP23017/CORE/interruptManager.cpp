@@ -11,16 +11,19 @@ InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
   regB.setup(model, PORT::GPIOA, bankMode);
 }
 
-void InterruptManager::setup(int pinA, int pinB, INTR_TYPE type,
-                             INTR_OUTPUT_TYPE outtype,
+void InterruptManager::setup(INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
                              PairedInterrupt sharedIntr) {
 
   setting_.intrType = type;
   setting_.intrOutputType = outtype;
   setting_.intrSharing = sharedIntr == PairedInterrupt::Enabled ? true : false;
+  ESP_LOGI(INT_TAG, "setting loaded");
+}
+void InterruptManager::setup(InterruptSetting &setting) {
 
-  pinA_ = pinA != -1 ? pinA : -1;
-  pinB_ = pinB != -1 ? pinB : -1;
+  setting_.intrType = setting.intrType;
+  setting_.intrOutputType = setting.intrOutputType;
+  setting_.intrSharing = setting.intrSharing;
   ESP_LOGI(INT_TAG, "setting loaded");
 }
 void InterruptManager::setupIntteruptMask(uint8_t maskA, uint8_t maskB) {
@@ -86,7 +89,7 @@ bool InterruptManager::updateInterrputSetting() {
 
   return success;
 }
-bool InterruptManager::resetIntteruptRegisters() {
+bool InterruptManager::resetInterruptRegisters() {
   ESP_LOGI("MCP_DEVICE", "resetting all interrupts ");
 
   bool status = true;

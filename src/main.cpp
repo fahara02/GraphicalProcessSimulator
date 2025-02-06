@@ -99,7 +99,7 @@ void setup() {
   delay(1000);
   expander.pinMode(MCP::PORT::GPIOB, INPUT);
   delay(1000);
-  expander.invertInput(MCP::PORT::GPIOB, true);
+  expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
   delay(1000);
   expander.dumpRegisters();
 

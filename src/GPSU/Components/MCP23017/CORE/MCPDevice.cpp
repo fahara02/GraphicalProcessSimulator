@@ -123,7 +123,7 @@ void MCPDevice::init() {
   startEventMonitorTask(this);
   interruptManager_->setupIntteruptMask(0X00, 0XFF);
   setupIntterupt();
-  resetIntteruptRegisters();
+  resetInterruptRegisters();
 }
 void MCPDevice::initGPIOPins() {
 
@@ -135,8 +135,8 @@ void MCPDevice::initGPIOPins() {
 bool MCPDevice::enableInterrupt() {
   return interruptManager_->enableInterrupt();
 }
-bool MCPDevice::resetIntteruptRegisters() {
-  return interruptManager_->resetIntteruptRegisters();
+bool MCPDevice::resetInterruptRegisters() {
+  return interruptManager_->resetInterruptRegisters();
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   if (!device) {
@@ -157,7 +157,7 @@ void MCPDevice::pinMode(const MCP::PORT port, const uint8_t pinmask,
     assert(false && "Invalid port");
     return;
   }
-
+  gpioBank->setGeneralMask(pinmask);
   switch (mode) {
   case INPUT:
     gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_INPUT);
@@ -205,6 +205,7 @@ void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t pinmask,
                              const uint8_t level) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  gpioBank->setGeneralMask(pinmask);
   gpioBank->setPinState(pinmask, static_cast<bool>(level));
 }
 void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t level) {
@@ -227,6 +228,7 @@ void MCPDevice::digitalWrite(const int pin, const uint8_t level) {
 uint8_t MCPDevice::digitalRead(const MCP::PORT port, const uint8_t pinmask) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  gpioBank->setGeneralMask(pinmask);
   return gpioBank->getPinState(pinmask);
 }
 bool MCPDevice::digitalRead(const MCP::Pin pin) {
@@ -250,12 +252,14 @@ void MCPDevice::invertInput(const MCP::PORT port, const uint8_t pinmask,
                             bool invert) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  gpioBank->setGeneralMask(pinmask);
   gpioBank->setInputPolarity(pinmask, invert ? MCP::INPUT_POLARITY::INVERTED
                                              : MCP::INPUT_POLARITY::UNCHANGED);
 }
 void MCPDevice::invertInput(const MCP::PORT port, bool invert) {
   GPIO_BANK *gpioBank =
       (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+
   gpioBank->setInputPolarity(invert ? MCP::INPUT_POLARITY::INVERTED
                                     : MCP::INPUT_POLARITY::UNCHANGED);
 }
@@ -585,13 +589,27 @@ void MCPDevice::dumpRegisters() const {
     }
   }
 }
-void MCPDevice::initIntrGPIOPins() {
+void MCPDevice::initIntrGPIOPins(uint8_t mode) {
+
+  gpio_int_type_t intMode;
+  switch (mode) {
+  case CHANGE:
+    intMode = gpio_int_type_t::GPIO_INTR_ANYEDGE;
+  case RISING:
+    intMode = gpio_int_type_t::GPIO_INTR_POSEDGE;
+  case FALLING:
+    intMode = gpio_int_type_t::GPIO_INTR_NEGEDGE;
+
+  default:
+    break;
+  }
 
   // --- Configure intA pin as input with interrupt, if set ---
   if (intA_ != static_cast<gpio_num_t>(-1)) {
     gpio_pad_select_gpio(intA_);
     gpio_set_direction(intA_, GPIO_MODE_INPUT);
-    gpio_set_intr_type(intA_, GPIO_INTR_POSEDGE);
+
+    gpio_set_intr_type(intA_, intMode);
 
     // Use stored custom handler if available, otherwise use default.
     std::function<void(void *)> intAHandler =
@@ -604,7 +622,7 @@ void MCPDevice::initIntrGPIOPins() {
     gpio_install_isr_service(0);
 
     if (interruptManager_) {
-      interruptManager_->attachInterrupt(intA_, intAHandler);
+      interruptManager_->attachInterrupt(static_cast<int>(intA_), intAHandler);
     }
   }
 
@@ -612,7 +630,7 @@ void MCPDevice::initIntrGPIOPins() {
   if (intB_ != static_cast<gpio_num_t>(-1)) {
     gpio_pad_select_gpio(intB_);
     gpio_set_direction(intB_, GPIO_MODE_INPUT);
-    gpio_set_intr_type(intB_, GPIO_INTR_POSEDGE);
+    gpio_set_intr_type(intB_, intMode);
 
     std::function<void(void *)> intBHandler =
         customIntBHandler_ ? customIntBHandler_ : [](void *arg) {
@@ -622,18 +640,74 @@ void MCPDevice::initIntrGPIOPins() {
     gpio_install_isr_service(0);
 
     if (interruptManager_) {
-      interruptManager_->attachInterrupt(intB_, intBHandler);
+      interruptManager_->attachInterrupt(static_cast<int>(intB_), intBHandler);
     }
   }
 }
 void MCPDevice::setupIntterupt(MCP::INTR_TYPE type,
                                MCP::INTR_OUTPUT_TYPE outtype,
                                MCP::PairedInterrupt sharedIntr) {
-  interruptManager_->setup(static_cast<int>(intA_), static_cast<int>(intB_),
-                           type, outtype, sharedIntr);
-  initIntrGPIOPins();
+  interruptManager_->setup(type, outtype, sharedIntr);
 }
+void MCPDevice::attachInterrupt(gpio_num_t pinA,
+                                std::function<void(void *)> intAHandler,
+                                uint8_t espIntrmode, uint8_t mcpIntrmode,
+                                MCP::INTR_OUTPUT_TYPE intrOutMode) {
+  intA_ = pinA;
+  customIntAHandler_ = intAHandler;
+  intrSetting_.intrSharing = true;
+  intrSetting_.intrOutputType = intrOutMode;
+  switch (mcpIntrmode) {
+  case CHANGE:
+    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_CHANGE;
 
+  case RISING:
+    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_RISING;
+    intrSetting_.savedValue = MCP::DEF_VAL_COMPARE::SAVE_LOGIC_LOW;
+
+  case FALLING:
+    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_FALLING;
+    intrSetting_.savedValue = MCP::DEF_VAL_COMPARE::SAVE_LOGIC_HIGH;
+  default:
+    break;
+  }
+
+  interruptManager_->setup(intrSetting_);
+  initIntrGPIOPins(espIntrmode);
+}
+void MCPDevice::attachInterrupt(gpio_num_t pinA, gpio_num_t pinB,
+                                std::function<void(void *)> intAHandler,
+                                std::function<void(void *)> intBHandler,
+                                uint8_t espIntrmode, uint8_t mcpIntrmode,
+                                MCP::INTR_OUTPUT_TYPE intrOutMode) {
+  intA_ = pinA;
+  intB_ = pinB;
+  customIntAHandler_ = intAHandler;
+  customIntBHandler_ = intBHandler;
+  if (intA_ != static_cast<gpio_num_t>(-1) &&
+      intB_ != static_cast<gpio_num_t>(-1)) {
+    intrSetting_.intrSharing = false;
+  }
+
+  intrSetting_.intrOutputType = intrOutMode;
+  switch (mcpIntrmode) {
+  case CHANGE:
+    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_CHANGE;
+
+  case RISING:
+    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_RISING;
+    intrSetting_.savedValue = MCP::DEF_VAL_COMPARE::SAVE_LOGIC_LOW;
+
+  case FALLING:
+    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_FALLING;
+    intrSetting_.savedValue = MCP::DEF_VAL_COMPARE::SAVE_LOGIC_HIGH;
+  default:
+    break;
+  }
+
+  interruptManager_->setup(intrSetting_);
+  initIntrGPIOPins(espIntrmode);
+}
 void IRAM_ATTR MCPDevice::defaultIntAHandler(void *arg) {
   ESP_LOGI(MCP_TAG, "Default intA interrupt triggered.");
 }

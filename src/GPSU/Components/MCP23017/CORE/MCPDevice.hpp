@@ -45,6 +45,7 @@ private:
   gpio_num_t intA_;
   gpio_num_t intB_;
   MCP::I2CBus &i2cBus_;
+  MCP::InterruptSetting intrSetting_;
 
   bool bankMode_ = false;
   bool mirrorMode_ = false;
@@ -72,10 +73,7 @@ public:
   ~MCPDevice();
   void init();
   void configure(const MCP::Settings &config);
-  void setupIntterupt(
-      MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
-      MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
-      MCP::PairedInterrupt sharedIntr = MCP::PairedInterrupt::Disabled);
+
   bool enableInterrupt();
 
   void pinMode(const MCP::Pin pin, const uint8_t mode);
@@ -131,7 +129,7 @@ public:
       typename FirstPin, typename... RestPins,
       typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
                                    std::is_same_v<RestPins, MCP::Pin>)>>
-  void invertInput(FirstPin first, RestPins... rest, bool invert) {
+  void invertInput(bool invert, FirstPin first, RestPins... rest) {
 
     uint8_t pinmask = generateMask(first, rest...);
     MCP::PORT port = first.getPort();
@@ -141,12 +139,24 @@ public:
 
   void setupCommunication();
   void dumpRegisters() const;
-  bool resetIntteruptRegisters();
-  void attachInterrupt();
+
+  void attachInterrupt(gpio_num_t pinA,
+                       std::function<void(void *)> intAHandler = nullptr,
+                       uint8_t espIntrmode = CHANGE,
+                       uint8_t mcpIntrmode = CHANGE,
+                       MCP::INTR_OUTPUT_TYPE intrOutMode =
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  void attachInterrupt(gpio_num_t pinA, gpio_num_t pinB,
+                       std::function<void(void *)> intAHandler = nullptr,
+                       std::function<void(void *)> intBHandler = nullptr,
+                       uint8_t espIntrmode = CHANGE,
+                       uint8_t mcpIntrmode = CHANGE,
+                       MCP::INTR_OUTPUT_TYPE intrOutMode =
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
 private:
   void initGPIOPins();
-  void initIntrGPIOPins();
+  void initIntrGPIOPins(uint8_t mode);
   void loadSettings();
   void resetDevice();
 
@@ -179,8 +189,14 @@ private:
 
   void updateAddressMap(bool bankMode);
 
+  bool resetInterruptRegisters();
   static void IRAM_ATTR defaultIntAHandler(void *arg);
   static void IRAM_ATTR defaultIntBHandler(void *arg);
+
+  void setupIntterupt(
+      MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
+      MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
+      MCP::PairedInterrupt sharedIntr = MCP::PairedInterrupt::Disabled);
 };
 
 } // namespace COMPONENT
