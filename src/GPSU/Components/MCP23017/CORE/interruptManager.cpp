@@ -87,35 +87,32 @@ bool InterruptManager::updateInterrputSetting() {
   return success;
 }
 bool InterruptManager::disableAllInterrupt() {
+  ESP_LOGI("MCP_DEVICE", "Disabling all interrupts - Step 1");
 
-  bool status = true; // Track if all writes succeed
-  ESP_LOGI(INT_TAG, "Disabling interrupts");
+  bool status = true;
 
-  // Disable all interrupts
+  ESP_LOGI("MCP_DEVICE", "Writing to GPINTEN register - Step 2");
   status &=
       (i2cBus_.write_mcp_register(regA.gpinten->getAddress(), 0x00, true) == 0);
+  ESP_LOGI("MCP_DEVICE", "GPINTEN done - Step 3");
+
   status &=
       (i2cBus_.write_mcp_register(regB.gpinten->getAddress(), 0x00, true) == 0);
+  ESP_LOGI("MCP_DEVICE", "INTCON reset - Step 4");
 
-  // Reset INTCON (set edge-triggered mode)
   status &=
       (i2cBus_.write_mcp_register(regA.intcon->getAddress(), 0x00, true) == 0);
   status &=
       (i2cBus_.write_mcp_register(regB.intcon->getAddress(), 0x00, true) == 0);
 
-  // Reset DEFVAL (default comparison value)
-  status &=
-      (i2cBus_.write_mcp_register(regA.defval->getAddress(), 0x00, true) == 0);
-  status &=
-      (i2cBus_.write_mcp_register(regB.defval->getAddress(), 0x00, true) == 0);
-
-  // Read INTCAP to clear it
-
+  ESP_LOGI("MCP_DEVICE", "Reading INTCAP - Step 5");
   status &= (i2cBus_.read_mcp_register(regA.intcap->getAddress(), true) == 0);
   status &= (i2cBus_.read_mcp_register(regB.intcap->getAddress(), true) == 0);
 
+  ESP_LOGI("MCP_DEVICE", "Disable all interrupts complete - Step 6");
   return status;
 }
+
 bool InterruptManager::setupIntteruptOnChnage() {
   bool success = false;
   setting_.icoControl = INTR_ON_CHANGE_CONTROL::COMPARE_WITH_OLD_VALUE;

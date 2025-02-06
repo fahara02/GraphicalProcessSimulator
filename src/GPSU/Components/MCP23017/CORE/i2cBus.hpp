@@ -3,6 +3,7 @@
 #include "Arduino.h"
 #include "MCP_Constants.hpp"
 
+#include "I2cLock.hpp"
 #include "Wire.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -33,6 +34,8 @@ public:
   void write_mcp_registers_batch(uint8_t startReg, const uint8_t *data,
                                  size_t length, bool bankMode);
   static SemaphoreHandle_t i2cMutex;
+
+  static void initMutex();
 
 private:
   I2CBus(uint8_t addr, int sda, int scl);

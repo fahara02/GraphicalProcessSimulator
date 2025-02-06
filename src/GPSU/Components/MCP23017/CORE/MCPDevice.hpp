@@ -68,7 +68,7 @@ public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
   ~MCPDevice();
-
+  void init();
   void configure(const MCP::Settings &config);
   void setupIntterupt(
       MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
@@ -141,9 +141,9 @@ public:
 
   void dumpRegisters() const;
   MCP::I2CBus &getBus() { return i2cBus_; }
+  bool disableAllInterrupt();
 
 private:
-  void init();
   void loadSettings();
   void resetDevice();
   MCP::Register *getGPIORegister(MCP::REG reg, MCP::PORT port);
@@ -173,7 +173,6 @@ private:
   populateAddressMap(bool bankMode);
 
   void updateAddressMap(bool bankMode);
-  bool disableAllInterrupt();
 };
 
 } // namespace COMPONENT

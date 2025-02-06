@@ -86,12 +86,14 @@ void setup() {
   // delay(1000);
   // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
   // delay(2000);
+  expander.init();
   expander.dumpRegisters();
   delay(1000);
   MCP::Settings setting;
   setting.opMode = MCP::OperationMode::SequentialMode16;
   expander.configure(setting);
   delay(1000);
+
   // expander.enableInterrupt();
 
   expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);

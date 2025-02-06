@@ -30,9 +30,7 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
           model, i2cBus_, cntrlRegA, cntrlRegB)),
       addressMap_(populateAddressMap(bankMode_))
 
-{
-  init();
-}
+{}
 MCPDevice::~MCPDevice() = default;
 void MCPDevice::configure(const MCP::Settings &setting) {
   if (cntrlRegA && cntrlRegB) {
@@ -124,11 +122,7 @@ void MCPDevice::init() {
   startEventMonitorTask(this);
   interruptManager_->setupIntteruptMask(0X00, 0XFF);
   setupIntterupt();
-
-  // disableAllInterrupt();
-  //  loadSettings();
-
-  // gpioBankB->setInterruptMask(0xFF);
+  disableAllInterrupt();
 }
 bool MCPDevice::enableInterrupt() {
   return interruptManager_->enableInterrupt();
