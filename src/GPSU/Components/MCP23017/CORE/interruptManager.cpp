@@ -271,15 +271,53 @@ void InterruptManager::attachInterrupt(int pin,
   }
 }
 
-void IRAM_ATTR InterruptManager::globalInterruptHandler(void *arg) {
+void IRAM_ATTR globalInterruptHandler(void *arg) {
+  InterruptManager *manager = static_cast<InterruptManager *>(arg);
 
-  InterruptManager *intrMgr = static_cast<InterruptManager *>(arg);
-  int triggeredPin = /* getTriggeredPin() */ 0;
-  if (triggeredPin == intrMgr->pinA_ && intrMgr->callbackA_) {
-    intrMgr->callbackA_(nullptr); // Pass any required argument.
-  } else if (triggeredPin == intrMgr->pinB_ && intrMgr->callbackB_) {
-    intrMgr->callbackB_(nullptr);
+  // Determine which ports to process
+  const bool isSharing = manager->isINTSharing();
+  const bool processA = manager->isINTA();
+  const bool processB = manager->isINTB() && !isSharing;
+
+  // Read flags only if needed
+  uint8_t flagA = processA ? manager->getIntrFlagA() : 0;
+  uint8_t flagB = (processB || isSharing) ? manager->getIntrFlagB() : 0;
+
+  if (isSharing && processA) {
+    for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
+      if (flagA & (1 << i))
+        manager->invokeCallback(MCP::PORT::GPIOA, i, manager);
+      if (flagB & (1 << i))
+        manager->invokeCallback(MCP::PORT::GPIOB, i, manager);
+    }
   } else {
+    // Individual port handling
+    if (processA) {
+      for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
+        if (flagA & (1 << i))
+          manager->invokeCallback(MCP::PORT::GPIOA, i, manager);
+      }
+    }
+    if (processB) {
+      for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
+        if (flagB & (1 << i))
+          manager->invokeCallback(MCP::PORT::GPIOB, i, manager);
+      }
+    }
+  }
+}
+
+void InterruptManager::invokeCallback(PORT port, uint8_t pinindex, void *arg) {
+  InterruptManager *manager = static_cast<InterruptManager *>(arg);
+  void *userData = manager->getUserData(port);
+  if (port == PORT::GPIOA) {
+    if (manager->portACallbacks_[pinindex]) {
+      manager->portACallbacks_[pinindex](userData);
+    }
+  } else {
+    if (manager->portACallbacks_[pinindex]) {
+      manager->portBCallbacks_[pinindex](userData);
+    }
   }
 }
 

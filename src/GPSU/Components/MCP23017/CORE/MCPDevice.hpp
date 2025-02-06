@@ -59,8 +59,6 @@ private:
 
   static SemaphoreHandle_t regRWmutex;
   TaskHandle_t eventTaskHandle;
-  std::function<void(void *)> customIntAHandler_;
-  std::function<void(void *)> customIntBHandler_;
 
   std::shared_ptr<MCP::Register> cntrlRegA;
   std::shared_ptr<MCP::Register> cntrlRegB;
@@ -68,10 +66,10 @@ private:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
   std::unique_ptr<MCP::InterruptManager> interruptManager_;
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
-  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
-  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
-  uint8_t maskA_ = 0x00;
-  uint8_t maskB_ = 0x00;
+  std::function<void(void *)> customIntAHandler_;
+  std::function<void(void *)> customIntBHandler_;
+  void *userDataA_ = nullptr;
+  void *userDataB_ = nullptr;
 
 public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
@@ -173,14 +171,9 @@ public:
     uint8_t localIndex = pin.getIndex();
     uint8_t mask = (1 << localIndex);
 
-    if (port == MCP::PORT::GPIOA) {
-      portACallbacks_[localIndex] = std::forward<Callback>(callback);
-      maskA_ |= mask;
-    } else {
-      portBCallbacks_[localIndex] = std::forward<Callback>(callback);
-      maskB_ |= mask;
-    }
-
+    interruptManager_->updateMask(port, mask);
+    interruptManager_->setCallback(port, localIndex,
+                                   std::forward<Callback>(callback));
     setupInterrupts(std::forward<Rest>(rest)...);
   }
 
@@ -188,8 +181,7 @@ public:
   void setupInterrupts(uint8_t mcpIntrmode = CHANGE,
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
-    interruptManager_->setupInterruptMask(MCP::PORT::GPIOA, maskA_);
-    interruptManager_->setupInterruptMask(MCP::PORT::GPIOB, maskB_);
+
     updateInterruptSetting(mcpIntrmode, intrOutMode);
   }
 
@@ -199,14 +191,25 @@ public:
   void attachInterrupt(gpio_num_t pinA,
                        std::function<void(void *)> intAHandler = nullptr,
                        uint8_t espIntrmode = CHANGE);
-  void attachInterrupt(gpio_num_t pinA, gpio_num_t pinB,
+  void attachInterrupt(gpio_num_t pinA,
                        std::function<void(void *)> intAHandler = nullptr,
-                       std::function<void(void *)> intBHandler = nullptr,
-                       uint8_t espIntrmode = CHANGE);
+                       uint8_t espIntrmodeA = CHANGE,
+                       gpio_num_t pinB = gpio_num_t::GPIO_NUM_NC,
+                       uint8_t espIntrmodeB = CHANGE,
+                       std::function<void(void *)> intBHandler = nullptr);
+
+  template <typename T>
+  void attachInterrupt(gpio_num_t pinA,
+                       std::function<void(T *)> intAHandler = nullptr,
+                       uint8_t espIntrmodeA = CHANGE,
+                       gpio_num_t pinB = gpio_num_t::GPIO_NUM_NC,
+                       uint8_t espIntrmodeB = CHANGE,
+                       std::function<void(T *)> intBHandler = nullptr,
+                       T *userDataA = nullptr, T *userDataB = nullptr);
 
 private:
   void initGPIOPins();
-  void initIntrGPIOPins(uint8_t mode);
+  void initIntrGPIOPins(gpio_int_type_t modeA, gpio_int_type_t modeB);
   void loadSettings();
   void resetDevice();
 
@@ -253,6 +256,7 @@ private:
   }
   void updateInterruptSetting(uint8_t mcpIntrmode,
                               MCP::INTR_OUTPUT_TYPE intrOutMode);
+  gpio_int_type_t coverIntrMode(uint8_t mode);
 };
 
 } // namespace COMPONENT

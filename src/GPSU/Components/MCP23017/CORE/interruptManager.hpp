@@ -23,6 +23,11 @@ struct InterruptSetting {
 class InterruptManager {
 
 public:
+  std::function<void(void *)> callbackA_;
+  std::function<void(void *)> callbackB_;
+  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
+  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
+
   explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                             std::shared_ptr<MCP::Register> iconA,
                             std::shared_ptr<MCP::Register> iconB);
@@ -44,6 +49,44 @@ public:
 
   uint8_t getMask(PORT p) { return p == PORT::GPIOA ? maskA_ : maskB_; }
 
+  void setCallback(MCP::PORT port, uint8_t index,
+                   std::function<void(void *)> callback) {
+    if (port == MCP::PORT::GPIOA) {
+      portACallbacks_[index] = std::move(callback);
+    } else {
+      portBCallbacks_[index] = std::move(callback);
+    }
+  }
+
+  template <typename T>
+  void registerCallback(MCP::PORT port, uint8_t pin, void (*handler)(T *),
+                        T *data);
+
+  void updateMask(MCP::PORT port, uint8_t mask) {
+    if (port == MCP::PORT::GPIOA) {
+      maskA_ |= mask;
+    } else {
+      maskB_ |= mask;
+    }
+  }
+
+  static void IRAM_ATTR globalInterruptHandler(void *arg);
+  static void invokeCallback(PORT port, uint8_t pinindex, void *arg);
+  void setUserData(PORT port, void *userData) {
+    if (port == PORT::GPIOA) {
+      userDataA_ = userData;
+    } else {
+      userDataB_ = userData;
+    }
+  }
+  InterruptSetting getSetting() const { return setting_; }
+  bool isINTA() { return pinA_ != (-1); }
+  bool isINTB() { return pinB_ != (-1); }
+  bool isINTSharing() { return setting_.intrSharing; }
+  void *getUserData(PORT port) {
+    return port == PORT::GPIOA ? userDataA_ : userDataB_;
+  }
+
 private:
   MCP::MCP_MODEL model;
   bool bankMode = false;
@@ -56,8 +99,8 @@ private:
   uint8_t maskB_ = 0x00;
   int pinA_ = -1;
   int pinB_ = -1;
-  std::function<void(void *)> callbackA_;
-  std::function<void(void *)> callbackB_;
+  void *userDataA_ = nullptr;
+  void *userDataB_ = nullptr;
 
   bool updateInterrputSetting();
   bool setupIntteruptOnChnage();
@@ -66,7 +109,6 @@ private:
   bool setupIntteruptWithDefval(bool savedValue);
   bool confirmRegisterIsSet(PORT port, REG regTpe, uint8_t bitMask);
 
-  static void IRAM_ATTR globalInterruptHandler(void *arg);
   using Field = Config::Field;
 };
 
