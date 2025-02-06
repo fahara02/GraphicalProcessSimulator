@@ -31,7 +31,7 @@ public:
              PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
   void setup(InterruptSetting &setting);
   bool enableInterrupt();
-  void setupIntteruptMask(uint8_t maskA, uint8_t maskB = 0X00);
+  void setupIntteruptMask(PORT port, uint8_t mask = 0x00);
 
   bool updateBankMode(bool value);
 

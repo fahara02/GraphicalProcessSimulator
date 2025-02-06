@@ -137,22 +137,35 @@ public:
     return invertInput(port, pinmask, invert);
   }
 
+  void setIntteruptPin(MCP::PORT port, uint8_t pinmask,
+                       uint8_t mcpIntrmode = CHANGE,
+                       MCP::INTR_OUTPUT_TYPE intrOutMode =
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  void setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode = CHANGE,
+                       MCP::INTR_OUTPUT_TYPE intrOutMode =
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+
+  template <
+      typename FirstPin, typename... RestPins,
+      typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
+                                   std::is_same_v<RestPins, MCP::Pin>)>>
+  void setIntteruptPin(uint8_t mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode,
+                       FirstPin first, RestPins... rest) {
+    uint8_t pinmask = generateMask(first, rest...);
+    MCP::PORT port = first.getPort();
+    setIntteruptPin(port, pinmask, mcpIntrmode, intrOutMode);
+  }
+
   void setupCommunication();
   void dumpRegisters() const;
 
   void attachInterrupt(gpio_num_t pinA,
                        std::function<void(void *)> intAHandler = nullptr,
-                       uint8_t espIntrmode = CHANGE,
-                       uint8_t mcpIntrmode = CHANGE,
-                       MCP::INTR_OUTPUT_TYPE intrOutMode =
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+                       uint8_t espIntrmode = CHANGE);
   void attachInterrupt(gpio_num_t pinA, gpio_num_t pinB,
                        std::function<void(void *)> intAHandler = nullptr,
                        std::function<void(void *)> intBHandler = nullptr,
-                       uint8_t espIntrmode = CHANGE,
-                       uint8_t mcpIntrmode = CHANGE,
-                       MCP::INTR_OUTPUT_TYPE intrOutMode =
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+                       uint8_t espIntrmode = CHANGE);
 
 private:
   void initGPIOPins();
@@ -193,9 +206,9 @@ private:
   static void IRAM_ATTR defaultIntAHandler(void *arg);
   static void IRAM_ATTR defaultIntBHandler(void *arg);
 
-  void setupIntterupt(
+  void setupDefaultIntterupt(
       MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
-      MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
+      MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH,
       MCP::PairedInterrupt sharedIntr = MCP::PairedInterrupt::Disabled);
 };
 

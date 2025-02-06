@@ -26,10 +26,12 @@ void InterruptManager::setup(InterruptSetting &setting) {
   setting_.intrSharing = setting.intrSharing;
   ESP_LOGI(INT_TAG, "setting loaded");
 }
-void InterruptManager::setupIntteruptMask(uint8_t maskA, uint8_t maskB) {
-  maskA_ = maskA;
-  maskB_ = maskB;
-  ESP_LOGI(INT_TAG, "mask loaded");
+void InterruptManager::setupIntteruptMask(PORT port, uint8_t mask) {
+  if (port == PORT::GPIOA) {
+    maskA_ = mask;
+  } else {
+    maskB_ = mask;
+  }
 }
 
 Register *InterruptManager::getRegister(PORT port, REG reg) {
