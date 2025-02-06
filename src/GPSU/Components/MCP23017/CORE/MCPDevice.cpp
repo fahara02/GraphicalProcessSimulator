@@ -28,7 +28,8 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
 
       interruptManager_(std::make_unique<MCP::InterruptManager>(
           model, i2cBus_, cntrlRegA, cntrlRegB)),
-      addressMap_(populateAddressMap(bankMode_))
+      addressMap_(populateAddressMap(bankMode_)), portACallbacks_{nullptr},
+      portBCallbacks_{nullptr}
 
 {}
 MCPDevice::~MCPDevice() = default;
@@ -610,6 +611,18 @@ void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
                                 MCP::INTR_OUTPUT_TYPE intrOutMode) {
 
   interruptManager_->setupIntteruptMask(port, pinmask);
+  updateInterruptSetting(mcpIntrmode, intrOutMode);
+}
+
+void MCPDevice::setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode,
+                                MCP::INTR_OUTPUT_TYPE intrOutMode) {
+
+  setIntteruptPin(Util::getPortFromPin(pin.getEnum()), pin.getMask(),
+                  mcpIntrmode, intrOutMode);
+}
+
+void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
+                                       MCP::INTR_OUTPUT_TYPE intrOutMode) {
   intrSetting_.intrOutputType = intrOutMode;
   switch (mcpIntrmode) {
   case CHANGE:
@@ -624,13 +637,6 @@ void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
   default:
     break;
   }
-}
-
-void MCPDevice::setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode,
-                                MCP::INTR_OUTPUT_TYPE intrOutMode) {
-
-  setIntteruptPin(Util::getPortFromPin(pin.getEnum()), pin.getMask(),
-                  mcpIntrmode, intrOutMode);
 }
 
 void MCPDevice::attachInterrupt(gpio_num_t pinA,

@@ -235,21 +235,21 @@ struct Register {
       return true;
     }
   }
-  void setValue(uint8_t newvalue) {
+  void setValue(uint8_t newvalue, bool intrFun = false) {
     if (!readOnly_) {
 
       value_ = newvalue;
       if (reg == MCP::REG::IOCON) {
         EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                  value_);
+                                  value_, intrFun);
       } else {
         EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
-                                  value_);
+                                  value_, intrFun);
       }
     }
   }
 
-  void setBitField(uint8_t bit, bool bit_value) {
+  void setBitField(uint8_t bit, bool bit_value, bool intrFun = false) {
 
     if (!readOnly_) {
       if (bit < 8) {
@@ -264,16 +264,17 @@ struct Register {
                value_, regAddress_);
       if (reg == MCP::REG::IOCON) {
         EventManager::createEvent(identity_, RegisterEvent::SETTINGS_CHANGED,
-                                  value_);
+                                  value_, intrFun);
       } else {
         EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
-                                  value_);
+                                  value_, intrFun);
       }
     }
   }
-  uint8_t getValue() {
+  uint8_t getValue(bool intrFun = false) {
 
-    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST, 0,
+                              intrFun);
 
     EventBits_t bits = xEventGroupWaitBits(
         EventManager::registerEventGroup,
@@ -290,8 +291,8 @@ struct Register {
 
     return value_;
   }
-  bool getBitField(uint8_t bit) {
-    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST);
+  bool getBitField(uint8_t bit, bool intrFun = false) {
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST, intrFun);
 
     EventBits_t bits = xEventGroupWaitBits(
         EventManager::registerEventGroup,
@@ -307,24 +308,24 @@ struct Register {
     EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
     return (bit < 8) ? Util::BIT::isSet(value_, bit) : false;
   }
-  void applyMask(uint8_t mask) {
+  void applyMask(uint8_t mask, bool intrFun = false) {
 
     if (reg != REG::IOCON) {
       value_ |= mask;
       ESP_LOGI(REG_TAG, "New Value %d set  in register 0x%02X", value_,
                regAddress_);
-      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
-                                value_);
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value_,
+                                intrFun);
     }
   }
 
-  void clearMask(uint8_t mask) {
+  void clearMask(uint8_t mask, bool intrFun = false) {
     if (reg != REG::IOCON) {
       value_ &= ~mask;
       ESP_LOGI(REG_TAG, "New Value %d set  in register 0x%02X", value_,
                regAddress_);
-      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST,
-                                value_);
+      EventManager::createEvent(identity_, RegisterEvent::WRITE_REQUEST, value_,
+                                intrFun);
     }
   }
   void setAsReadOnly() { readOnly_ = true; }
@@ -392,7 +393,8 @@ struct Register {
       return false;
     }
     uint8_t index = Util::getPinIndex(pin);
-    setBitField(index, en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE);
+    setBitField(index, en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE,
+                true);
 
     return true;
   }
@@ -401,9 +403,9 @@ struct Register {
   setInterruptOnChange(uint8_t pinmask, INTR_ON_CHANGE_ENABLE en) {
 
     if (en == INTR_ON_CHANGE_ENABLE::ENABLE_INTR_ON_CHANGE) {
-      applyMask(pinmask);
+      applyMask(pinmask, true);
     } else {
-      clearMask(pinmask);
+      clearMask(pinmask, true);
     }
     return true;
   }
@@ -417,7 +419,8 @@ struct Register {
       return false;
     }
     uint8_t index = Util::getPinIndex(pin);
-    setBitField(index, cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL);
+    setBitField(index, cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL,
+                true);
 
     return true;
   }
@@ -426,9 +429,9 @@ struct Register {
   setInterruptType(uint8_t pinmask, INTR_ON_CHANGE_CONTROL cntrl) {
 
     if (cntrl == INTR_ON_CHANGE_CONTROL::COMPARE_WITH_DEFVAL) {
-      applyMask(pinmask);
+      applyMask(pinmask, true);
     } else {
-      clearMask(pinmask);
+      clearMask(pinmask, true);
     }
 
     return true;
@@ -441,7 +444,7 @@ struct Register {
       return false;
     }
     uint8_t index = Util::getPinIndex(pin);
-    setBitField(index, cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH);
+    setBitField(index, cmp == DEF_VAL_COMPARE::SAVE_LOGIC_HIGH, true);
 
     return true;
   }
@@ -456,6 +459,26 @@ struct Register {
     }
 
     return true;
+  }
+  template <REG T>
+  typename std::enable_if<T == REG::INTF, bool>::type readFlag() {
+
+    EventManager::createEvent(identity_, RegisterEvent::READ_REQUEST, 0, true);
+
+    EventBits_t bits = xEventGroupWaitBits(
+        EventManager::registerEventGroup,
+        static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED), pdFALSE,
+        pdFALSE, READ_TIMEOUT);
+
+    if (!(bits & static_cast<EventBits_t>(RegisterEvent::DATA_RECEIVED))) {
+      ESP_LOGE(REG_TAG, "Timeout waiting for DATA_RECEIVED event!");
+      return 0xFF;
+    }
+    currentEvent *event = EventManager::getEvent(RegisterEvent::DATA_RECEIVED);
+    EventManager::acknowledgeEvent(event);
+    EventManager::clearBits(RegisterEvent::DATA_RECEIVED);
+
+    return value_;
   }
   template <REG T>
   typename std::enable_if<T == REG::INTCAP, bool>::type clearInterrupt() {

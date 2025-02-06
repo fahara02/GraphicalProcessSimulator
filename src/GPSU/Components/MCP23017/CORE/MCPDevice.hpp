@@ -66,6 +66,8 @@ private:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
   std::unique_ptr<MCP::InterruptManager> interruptManager_;
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
+  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
+  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
 
 public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
@@ -141,6 +143,7 @@ public:
                        uint8_t mcpIntrmode = CHANGE,
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+
   void setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode = CHANGE,
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
@@ -154,6 +157,38 @@ public:
     uint8_t pinmask = generateMask(first, rest...);
     MCP::PORT port = first.getPort();
     setIntteruptPin(port, pinmask, mcpIntrmode, intrOutMode);
+  }
+
+  template <typename FirstCallback, typename... RestCallbacks>
+  void setupInterrupts(MCP::Pin pin, FirstCallback first, RestCallbacks... rest,
+                       uint8_t mcpIntrmode = CHANGE,
+                       MCP::INTR_OUTPUT_TYPE intrOutMode =
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
+
+    MCP::PORT port = pin.getPort();
+    uint8_t localIndex = pin.getIndex();
+    uint8_t mask = (1 << localIndex);
+
+    uint8_t maskA = getInterruptMask(MCP::PORT::GPIOA);
+    uint8_t maskB = getInterruptMask(MCP::PORT::GPIOB);
+
+    if (port == MCP::PORT::GPIOA) {
+      portACallbacks_[localIndex] = first;
+      maskA = maskA | mask;
+
+    } else {
+      portBCallbacks_[localIndex] = first;
+      maskB = maskB | mask;
+    }
+
+    if constexpr (sizeof...(rest) > 0) {
+      setInterruptCallbacks(rest...);
+    }
+
+    interruptManager_->setupIntteruptMask(MCP::PORT::GPIOA, maskA);
+    interruptManager_->setupIntteruptMask(MCP::PORT::GPIOB, maskB);
+
+    updateInterruptSetting(mcpIntrmode, intrOutMode);
   }
 
   void setupCommunication();
@@ -210,6 +245,12 @@ private:
       MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
       MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH,
       MCP::PairedInterrupt sharedIntr = MCP::PairedInterrupt::Disabled);
+
+  uint8_t getInterruptMask(MCP::PORT port) {
+    return interruptManager_->getMask(port);
+  }
+  void updateInterruptSetting(uint8_t mcpIntrmode,
+                              MCP::INTR_OUTPUT_TYPE intrOutMode);
 };
 
 } // namespace COMPONENT

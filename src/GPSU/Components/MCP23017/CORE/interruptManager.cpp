@@ -44,6 +44,12 @@ bool InterruptManager::updateRegisterValue(PORT port, uint8_t reg_address,
   return port == PORT::GPIOA ? regA.updateRegisterValue(reg_address, value)
                              : regB.updateRegisterValue(reg_address, value);
 }
+uint8_t InterruptManager::getIntrFlagA() {
+  return regA.intf->readFlag<REG::INTF>();
+}
+uint8_t InterruptManager::getIntrFlagB() {
+  return regB.intf->readFlag<REG::INTF>();
+}
 
 bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;

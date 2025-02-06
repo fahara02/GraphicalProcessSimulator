@@ -31,9 +31,6 @@ public:
              PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
   void setup(InterruptSetting &setting);
   bool enableInterrupt();
-  void setupIntteruptMask(PORT port, uint8_t mask = 0x00);
-
-  bool updateBankMode(bool value);
 
   uint8_t getIntrFlagA();
   uint8_t getIntrFlagB();
@@ -41,6 +38,11 @@ public:
   bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value);
   bool resetInterruptRegisters();
   void attachInterrupt(int pin, std::function<void(void *)>);
+
+  void setupIntteruptMask(PORT port, uint8_t mask = 0x00);
+  bool updateBankMode(bool value);
+
+  uint8_t getMask(PORT p) { return p == PORT::GPIOA ? maskA_ : maskB_; }
 
 private:
   MCP::MCP_MODEL model;
