@@ -86,30 +86,25 @@ bool InterruptManager::updateInterrputSetting() {
 
   return success;
 }
-bool InterruptManager::disableAllInterrupt() {
-  ESP_LOGI("MCP_DEVICE", "Disabling all interrupts - Step 1");
+bool InterruptManager::resetIntteruptRegisters() {
+  ESP_LOGI("MCP_DEVICE", "resetting all interrupts ");
 
   bool status = true;
 
-  ESP_LOGI("MCP_DEVICE", "Writing to GPINTEN register - Step 2");
   status &=
       (i2cBus_.write_mcp_register(regA.gpinten->getAddress(), 0x00, true) == 0);
-  ESP_LOGI("MCP_DEVICE", "GPINTEN done - Step 3");
 
   status &=
       (i2cBus_.write_mcp_register(regB.gpinten->getAddress(), 0x00, true) == 0);
-  ESP_LOGI("MCP_DEVICE", "INTCON reset - Step 4");
 
   status &=
       (i2cBus_.write_mcp_register(regA.intcon->getAddress(), 0x00, true) == 0);
   status &=
       (i2cBus_.write_mcp_register(regB.intcon->getAddress(), 0x00, true) == 0);
 
-  ESP_LOGI("MCP_DEVICE", "Reading INTCAP - Step 5");
   status &= (i2cBus_.read_mcp_register(regA.intcap->getAddress(), true) == 0);
   status &= (i2cBus_.read_mcp_register(regB.intcap->getAddress(), true) == 0);
 
-  ESP_LOGI("MCP_DEVICE", "Disable all interrupts complete - Step 6");
   return status;
 }
 
@@ -238,6 +233,46 @@ bool InterruptManager::updateBankMode(bool value) {
   regA.updateAddress(bankMode);
   regB.updateAddress(bankMode);
   return true;
+}
+
+void InterruptManager::attachInterrupt(int pin,
+                                       std::function<void(void *)> callback) {
+  if (setting_.intrSharing) {
+    // Shared interrupt configuration: use only pinA (if valid)
+    if (pinA_ != -1) {
+      callbackA_ = callback;
+      ESP_LOGI(INT_TAG, "Shared interrupt: callback attached to pinA (%d)",
+               pinA_);
+    } else {
+      ESP_LOGW(INT_TAG, "Shared interrupt enabled but pinA is invalid (-1).");
+    }
+  } else {
+    // Non-shared interrupt configuration: assign based on the given pin
+    if (pin == pinA_ && pinA_ != -1) {
+      callbackA_ = callback;
+      ESP_LOGI(INT_TAG, "Callback attached to pinA (%d)", pinA_);
+    } else if (pin == pinB_ && pinB_ != -1) {
+      callbackB_ = callback;
+      ESP_LOGI(INT_TAG, "Callback attached to pinB (%d)", pinB_);
+    } else {
+      ESP_LOGW(INT_TAG,
+               "attachInterrupt: Unknown or invalid pin %d (expected %d for "
+               "pinA or %d for pinB).",
+               pin, pinA_, pinB_);
+    }
+  }
+}
+
+void IRAM_ATTR InterruptManager::globalInterruptHandler(void *arg) {
+
+  InterruptManager *intrMgr = static_cast<InterruptManager *>(arg);
+  int triggeredPin = /* getTriggeredPin() */ 0;
+  if (triggeredPin == intrMgr->pinA_ && intrMgr->callbackA_) {
+    intrMgr->callbackA_(nullptr); // Pass any required argument.
+  } else if (triggeredPin == intrMgr->pinB_ && intrMgr->callbackB_) {
+    intrMgr->callbackB_(nullptr);
+  } else {
+  }
 }
 
 } // namespace MCP

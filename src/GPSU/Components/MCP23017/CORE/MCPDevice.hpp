@@ -56,6 +56,8 @@ private:
 
   static SemaphoreHandle_t regRWmutex;
   TaskHandle_t eventTaskHandle;
+  std::function<void(void *)> customIntAHandler_;
+  std::function<void(void *)> customIntBHandler_;
 
 public:
   std::shared_ptr<MCP::Register> cntrlRegA;
@@ -138,23 +140,26 @@ public:
   }
 
   void setupCommunication();
-
   void dumpRegisters() const;
-  MCP::I2CBus &getBus() { return i2cBus_; }
-  bool disableAllInterrupt();
+  bool resetIntteruptRegisters();
+  void attachInterrupt();
 
 private:
+  void initGPIOPins();
+  void initIntrGPIOPins();
   void loadSettings();
   void resetDevice();
+
   MCP::Register *getGPIORegister(MCP::REG reg, MCP::PORT port);
   MCP::Register *getIntRegister(MCP::REG reg, MCP::PORT port);
+
   uint8_t getsavedSettings(MCP::PORT port) const;
-
   uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const;
-
   uint8_t getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const;
+
   void startEventMonitorTask(MCPDevice *device);
   static void EventMonitorTask(void *param);
+
   void handleReadEvent(currentEvent *ev);
   void handleWriteEvent(currentEvent *ev);
   void handleSettingChangeEvent(currentEvent *ev);
@@ -173,6 +178,9 @@ private:
   populateAddressMap(bool bankMode);
 
   void updateAddressMap(bool bankMode);
+
+  static void IRAM_ATTR defaultIntAHandler(void *arg);
+  static void IRAM_ATTR defaultIntBHandler(void *arg);
 };
 
 } // namespace COMPONENT

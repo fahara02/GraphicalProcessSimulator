@@ -15,8 +15,8 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       cs_(GPIO_NUM_NC),                      //
       reset_(GPIO_NUM_33),                   //
       intA_(GPIO_NUM_NC), intB_(GPIO_NUM_NC),
-      i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
-      //
+      i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)), //
+
       cntrlRegA(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
                                                 MCP::PORT::GPIOA, bankMode_)),
       cntrlRegB(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
@@ -117,18 +117,26 @@ void MCPDevice::loadSettings() {
 
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
+  initGPIOPins();
   i2cBus_.init();
   EventManager::initializeEventGroups();
   startEventMonitorTask(this);
   interruptManager_->setupIntteruptMask(0X00, 0XFF);
   setupIntterupt();
-  disableAllInterrupt();
+  resetIntteruptRegisters();
 }
+void MCPDevice::initGPIOPins() {
+
+  gpio_pad_select_gpio(reset_);
+  gpio_set_direction(reset_, GPIO_MODE_OUTPUT);
+  gpio_set_level(reset_, 0);
+}
+
 bool MCPDevice::enableInterrupt() {
   return interruptManager_->enableInterrupt();
 }
-bool MCPDevice::disableAllInterrupt() {
-  return interruptManager_->disableAllInterrupt();
+bool MCPDevice::resetIntteruptRegisters() {
+  return interruptManager_->resetIntteruptRegisters();
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   if (!device) {
@@ -546,10 +554,6 @@ void MCPDevice::dumpRegisters() const {
       uint8_t addressA = getRegisterAddress(regA, MCP::PORT::GPIOA);
       uint8_t valueA = i2cBus_.read_mcp_register(addressA, true);
       uint8_t valueB = i2cBus_.read_mcp_register(addressA + 1, true);
-      // // Extract PORTA value
-      // uint8_t valueA = static_cast<uint16_t>(value) & 0xFF;
-      // // Extract PORTB value
-      // uint8_t valueB = (static_cast<uint16_t>(value) >> 8) & 0xFF;
 
       ESP_LOGI(MCP_TAG, "Register: %s (PORTA), Address: 0x%02X, Value: 0x%02X",
                Util::ToString::REG(regA), addressA, valueA);
@@ -581,12 +585,62 @@ void MCPDevice::dumpRegisters() const {
     }
   }
 }
+void MCPDevice::initIntrGPIOPins() {
 
+  // --- Configure intA pin as input with interrupt, if set ---
+  if (intA_ != static_cast<gpio_num_t>(-1)) {
+    gpio_pad_select_gpio(intA_);
+    gpio_set_direction(intA_, GPIO_MODE_INPUT);
+    gpio_set_intr_type(intA_, GPIO_INTR_POSEDGE);
+
+    // Use stored custom handler if available, otherwise use default.
+    std::function<void(void *)> intAHandler =
+        customIntAHandler_ ? customIntAHandler_ : [](void *arg) {
+          MCPDevice::defaultIntAHandler(arg);
+        };
+
+    // Ensure the ISR service is installed (installing multiple times is
+    // safe).
+    gpio_install_isr_service(0);
+
+    if (interruptManager_) {
+      interruptManager_->attachInterrupt(intA_, intAHandler);
+    }
+  }
+
+  // --- Configure intB pin as input with interrupt, if set ---
+  if (intB_ != static_cast<gpio_num_t>(-1)) {
+    gpio_pad_select_gpio(intB_);
+    gpio_set_direction(intB_, GPIO_MODE_INPUT);
+    gpio_set_intr_type(intB_, GPIO_INTR_POSEDGE);
+
+    std::function<void(void *)> intBHandler =
+        customIntBHandler_ ? customIntBHandler_ : [](void *arg) {
+          MCPDevice::defaultIntBHandler(arg);
+        };
+
+    gpio_install_isr_service(0);
+
+    if (interruptManager_) {
+      interruptManager_->attachInterrupt(intB_, intBHandler);
+    }
+  }
+}
 void MCPDevice::setupIntterupt(MCP::INTR_TYPE type,
                                MCP::INTR_OUTPUT_TYPE outtype,
                                MCP::PairedInterrupt sharedIntr) {
   interruptManager_->setup(static_cast<int>(intA_), static_cast<int>(intB_),
                            type, outtype, sharedIntr);
+  initIntrGPIOPins();
+}
+
+void IRAM_ATTR MCPDevice::defaultIntAHandler(void *arg) {
+  ESP_LOGI(MCP_TAG, "Default intA interrupt triggered.");
+}
+
+// Default interrupt handler for intB.
+void IRAM_ATTR MCPDevice::defaultIntBHandler(void *arg) {
+  ESP_LOGI(MCP_TAG, "Default intB interrupt triggered.");
 }
 
 } // namespace COMPONENT

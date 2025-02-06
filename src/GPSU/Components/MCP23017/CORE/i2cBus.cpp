@@ -22,7 +22,7 @@ void I2CBus::initMutex() {
     if (i2cMutex == nullptr) {
       ESP_LOGE("I2C_BUS", "Failed to create I2C mutex");
     } else {
-      initialized = true; // ✅ Prevent multiple initializations
+      initialized = true;
     }
   }
 }

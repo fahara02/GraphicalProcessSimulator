@@ -5,6 +5,7 @@
 #include "RegisterEvents.hpp"
 #include "Utility.hpp"
 #include "i2cBus.hpp"
+#include <functional>
 
 #define INT_TAG "INTR_MANAGER"
 
@@ -38,7 +39,8 @@ public:
   uint8_t getIntrFlagB();
   Register *getRegister(PORT port, REG reg);
   bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value);
-  bool disableAllInterrupt();
+  bool resetIntteruptRegisters();
+  void attachInterrupt(int pin, std::function<void(void *)>);
 
 private:
   MCP::MCP_MODEL model;
@@ -52,6 +54,8 @@ private:
   uint8_t maskB_ = 0x00;
   int pinA_ = 0;
   int pinB_ = 0;
+  std::function<void(void *)> callbackA_;
+  std::function<void(void *)> callbackB_;
 
   bool updateInterrputSetting();
   bool setupIntteruptOnChnage();
@@ -60,6 +64,7 @@ private:
   bool setupIntteruptWithDefval(bool savedValue);
   bool confirmRegisterIsSet(PORT port, REG regTpe, uint8_t bitMask);
   bool checkRegistersExists();
+  static void IRAM_ATTR globalInterruptHandler(void *arg);
   using Field = Config::Field;
 };
 
