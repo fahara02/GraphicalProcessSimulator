@@ -32,7 +32,6 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
 
 {
   init();
-  loadSettings();
 }
 MCPDevice::~MCPDevice() = default;
 void MCPDevice::configure(const MCP::Settings &setting) {
@@ -122,14 +121,20 @@ void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
   i2cBus_.init();
   EventManager::initializeEventGroups();
+  startEventMonitorTask(this);
   interruptManager_->setupIntteruptMask(0X00, 0XFF);
   setupIntterupt();
 
-  startEventMonitorTask(this);
+  // disableAllInterrupt();
+  //  loadSettings();
+
   // gpioBankB->setInterruptMask(0xFF);
 }
 bool MCPDevice::enableInterrupt() {
   return interruptManager_->enableInterrupt();
+}
+bool MCPDevice::disableAllInterrupt() {
+  return interruptManager_->disableAllInterrupt();
 }
 void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   if (!device) {

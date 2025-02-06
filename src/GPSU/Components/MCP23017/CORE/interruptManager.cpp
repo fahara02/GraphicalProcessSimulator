@@ -14,17 +14,19 @@ InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
 void InterruptManager::setup(int pinA, int pinB, INTR_TYPE type,
                              INTR_OUTPUT_TYPE outtype,
                              PairedInterrupt sharedIntr) {
-  ESP_LOGI(INT_TAG, "setting up intterupts");
+
   setting_.intrType = type;
   setting_.intrOutputType = outtype;
   setting_.intrSharing = sharedIntr == PairedInterrupt::Enabled ? true : false;
 
   pinA_ = pinA != -1 ? pinA : -1;
   pinB_ = pinB != -1 ? pinB : -1;
+  ESP_LOGI(INT_TAG, "setting loaded");
 }
 void InterruptManager::setupIntteruptMask(uint8_t maskA, uint8_t maskB) {
   maskA_ = maskA;
   maskB_ = maskB;
+  ESP_LOGI(INT_TAG, "mask loaded");
 }
 
 Register *InterruptManager::getRegister(PORT port, REG reg) {
@@ -84,7 +86,36 @@ bool InterruptManager::updateInterrputSetting() {
 
   return success;
 }
+bool InterruptManager::disableAllInterrupt() {
 
+  bool status = true; // Track if all writes succeed
+  ESP_LOGI(INT_TAG, "Disabling interrupts");
+
+  // Disable all interrupts
+  status &=
+      (i2cBus_.write_mcp_register(regA.gpinten->getAddress(), 0x00, true) == 0);
+  status &=
+      (i2cBus_.write_mcp_register(regB.gpinten->getAddress(), 0x00, true) == 0);
+
+  // Reset INTCON (set edge-triggered mode)
+  status &=
+      (i2cBus_.write_mcp_register(regA.intcon->getAddress(), 0x00, true) == 0);
+  status &=
+      (i2cBus_.write_mcp_register(regB.intcon->getAddress(), 0x00, true) == 0);
+
+  // Reset DEFVAL (default comparison value)
+  status &=
+      (i2cBus_.write_mcp_register(regA.defval->getAddress(), 0x00, true) == 0);
+  status &=
+      (i2cBus_.write_mcp_register(regB.defval->getAddress(), 0x00, true) == 0);
+
+  // Read INTCAP to clear it
+
+  status &= (i2cBus_.read_mcp_register(regA.intcap->getAddress(), true) == 0);
+  status &= (i2cBus_.read_mcp_register(regB.intcap->getAddress(), true) == 0);
+
+  return status;
+}
 bool InterruptManager::setupIntteruptOnChnage() {
   bool success = false;
   setting_.icoControl = INTR_ON_CHANGE_CONTROL::COMPARE_WITH_OLD_VALUE;

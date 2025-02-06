@@ -38,6 +38,7 @@ public:
   uint8_t getIntrFlagB();
   Register *getRegister(PORT port, REG reg);
   bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value);
+  bool disableAllInterrupt();
 
 private:
   MCP::MCP_MODEL model;

@@ -12,6 +12,7 @@ void I2CBus::init() {
     ESP_LOGE(I2C_BUS, "I2C initialization failed!");
   }
 }
+
 void I2CBus::setPin(int sda, int scl) {
   sda_ = sda;
   scl_ = scl;

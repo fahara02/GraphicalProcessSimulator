@@ -173,6 +173,7 @@ private:
   populateAddressMap(bool bankMode);
 
   void updateAddressMap(bool bankMode);
+  bool disableAllInterrupt();
 };
 
 } // namespace COMPONENT

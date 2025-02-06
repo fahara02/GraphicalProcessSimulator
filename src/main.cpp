@@ -89,7 +89,7 @@ void setup() {
   expander.dumpRegisters();
   delay(1000);
   MCP::Settings setting;
-  setting.opMode = MCP::OperationMode::SequentialMode16;
+  setting.opMode = MCP::OperationMode::SequentialMode8;
   expander.configure(setting);
   delay(1000);
   // expander.enableInterrupt();
@@ -98,8 +98,8 @@ void setup() {
   delay(1000);
   expander.pinMode(MCP::PORT::GPIOB, INPUT);
   delay(1000);
-  expander.invertInput(MCP::PORT::GPIOB, true);
-  delay(1000);
+  // expander.invertInput(MCP::PORT::GPIOB, true);
+  // delay(1000);
   expander.dumpRegisters();
 
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
