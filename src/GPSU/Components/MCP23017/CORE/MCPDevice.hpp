@@ -150,14 +150,14 @@ public:
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
-  template <typename Pin, typename... RestPins>
-  auto setInterupts(Pin &&first, RestPins &&...rest)
-      -> std::enable_if_t<(std::is_same_v<Pin, MCP::Pin> && ... &&
-                           std::is_same_v<RestPins, MCP::Pin>)> {
-    uint8_t pinmask = generateMask(first, rest...);
-    MCP::PORT port = first.getPort();
-    interruptManager_->setupInterruptMask(port, pinmask);
-  }
+  // template <typename Pin, typename... RestPins>
+  // auto setInterupts(Pin &&first, RestPins &&...rest)
+  //     -> std::enable_if_t<(std::is_same_v<Pin, MCP::Pin> && ... &&
+  //                          std::is_same_v<RestPins, MCP::Pin>)> {
+  //   uint8_t pinmask = generateMask(first, rest...);
+  //   MCP::PORT port = first.getPort();
+  //   interruptManager_->setupInterruptMask(port, pinmask);
+  // }
   template <typename Pin, typename... Rest>
   auto setInterrupts(Pin &&pin, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
