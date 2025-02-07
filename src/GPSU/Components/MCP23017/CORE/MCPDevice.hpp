@@ -163,25 +163,37 @@ public:
 
   template <typename Pin, typename Callback, typename... Rest>
   auto setupInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
-      -> std::enable_if_t<
-          std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
-          std::is_same_v<std::decay_t<Callback>, std::function<void(void *)>>> {
-    // Store callback for the pin
+      -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
+                          std::is_invocable_v<Callback, void *>> {
+
     MCP::PORT port = pin.getPort();
     uint8_t localIndex = pin.getIndex();
     uint8_t mask = (1 << localIndex);
 
     interruptManager_->updateMask(port, mask);
-    interruptManager_->setCallback(port, localIndex,
-                                   std::forward<Callback>(callback));
+    interruptManager_->registerCallback(port, localIndex, callback);
+
     setupInterrupts(std::forward<Rest>(rest)...);
   }
 
-  // Base case: Process configuration settings
-  void setupInterrupts(uint8_t mcpIntrmode = CHANGE,
-                       MCP::INTR_OUTPUT_TYPE intrOutMode =
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
+  template <typename Pin, typename Callback, typename T, typename... Rest>
+  auto setupInterrupts(Pin &&pin, Callback &&callback, T *userData,
+                       Rest &&...rest)
+      -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
+                          std::is_invocable_v<Callback, T *>> {
 
+    MCP::PORT port = pin.getPort();
+    uint8_t localIndex = pin.getIndex();
+    uint8_t mask = (1 << localIndex);
+
+    interruptManager_->updateMask(port, mask);
+    interruptManager_->registerCallback<T>(port, localIndex, callback,
+                                           userData);
+
+    setupInterrupts(std::forward<Rest>(rest)...);
+  }
+
+  void setupInterrupts(int mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode) {
     updateInterruptSetting(mcpIntrmode, intrOutMode);
   }
 
@@ -254,9 +266,9 @@ private:
   uint8_t getInterruptMask(MCP::PORT port) {
     return interruptManager_->getMask(port);
   }
-  void updateInterruptSetting(uint8_t mcpIntrmode,
+  void updateInterruptSetting(int mcpIntrmode,
                               MCP::INTR_OUTPUT_TYPE intrOutMode);
-  gpio_int_type_t coverIntrMode(uint8_t mode);
+  gpio_int_type_t coverIntrMode(int mode);
 };
 
 } // namespace COMPONENT

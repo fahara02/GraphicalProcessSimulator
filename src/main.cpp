@@ -69,10 +69,13 @@ void RunTask(void *param);
 COMPONENT::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
 // void cb1(void *param);
 // void cb2(void *param);
-void exampleCallback(void *param) { Serial.println("hello"); }
-void example2Callback(void *param) { Serial.println("hello"); }
-std::function<void(void *)> cb1 = exampleCallback;
-std::function<void(void *)> cb2 = example2Callback;
+
+void cb1(void *data) { Serial.println(" lower limit reached"); }
+void cb2(void *data) { Serial.println(" Higher limit reached"); }
+
+void cb3(int *data) { Serial.println(" lower limit reached"); }
+void cb4(int *data) { Serial.println(" Higher limit reached"); }
+
 void setup() {
 
   Serial.begin(115200);
@@ -106,7 +109,13 @@ void setup() {
   delay(1000);
   expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
   delay(1000);
-  expander.setupInterrupts(GPB5, cb1, GPB6, cb2, RISING);
+  int sensorThershold = 12;
+  expander.setupInterrupts(GPB5, cb1, GPB6, cb2, RISING,
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+
+  expander.setupInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
+                           &sensorThershold, RISING,
+                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   expander.dumpRegisters();
 
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,

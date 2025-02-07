@@ -21,12 +21,20 @@ struct InterruptSetting {
 };
 
 class InterruptManager {
+private:
+  struct Callback {
+    std::function<void()> fn;
+    void *userData;
+  };
+  std::array<Callback, MCP::PIN_PER_BANK> portACallbacks_;
+  std::array<Callback, MCP::PIN_PER_BANK> portBCallbacks_;
+
+  // std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
+  // std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
 
 public:
-  std::function<void(void *)> callbackA_;
-  std::function<void(void *)> callbackB_;
-  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
-  std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
+  void *userDataA_;
+  void *userDataB_;
 
   explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                             std::shared_ptr<MCP::Register> iconA,
@@ -42,25 +50,20 @@ public:
   Register *getRegister(PORT port, REG reg);
   bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value);
   bool resetInterruptRegisters();
-  void attachInterrupt(int pin, std::function<void(void *)>);
 
   void setupInterruptMask(PORT port, uint8_t mask = 0x00);
   bool updateBankMode(bool value);
 
   uint8_t getMask(PORT p) { return p == PORT::GPIOA ? maskA_ : maskB_; }
 
-  void setCallback(MCP::PORT port, uint8_t index,
-                   std::function<void(void *)> callback) {
-    if (port == MCP::PORT::GPIOA) {
-      portACallbacks_[index] = std::move(callback);
-    } else {
-      portBCallbacks_[index] = std::move(callback);
-    }
-  }
-
-  template <typename T>
-  void registerCallback(MCP::PORT port, uint8_t pin, void (*handler)(T *),
-                        T *data);
+  // void setCallback(MCP::PORT port, uint8_t index,
+  //                  std::function<void(void *)> callback) {
+  //   if (port == MCP::PORT::GPIOA) {
+  //     portACallbacks_[index] = std::move(callback);
+  //   } else {
+  //     portBCallbacks_[index] = std::move(callback);
+  //   }
+  // }
 
   void updateMask(MCP::PORT port, uint8_t mask) {
     if (port == MCP::PORT::GPIOA) {
@@ -70,21 +73,44 @@ public:
     }
   }
 
-  static void IRAM_ATTR globalInterruptHandler(void *arg);
-  static void invokeCallback(PORT port, uint8_t pinindex, void *arg);
+  // static void IRAM_ATTR globalInterruptHandler(void *arg);
+  void invokeCallback(PORT port, uint8_t pinindex);
+
   void setUserData(PORT port, void *userData) {
+
     if (port == PORT::GPIOA) {
       userDataA_ = userData;
     } else {
       userDataB_ = userData;
     }
   }
-  InterruptSetting getSetting() const { return setting_; }
-  bool isINTA() { return pinA_ != (-1); }
-  bool isINTB() { return pinB_ != (-1); }
-  bool isINTSharing() { return setting_.intrSharing; }
   void *getUserData(PORT port) {
     return port == PORT::GPIOA ? userDataA_ : userDataB_;
+  }
+  InterruptSetting getSetting() const { return setting_; }
+
+  void IRAM_ATTR handleInterrupt(MCP::PORT port);
+  void IRAM_ATTR processPort(MCP::PORT port, uint8_t flag);
+
+  void registerCallback(MCP::PORT port, uint8_t pin, void (*func)(void *)) {
+    registerCallback<void>(port, pin, func, nullptr);
+  }
+
+  template <typename T>
+  void registerCallback(MCP::PORT port, uint8_t pin, void (*func)(T *),
+                        T *data) {
+    if (pin >= MCP::PIN_PER_BANK)
+      return;
+
+    Callback cb;
+    cb.fn = [func, data]() { func(data); };
+    cb.userData = static_cast<void *>(data);
+
+    if (port == MCP::PORT::GPIOA) {
+      portACallbacks_[pin] = cb;
+    } else {
+      portBCallbacks_[pin] = cb;
+    }
   }
 
 private:
@@ -99,8 +125,6 @@ private:
   uint8_t maskB_ = 0x00;
   int pinA_ = -1;
   int pinB_ = -1;
-  void *userDataA_ = nullptr;
-  void *userDataB_ = nullptr;
 
   bool updateInterrputSetting();
   bool setupIntteruptOnChnage();

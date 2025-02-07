@@ -28,8 +28,6 @@ enum class REG : uint8_t {
   OLAT          //!< Output Latch Register
 };
 
-
-
 enum class PIN {
   PIN0 = 0,
   PIN1 = 1,
@@ -157,6 +155,8 @@ enum class Slew { Enabled, Disabled };
 enum class HardwareAddr { Disabled, Enabled }; // Only for SPI
 enum class OpenDrain { Disabled, Enabled };
 enum class InterruptPolarity { ActiveLow, ActiveHigh };
+
+
 
 } // namespace MCP
 #endif

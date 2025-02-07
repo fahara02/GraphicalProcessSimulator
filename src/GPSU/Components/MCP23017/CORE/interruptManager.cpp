@@ -243,81 +243,42 @@ bool InterruptManager::updateBankMode(bool value) {
   return true;
 }
 
-void InterruptManager::attachInterrupt(int pin,
-                                       std::function<void(void *)> callback) {
-  if (setting_.intrSharing) {
-    // Shared interrupt configuration: use only pinA (if valid)
-    if (pinA_ != -1) {
-      callbackA_ = callback;
-      ESP_LOGI(INT_TAG, "Shared interrupt: callback attached to pinA (%d)",
-               pinA_);
-    } else {
-      ESP_LOGW(INT_TAG, "Shared interrupt enabled but pinA is invalid (-1).");
-    }
+
+
+void IRAM_ATTR InterruptManager::handleInterrupt(MCP::PORT sourcePort) {
+  const bool isSharing = setting_.intrSharing;
+  uint8_t flagA = getIntrFlagA();
+  uint8_t flagB = getIntrFlagB();
+
+  if (isSharing) {
+    // Process both ports on any interrupt
+    processPort(PORT::GPIOA, flagA);
+    processPort(PORT::GPIOB, flagB);
   } else {
-    // Non-shared interrupt configuration: assign based on the given pin
-    if (pin == pinA_ && pinA_ != -1) {
-      callbackA_ = callback;
-      ESP_LOGI(INT_TAG, "Callback attached to pinA (%d)", pinA_);
-    } else if (pin == pinB_ && pinB_ != -1) {
-      callbackB_ = callback;
-      ESP_LOGI(INT_TAG, "Callback attached to pinB (%d)", pinB_);
-    } else {
-      ESP_LOGW(INT_TAG,
-               "attachInterrupt: Unknown or invalid pin %d (expected %d for "
-               "pinA or %d for pinB).",
-               pin, pinA_, pinB_);
+    // Process only the triggering port
+    processPort(sourcePort, (sourcePort == PORT::GPIOA) ? flagA : flagB);
+  }
+}
+
+void IRAM_ATTR InterruptManager::processPort(MCP::PORT port, uint8_t flag) {
+  for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
+    if (flag & (1 << i)) {
+      invokeCallback(port, i);
     }
   }
 }
 
-void IRAM_ATTR globalInterruptHandler(void *arg) {
-  InterruptManager *manager = static_cast<InterruptManager *>(arg);
+void InterruptManager::invokeCallback(MCP::PORT port, uint8_t pinindex) {
 
-  // Determine which ports to process
-  const bool isSharing = manager->isINTSharing();
-  const bool processA = manager->isINTA();
-  const bool processB = manager->isINTB() && !isSharing;
-
-  // Read flags only if needed
-  uint8_t flagA = processA ? manager->getIntrFlagA() : 0;
-  uint8_t flagB = (processB || isSharing) ? manager->getIntrFlagB() : 0;
-
-  if (isSharing && processA) {
-    for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
-      if (flagA & (1 << i))
-        manager->invokeCallback(MCP::PORT::GPIOA, i, manager);
-      if (flagB & (1 << i))
-        manager->invokeCallback(MCP::PORT::GPIOB, i, manager);
-    }
+  Callback cb;
+  if (port == MCP::PORT::GPIOA) {
+    cb = portACallbacks_[pinindex];
   } else {
-    // Individual port handling
-    if (processA) {
-      for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
-        if (flagA & (1 << i))
-          manager->invokeCallback(MCP::PORT::GPIOA, i, manager);
-      }
-    }
-    if (processB) {
-      for (uint8_t i = 0; i < MCP::PIN_PER_BANK; ++i) {
-        if (flagB & (1 << i))
-          manager->invokeCallback(MCP::PORT::GPIOB, i, manager);
-      }
-    }
+    cb = portBCallbacks_[pinindex];
   }
-}
 
-void InterruptManager::invokeCallback(PORT port, uint8_t pinindex, void *arg) {
-  InterruptManager *manager = static_cast<InterruptManager *>(arg);
-  void *userData = manager->getUserData(port);
-  if (port == PORT::GPIOA) {
-    if (manager->portACallbacks_[pinindex]) {
-      manager->portACallbacks_[pinindex](userData);
-    }
-  } else {
-    if (manager->portACallbacks_[pinindex]) {
-      manager->portBCallbacks_[pinindex](userData);
-    }
+  if (cb.fn) {
+    cb.fn();
   }
 }
 

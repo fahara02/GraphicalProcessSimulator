@@ -595,7 +595,7 @@ void MCPDevice::setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode,
                   mcpIntrmode, intrOutMode);
 }
 
-void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
+void MCPDevice::updateInterruptSetting(int mcpIntrmode,
                                        MCP::INTR_OUTPUT_TYPE intrOutMode) {
   intrSetting_.intrOutputType = intrOutMode;
   switch (mcpIntrmode) {
@@ -663,12 +663,11 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA,
       pinB != static_cast<gpio_num_t>(-1)) {
     intrSetting_.intrSharing = false;
   }
-  interruptManager_->setUserData(MCP::PORT::GPIOA, userDataA_);
-  interruptManager_->setUserData(MCP::PORT::GPIOB, userDataB_);
+
   interruptManager_->setup(intrSetting_);
   initIntrGPIOPins(coverIntrMode(espIntrmodeA), coverIntrMode(espIntrmodeB));
 }
-gpio_int_type_t MCPDevice::coverIntrMode(uint8_t mode) {
+gpio_int_type_t MCPDevice::coverIntrMode(int mode) {
 
   gpio_int_type_t intMode = gpio_int_type_t::GPIO_INTR_DISABLE;
   switch (mode) {
@@ -691,7 +690,7 @@ void IRAM_ATTR MCPDevice::defaultIntAHandler(void *arg) {
   if (device->customIntAHandler_) {
     device->customIntAHandler_(device->userDataA_);
   } else {
-    device->interruptManager_->globalInterruptHandler(device->userDataA_);
+    device->interruptManager_->handleInterrupt(MCP::PORT::GPIOA);
   }
 }
 
@@ -700,9 +699,13 @@ void IRAM_ATTR MCPDevice::defaultIntBHandler(void *arg) {
   if (device->customIntBHandler_) {
     device->customIntBHandler_(device->userDataB_);
   } else {
-    device->interruptManager_->globalInterruptHandler(device->userDataB_);
+    device->interruptManager_->handleInterrupt(MCP::PORT::GPIOB);
   }
 }
+
+// Variadic template to handle pin, callback, and userData triplets
+// Modify the callback type to be a raw function pointer
+
 
 void MCPDevice::dumpRegisters() const {
   ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
