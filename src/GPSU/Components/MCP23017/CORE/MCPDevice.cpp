@@ -4,6 +4,7 @@
 
 using namespace MCP;
 namespace COMPONENT {
+
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
 MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
     : model_(model), configuration_(model),
@@ -25,10 +26,9 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, cntrlRegA)),
       gpioBankB(
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
-
+      addressMap_(populateAddressMap(bankMode_)),
       interruptManager_(std::make_unique<MCP::InterruptManager>(
-          model, i2cBus_, cntrlRegA, cntrlRegB)),
-      addressMap_(populateAddressMap(bankMode_))
+          model, i2cBus_, cntrlRegA, cntrlRegB))
 
 {}
 MCPDevice::~MCPDevice() = default;
@@ -278,7 +278,7 @@ void MCPDevice::invertInput(int pin, bool invert) {
 
 void MCPDevice::EventMonitorTask(void *param) {
   MCPDevice *device = static_cast<MCPDevice *>(param);
-
+  MCP::InterruptManager *manager = device->interruptManager_.get();
   while (true) {
     // Wait for events
     size_t queueSize = EventManager::getQueueSize();
@@ -364,6 +364,68 @@ void MCPDevice::EventMonitorTask(void *param) {
         Serial.printf(" Monitor task (Settings): Failed to get mutex!");
       }
     }
+    if (xSemaphoreTake(manager->portATrigger, portMAX_DELAY) ||
+        manager->hasflagReadAFailed()) {
+
+      uint8_t flagA = 0;
+      uint8_t flagB = 0;
+      bool result = manager->getInterruptFlags(flagA, flagB);
+
+      if (!result) {
+        Serial.printf(
+            "Port A: Interrupt flag read failed retrying for %d time...\n",
+            manager->getRetryA());
+        manager->retryFlagReadA();
+
+        if (manager->getRetryA() > MCP::MAX_RETRY) {
+          manager->resetRetryA();
+          Serial.println("Port A: Interrupt flag read retry limit reached !");
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+
+      if (manager->isSharing()) {
+
+        manager->processPort(PORT::GPIOA, flagA);
+        manager->processPort(PORT::GPIOB, flagB);
+      } else {
+
+        manager->processPort(PORT::GPIOA, flagA);
+      }
+      manager->clearInterrupt();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (xSemaphoreTake(manager->portBTrigger, portMAX_DELAY) ||
+        manager->hasflagReadBFailed()) {
+      uint8_t flagA = 0;
+      uint8_t flagB = 0;
+      bool result = manager->getInterruptFlags(flagA, flagB);
+
+      if (!result) {
+        Serial.printf(
+            "Port B: Interrupt flag read failed retrying for %d time...\n",
+            manager->getRetryB());
+        manager->retryFlagReadB();
+
+        if (manager->getRetryB() > MCP::MAX_RETRY) {
+          manager->resetRetryB();
+          Serial.println("Port B: Interrupt flag read retry limit reached !");
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+
+      if (manager->isSharing()) {
+
+        manager->processPort(PORT::GPIOA, flagA);
+        manager->processPort(PORT::GPIOB, flagB);
+      } else {
+
+        manager->processPort(PORT::GPIOB, flagB);
+      }
+      manager->clearInterrupt();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
     vTaskDelay(pdMS_TO_TICKS(10));
   }
   vTaskDelete(NULL);

@@ -125,6 +125,8 @@ public:
     retryCountB = 0;
   }
   bool hasflagReadBFailed() const { return retryFalgReadB; }
+  static SemaphoreHandle_t portATrigger;
+  static SemaphoreHandle_t portBTrigger;
 
 private:
   MCP::MCP_MODEL model;
@@ -145,11 +147,9 @@ private:
 
   bool initIntrGPIOPins();
 
-  void startInterruptTask(InterruptManager *manager);
+  void init(InterruptManager *manager);
   static void InterruptProcessorTask(void *param);
   TaskHandle_t intrTaskHandle;
-  static SemaphoreHandle_t portATrigger;
-  static SemaphoreHandle_t portBTrigger;
 
   bool updateInterrputSetting();
   bool setupIntteruptOnChnage();

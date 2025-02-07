@@ -17,19 +17,18 @@ InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
 
   regA.setup(model, PORT::GPIOA, bankMode);
   regB.setup(model, PORT::GPIOA, bankMode);
-  startInterruptTask(this);
+  init(this);
 }
-void InterruptManager::startInterruptTask(InterruptManager *manager) {
+void InterruptManager::init(InterruptManager *manager) {
   bool initialised = false;
   if (manager) {
     if (!initialised) {
       portATrigger = xSemaphoreCreateBinary();
       portBTrigger = xSemaphoreCreateBinary();
-      xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
-                              4196, manager, 5, &intrTaskHandle, 0);
+      // xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
+      //                         4196, manager, 5, &intrTaskHandle, 1);
 
-      if (intrTaskHandle != nullptr && portATrigger != nullptr &&
-          portBTrigger != nullptr) {
+      if (portATrigger != nullptr && portBTrigger != nullptr) {
         initialised = true;
       }
     }
