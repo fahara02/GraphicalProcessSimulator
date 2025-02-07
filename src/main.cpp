@@ -113,6 +113,8 @@ void setup() {
   expander.setInterrupts(GPB1, GPB2);
   expander.setInterrupts(GPB3, GPB4, RISING,
                          MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  expander.setInterrupts(GPB5, cb1, GPB6, cb2, RISING,
+                         MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   expander.setInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
                          &sensorThershold, RISING,
                          MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);

@@ -160,16 +160,7 @@ public:
   //   MCP::PORT port = first.getPort();
   //   interruptManager_->setupInterruptMask(port, pinmask);
   // }
-  template <typename Pin1, typename Pin2, typename... Rest>
-  auto setInterrupts(Pin1 &&first, Pin2 &&second, Rest &&...rest)
-      -> std::enable_if_t<std::is_same_v<std::decay_t<Pin1>, MCP::Pin> &&
-                          std::is_same_v<std::decay_t<Pin2>, MCP::Pin> &&
-                          (std::is_same_v<std::decay_t<Rest>, MCP::Pin> ||
-                           ...)> {
-    uint8_t pinmask = generateMask(first, second, rest...);
-    MCP::PORT port = first.getPort();
-    interruptManager_->setupInterruptMask(port, pinmask);
-  }
+
   // template <typename Pin, typename... Rest>
   // auto setInterrupts(Pin &&pin, Rest &&...rest)
   //     -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
@@ -186,11 +177,21 @@ public:
     uint8_t mask = (1 << pin.getIndex());
     interruptManager_->updateMask(port, mask);
   }
+
+  template <typename Pin1, typename Pin2, typename... Rest>
+  auto setInterrupts(Pin1 &&first, Pin2 &&second, Rest &&...rest)
+      -> std::enable_if_t<std::is_same_v<std::decay_t<Pin1>, MCP::Pin> &&
+                          std::is_same_v<std::decay_t<Pin2>, MCP::Pin> &&
+                          (std::is_same_v<std::decay_t<Rest>, MCP::Pin> ||
+                           ...)> {
+    uint8_t pinmask = generateMask(first, second, rest...);
+    MCP::PORT port = first.getPort();
+    interruptManager_->setupInterruptMask(port, pinmask);
+  }
   template <typename Pin, typename... Rest>
   auto setInterrupts(Pin &&pin, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
-                          (sizeof...(Rest) > 0) && // Ensures recursion is used
-                                                   // properly
+                          (sizeof...(Rest) > 0) &&
                           !(std::is_invocable_v<Rest, void *> || ...)> {
     MCP::PORT port = pin.getPort();
     uint8_t mask = (1 << pin.getIndex());
@@ -288,10 +289,10 @@ private:
 
   template <typename Pin1, typename Pin2, typename... Rest>
   constexpr uint8_t generateMask(Pin1 first, Pin2 second, Rest... rest) {
-    // static_assert(sizeof...(rest) > 6, "Too many pins, max is 8");
+    static_assert(sizeof...(rest) <= 6, "Too many pins, max is 8");
     MCP::PORT port = first.getPort();
     assert(((second.getPort() == port)));
-    assert(((rest.getPort() == port) && ...));
+    assert((... && (rest.getPort() == port)));
 
     return (1 << first.getIndex()) | (1 << second.getIndex()) |
            (0 | ... | (1 << rest.getIndex()));
