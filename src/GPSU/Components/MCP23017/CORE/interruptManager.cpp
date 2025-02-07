@@ -91,25 +91,9 @@ void InterruptManager::setup(InterruptSetting &setting) {
   setting_.intrType = setting.intrType;
   setting_.intrOutputType = setting.intrOutputType;
   setting_.intrSharing = setting.intrSharing;
-
+  setting_.modeA_ = setting.modeA_;
+  setting_.modeB_ = setting.modeB_;
   ESP_LOGI(INT_TAG, "setting loaded");
-}
-void InterruptManager::updateSetting(uint8_t mcpIntrmode,
-                                     MCP::INTR_OUTPUT_TYPE intrOutMode) {
-  setting_.intrOutputType = intrOutMode;
-  switch (mcpIntrmode) {
-  case CHANGE:
-    setting_.intrType = MCP::INTR_TYPE::INTR_ON_CHANGE;
-    break;
-  case RISING:
-    setting_.intrType = MCP::INTR_TYPE::INTR_ON_RISING;
-    break;
-  case FALLING:
-    setting_.intrType = MCP::INTR_TYPE::INTR_ON_FALLING;
-    break;
-  default:
-    break;
-  }
 }
 
 bool InterruptManager::updateBankMode(bool value) {

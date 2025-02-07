@@ -104,7 +104,6 @@ public:
     }
   }
 
-  void updateSetting(uint8_t mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode);
   void clearInterrupt();
 
 private:
@@ -134,8 +133,6 @@ private:
   bool setupIntrOutput();
   bool setupIntteruptWithDefval(bool savedValue);
   bool confirmRegisterIsSet(PORT port, REG regTpe, uint8_t bitMask);
-
-
 
   static void IRAM_ATTR defaultIntAHandler(void *arg);
   static void IRAM_ATTR defaultIntBHandler(void *arg);

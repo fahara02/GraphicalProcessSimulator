@@ -558,8 +558,9 @@ void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
                                 uint8_t mcpIntrmode,
                                 MCP::INTR_OUTPUT_TYPE intrOutMode) {
 
-  interruptManager_->setupInterruptMask(port, pinmask);
   updateInterruptSetting(mcpIntrmode, intrOutMode);
+  interruptManager_->setupInterruptMask(port, pinmask);
+  interruptManager_->setup(intrSetting_);
 }
 
 void MCPDevice::setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode,

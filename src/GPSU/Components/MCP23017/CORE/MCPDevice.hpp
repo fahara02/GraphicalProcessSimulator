@@ -162,7 +162,7 @@ public:
   }
 
   template <typename Pin, typename Callback, typename... Rest>
-  auto setMcpInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
+  auto setInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           std::is_invocable_v<Callback, void *>> {
 
@@ -173,12 +173,12 @@ public:
     interruptManager_->updateMask(port, mask);
     interruptManager_->registerCallback(port, localIndex, callback);
 
-    setMcpInterrupts(std::forward<Rest>(rest)...);
+    setInterrupts(std::forward<Rest>(rest)...);
   }
 
   template <typename Pin, typename Callback, typename T, typename... Rest>
-  auto setMcpInterrupts(Pin &&pin, Callback &&callback, T *userData,
-                        Rest &&...rest)
+  auto setInterrupts(Pin &&pin, Callback &&callback, T *userData,
+                     Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           std::is_invocable_v<Callback, T *>> {
 
@@ -190,12 +190,12 @@ public:
     interruptManager_->registerCallback<T>(port, localIndex, callback,
                                            userData);
 
-    setMcpInterrupts(std::forward<Rest>(rest)...);
+    setInterrupts(std::forward<Rest>(rest)...);
   }
 
-  void setMcpInterrupts(uint8_t mcpIntrmode,
-                        MCP::INTR_OUTPUT_TYPE intrOutMode) {
-    interruptManager_->updateSetting(mcpIntrmode, intrOutMode);
+  void setInterrupts(uint8_t mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode) {
+    updateInterruptSetting(mcpIntrmode, intrOutMode);
+    interruptManager_->setup(intrSetting_);
   }
 
   // Interrupt  handling on esp32 Side
