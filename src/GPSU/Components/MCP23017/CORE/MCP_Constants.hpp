@@ -77,12 +77,14 @@ static constexpr uint16_t MAX_REG_PER_PORT = 11;
 static constexpr uint16_t MAX_REG_PER_DEVICE = 2 * MAX_REG_PER_PORT;
 static constexpr uint16_t MAX_CALLBACK_PER_REG = 2;
 static constexpr uint16_t MAX_EVENT = 100;
+static constexpr uint16_t MAX_RETRY = 10;
 
 static constexpr TickType_t DEFAULT_I2C_TIMEOUT = pdMS_TO_TICKS(1000);
 static constexpr TickType_t MUTEX_TIMEOUT = pdMS_TO_TICKS(50);
 static constexpr TickType_t RW_MUTEX_TIMEOUT = pdMS_TO_TICKS(50);
 static constexpr TickType_t I2C_MUTEX_TIMEOUT = pdMS_TO_TICKS(50);
 static constexpr TickType_t READ_TIMEOUT = pdMS_TO_TICKS(10);
+
 enum class MASK {
   NONE = 0x00,
   ALL = 0xFF,
@@ -155,8 +157,6 @@ enum class Slew { Enabled, Disabled };
 enum class HardwareAddr { Disabled, Enabled }; // Only for SPI
 enum class OpenDrain { Disabled, Enabled };
 enum class InterruptPolarity { ActiveLow, ActiveHigh };
-
-
 
 } // namespace MCP
 #endif

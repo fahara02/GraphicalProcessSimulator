@@ -1,5 +1,6 @@
 #ifndef INTERRUPT_MANAGER_HPP
 #define INTERRUPT_MANAGER_HPP
+#include "Arduino.h"
 #include "MCP_Constants.hpp"
 #include "MCP_Registers.hpp"
 #include "RegisterEvents.hpp"
@@ -50,8 +51,6 @@ public:
   bool enableInterrupt();
   bool disabeInterrupt();
 
-  uint8_t getIntrFlagA();
-  uint8_t getIntrFlagB();
   Register *getRegister(PORT port, REG reg);
   bool updateRegisterValue(PORT port, uint8_t reg_address, uint8_t value);
   bool resetInterruptRegisters();
@@ -105,6 +104,27 @@ public:
   }
 
   void clearInterrupt();
+  bool getInterruptFlags(uint8_t &flagA, uint8_t &flagB);
+  int getRetryA() { return retryCountA; }
+  int getRetryB() { return retryCountB; }
+  void retryFlagReadA() {
+    retryFalgReadA = true;
+    retryCountA = 0;
+  }
+  void resetRetryA() {
+    retryFalgReadA = false;
+    retryCountA++;
+  }
+  bool hasflagReadAFailed() { return retryFalgReadA; }
+  void retryFlagReadB() {
+    retryFalgReadB = true;
+    retryCountB++;
+  }
+  void resetRetryB() {
+    retryFalgReadB = false;
+    retryCountB = 0;
+  }
+  bool hasflagReadBFailed() { return retryFalgReadB; }
 
 private:
   MCP::MCP_MODEL model;
@@ -118,6 +138,10 @@ private:
   uint8_t maskB_ = 0x00;
   int pinA_ = -1;
   int pinB_ = -1;
+  bool retryFalgReadA = false;
+  bool retryFalgReadB = false;
+  static int retryCountA;
+  static int retryCountB;
 
   bool initIntrGPIOPins();
 

@@ -6,6 +6,9 @@ SemaphoreHandle_t InterruptManager::portBTrigger = NULL;
 InterruptManager::ISRHandlerData InterruptManager::isrHandlerDataA = {};
 InterruptManager::ISRHandlerData InterruptManager::isrHandlerDataB = {};
 
+int InterruptManager::retryCountA = 0;
+int InterruptManager::retryCountB = 0;
+
 InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                                    std::shared_ptr<MCP::Register> iconA,
                                    std::shared_ptr<MCP::Register> iconB)
@@ -134,16 +137,41 @@ bool InterruptManager::updateRegisterValue(PORT port, uint8_t reg_address,
   return port == PORT::GPIOA ? regA.updateRegisterValue(reg_address, value)
                              : regB.updateRegisterValue(reg_address, value);
 }
-uint8_t InterruptManager::getIntrFlagA() {
-  return regA.intf->readFlag<REG::INTF>();
-}
-uint8_t InterruptManager::getIntrFlagB() {
-  return regB.intf->readFlag<REG::INTF>();
-}
+
 void InterruptManager::clearInterrupt() {
-  regA.intcap->clearInterrupt<REG::INTCAP>();
-  regB.intcap->clearInterrupt<REG::INTCAP>();
+  i2cBus_.read_mcp_register(regA.getAddress(REG::INTCAP), bankMode);
+  i2cBus_.read_mcp_register(regB.getAddress(REG::INTCAP), bankMode);
 }
+
+bool InterruptManager::getInterruptFlags(uint8_t &flagA, uint8_t &flagB) {
+  int result = 0;
+
+  if (!bankMode) {
+    // 16bit Map mode
+    int value = i2cBus_.read_mcp_register(regA.getAddress(REG::INTF), bankMode);
+    flagA = static_cast<uint16_t>(value) & 0xFF;        // extract lowByte
+    flagB = (static_cast<uint16_t>(value) >> 8) & 0xFF; // extract highbyte
+    result = value;
+
+    return result != -1;
+
+  } else {
+    // 8bit Map mode
+    result = i2cBus_.read_mcp_register(regA.getAddress(REG::INTF), bankMode);
+    if (result == -1) {
+      return false;
+    }
+    flagA = result;
+    result = i2cBus_.read_mcp_register(regB.getAddress(REG::INTF), bankMode);
+    if (result == -1) {
+      return false;
+    }
+    flagB = result;
+
+    return result != -1;
+  }
+}
+
 bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;
   ESP_LOGI(INT_TAG, "enabling intterupt");
@@ -221,8 +249,8 @@ bool InterruptManager::resetInterruptRegisters() {
 bool InterruptManager::setupIntteruptOnChnage() {
   bool success = false;
   setting_.icoControl = INTR_ON_CHANGE_CONTROL::COMPARE_WITH_OLD_VALUE;
-  // No change in INTCONA or B as it is already default 0
-  // Enable Intterupt
+  // No change in INTCONA or B as it is already
+  // default 0 Enable Intterupt
   success = setupEnableRegister();
   success = setupIntrOutput();
   return success;
@@ -301,9 +329,11 @@ bool InterruptManager::setupIntrOutput() {
     success = confirmRegisterIsSet(PORT::GPIOA, REG::IOCON,
                                    static_cast<uint8_t>(Field::ODR));
     vTaskDelay(10);
-    // Setting in ICONA will have same reflection on ICONB so redundant
+    // Setting in ICONA will have same reflection on
+    // ICONB so redundant
   } else {
-    // No need to write and read IOCON intpol as it is default 0
+    // No need to write and read IOCON intpol as it
+    // is default 0
     success = true;
   }
   return success;
@@ -354,10 +384,25 @@ void InterruptManager::InterruptProcessorTask(void *param) {
 
   while (true) {
 
-    if (xSemaphoreTake(portATrigger, portMAX_DELAY)) {
+    if (xSemaphoreTake(portATrigger, portMAX_DELAY) ||
+        manager->hasflagReadAFailed()) {
 
-      uint8_t flagA = manager->getIntrFlagA();
-      uint8_t flagB = manager->getIntrFlagB();
+      uint8_t flagA = 0;
+      uint8_t flagB = 0;
+      bool result = manager->getInterruptFlags(flagA, flagB);
+
+      if (!result) {
+        Serial.printf(
+            "Port A: Interrupt flag read failed retrying for %d time...\n",
+            manager->getRetryA());
+        manager->retryFlagReadA();
+
+        if (manager->getRetryA() > MCP::MAX_RETRY) {
+          manager->resetRetryA();
+          Serial.println("Port A: Interrupt flag read retry limit reached !");
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
 
       if (manager->isSharing()) {
 
@@ -370,10 +415,24 @@ void InterruptManager::InterruptProcessorTask(void *param) {
       manager->clearInterrupt();
       vTaskDelay(pdMS_TO_TICKS(10));
     }
-    if (xSemaphoreTake(portBTrigger, portMAX_DELAY)) {
+    if (xSemaphoreTake(portBTrigger, portMAX_DELAY) ||
+        manager->hasflagReadBFailed()) {
+      uint8_t flagA = 0;
+      uint8_t flagB = 0;
+      bool result = manager->getInterruptFlags(flagA, flagB);
 
-      uint8_t flagA = manager->getIntrFlagA();
-      uint8_t flagB = manager->getIntrFlagB();
+      if (!result) {
+        Serial.printf(
+            "Port B: Interrupt flag read failed retrying for %d time...\n",
+            manager->getRetryB());
+        manager->retryFlagReadB();
+
+        if (manager->getRetryB() > MCP::MAX_RETRY) {
+          manager->resetRetryB();
+          Serial.println("Port B: Interrupt flag read retry limit reached !");
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
 
       if (manager->isSharing()) {
 
