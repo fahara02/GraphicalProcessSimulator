@@ -110,12 +110,12 @@ void setup() {
   expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
   delay(1000);
   int sensorThershold = 12;
-  expander.setupInterrupts(GPB5, cb1, GPB6, cb2, RISING,
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  expander.setMcpInterrupts(GPB5, cb1, GPB6, cb2, RISING,
+                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
-  expander.setupInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
-                           &sensorThershold, RISING,
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  expander.setMcpInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
+                            &sensorThershold, RISING,
+                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   expander.dumpRegisters();
 
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,

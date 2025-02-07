@@ -162,7 +162,7 @@ public:
   }
 
   template <typename Pin, typename Callback, typename... Rest>
-  auto setupInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
+  auto setMcpInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           std::is_invocable_v<Callback, void *>> {
 
@@ -173,12 +173,12 @@ public:
     interruptManager_->updateMask(port, mask);
     interruptManager_->registerCallback(port, localIndex, callback);
 
-    setupInterrupts(std::forward<Rest>(rest)...);
+    setMcpInterrupts(std::forward<Rest>(rest)...);
   }
 
   template <typename Pin, typename Callback, typename T, typename... Rest>
-  auto setupInterrupts(Pin &&pin, Callback &&callback, T *userData,
-                       Rest &&...rest)
+  auto setMcpInterrupts(Pin &&pin, Callback &&callback, T *userData,
+                        Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           std::is_invocable_v<Callback, T *>> {
 
@@ -190,16 +190,15 @@ public:
     interruptManager_->registerCallback<T>(port, localIndex, callback,
                                            userData);
 
-    setupInterrupts(std::forward<Rest>(rest)...);
+    setMcpInterrupts(std::forward<Rest>(rest)...);
   }
 
-  void setupInterrupts(int mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode) {
+  void setMcpInterrupts(uint8_t mcpIntrmode,
+                        MCP::INTR_OUTPUT_TYPE intrOutMode) {
     updateInterruptSetting(mcpIntrmode, intrOutMode);
   }
 
-  void setupCommunication();
-  void dumpRegisters() const;
-
+  // Interrupt  handling on esp32 Side
   void attachInterrupt(gpio_num_t pinA,
                        std::function<void(void *)> intAHandler = nullptr,
                        uint8_t espIntrmode = CHANGE);
@@ -211,13 +210,33 @@ public:
                        std::function<void(void *)> intBHandler = nullptr);
 
   template <typename T>
-  void attachInterrupt(gpio_num_t pinA,
-                       std::function<void(T *)> intAHandler = nullptr,
-                       uint8_t espIntrmodeA = CHANGE,
-                       gpio_num_t pinB = gpio_num_t::GPIO_NUM_NC,
-                       uint8_t espIntrmodeB = CHANGE,
-                       std::function<void(T *)> intBHandler = nullptr,
-                       T *userDataA = nullptr, T *userDataB = nullptr);
+  void attachInterrupt(gpio_num_t pinA, std::function<void(T *)> intAHandler,
+                       uint8_t espIntrmodeA, gpio_num_t pinB,
+                       uint8_t espIntrmodeB,
+                       std::function<void(T *)> intBHandler, T *userDataA,
+                       T *userDataB) {
+
+    intA_ = static_cast<int>(pinA);
+    intB_ = static_cast<int>(pinB);
+    customIntAHandler_ = [intAHandler](void *arg) {
+      intAHandler(static_cast<T *>(arg));
+    };
+    customIntBHandler_ = [intBHandler](void *arg) {
+      intBHandler(static_cast<T *>(arg));
+    };
+    userDataA_ = static_cast<void *>(userDataA);
+    userDataB_ = static_cast<void *>(userDataB);
+
+    if (pinA != static_cast<gpio_num_t>(-1) &&
+        pinB != static_cast<gpio_num_t>(-1)) {
+      intrSetting_.intrSharing = false;
+    }
+
+    interruptManager_->setup(intrSetting_);
+    initIntrGPIOPins(coverIntrMode(espIntrmodeA), coverIntrMode(espIntrmodeB));
+  }
+
+  void dumpRegisters() const;
 
 private:
   void initGPIOPins();
@@ -266,9 +285,9 @@ private:
   uint8_t getInterruptMask(MCP::PORT port) {
     return interruptManager_->getMask(port);
   }
-  void updateInterruptSetting(int mcpIntrmode,
+  void updateInterruptSetting(uint8_t mcpIntrmode,
                               MCP::INTR_OUTPUT_TYPE intrOutMode);
-  gpio_int_type_t coverIntrMode(int mode);
+  gpio_int_type_t coverIntrMode(uint8_t mode);
 };
 
 } // namespace COMPONENT

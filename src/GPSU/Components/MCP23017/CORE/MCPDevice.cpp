@@ -595,7 +595,7 @@ void MCPDevice::setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode,
                   mcpIntrmode, intrOutMode);
 }
 
-void MCPDevice::updateInterruptSetting(int mcpIntrmode,
+void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
                                        MCP::INTR_OUTPUT_TYPE intrOutMode) {
   intrSetting_.intrOutputType = intrOutMode;
   switch (mcpIntrmode) {
@@ -640,51 +640,6 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA,
   initIntrGPIOPins(coverIntrMode(espIntrmodeA), coverIntrMode(espIntrmodeB));
 }
 
-template <typename T>
-void MCPDevice::attachInterrupt(gpio_num_t pinA,
-                                std::function<void(T *)> intAHandler,
-                                uint8_t espIntrmodeA, gpio_num_t pinB,
-                                uint8_t espIntrmodeB,
-                                std::function<void(T *)> intBHandler,
-                                T *userDataA, T *userDataB) {
-
-  intA_ = static_cast<int>(pinA);
-  intB_ = static_cast<int>(pinB);
-  customIntAHandler_ = [intAHandler](void *arg) {
-    intAHandler(static_cast<T *>(arg));
-  };
-  customIntBHandler_ = [intBHandler](void *arg) {
-    intBHandler(static_cast<T *>(arg));
-  };
-  userDataA_ = static_cast<void *>(userDataA);
-  userDataB_ = static_cast<void *>(userDataB);
-
-  if (pinA != static_cast<gpio_num_t>(-1) &&
-      pinB != static_cast<gpio_num_t>(-1)) {
-    intrSetting_.intrSharing = false;
-  }
-
-  interruptManager_->setup(intrSetting_);
-  initIntrGPIOPins(coverIntrMode(espIntrmodeA), coverIntrMode(espIntrmodeB));
-}
-gpio_int_type_t MCPDevice::coverIntrMode(int mode) {
-
-  gpio_int_type_t intMode = gpio_int_type_t::GPIO_INTR_DISABLE;
-  switch (mode) {
-  case CHANGE:
-    intMode = gpio_int_type_t::GPIO_INTR_ANYEDGE;
-    break;
-  case RISING:
-    intMode = gpio_int_type_t::GPIO_INTR_POSEDGE;
-    break;
-  case FALLING:
-    intMode = gpio_int_type_t::GPIO_INTR_NEGEDGE;
-    break;
-  default:
-    break;
-  }
-  return intMode;
-}
 void IRAM_ATTR MCPDevice::defaultIntAHandler(void *arg) {
   MCPDevice *device = static_cast<MCPDevice *>(arg);
   if (device->customIntAHandler_) {
@@ -703,9 +658,24 @@ void IRAM_ATTR MCPDevice::defaultIntBHandler(void *arg) {
   }
 }
 
-// Variadic template to handle pin, callback, and userData triplets
-// Modify the callback type to be a raw function pointer
+gpio_int_type_t MCPDevice::coverIntrMode(uint8_t mode) {
 
+  gpio_int_type_t intMode = gpio_int_type_t::GPIO_INTR_DISABLE;
+  switch (mode) {
+  case CHANGE:
+    intMode = gpio_int_type_t::GPIO_INTR_ANYEDGE;
+    break;
+  case RISING:
+    intMode = gpio_int_type_t::GPIO_INTR_POSEDGE;
+    break;
+  case FALLING:
+    intMode = gpio_int_type_t::GPIO_INTR_NEGEDGE;
+    break;
+  default:
+    break;
+  }
+  return intMode;
+}
 
 void MCPDevice::dumpRegisters() const {
   ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",

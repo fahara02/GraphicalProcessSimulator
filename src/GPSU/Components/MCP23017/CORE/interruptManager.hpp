@@ -29,13 +29,7 @@ private:
   std::array<Callback, MCP::PIN_PER_BANK> portACallbacks_;
   std::array<Callback, MCP::PIN_PER_BANK> portBCallbacks_;
 
-  // std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portACallbacks_;
-  // std::array<std::function<void(void *)>, MCP::PIN_PER_BANK> portBCallbacks_;
-
 public:
-  void *userDataA_;
-  void *userDataB_;
-
   explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                             std::shared_ptr<MCP::Register> iconA,
                             std::shared_ptr<MCP::Register> iconB);
@@ -56,15 +50,6 @@ public:
 
   uint8_t getMask(PORT p) { return p == PORT::GPIOA ? maskA_ : maskB_; }
 
-  // void setCallback(MCP::PORT port, uint8_t index,
-  //                  std::function<void(void *)> callback) {
-  //   if (port == MCP::PORT::GPIOA) {
-  //     portACallbacks_[index] = std::move(callback);
-  //   } else {
-  //     portBCallbacks_[index] = std::move(callback);
-  //   }
-  // }
-
   void updateMask(MCP::PORT port, uint8_t mask) {
     if (port == MCP::PORT::GPIOA) {
       maskA_ |= mask;
@@ -73,28 +58,12 @@ public:
     }
   }
 
-  // static void IRAM_ATTR globalInterruptHandler(void *arg);
   void invokeCallback(PORT port, uint8_t pinindex);
 
-  void setUserData(PORT port, void *userData) {
-
-    if (port == PORT::GPIOA) {
-      userDataA_ = userData;
-    } else {
-      userDataB_ = userData;
-    }
-  }
-  void *getUserData(PORT port) {
-    return port == PORT::GPIOA ? userDataA_ : userDataB_;
-  }
   InterruptSetting getSetting() const { return setting_; }
 
   void IRAM_ATTR handleInterrupt(MCP::PORT port);
   void IRAM_ATTR processPort(MCP::PORT port, uint8_t flag);
-
-  void registerCallback(MCP::PORT port, uint8_t pin, void (*func)(void *)) {
-    registerCallback<void>(port, pin, func, nullptr);
-  }
 
   template <typename T>
   void registerCallback(MCP::PORT port, uint8_t pin, void (*func)(T *),
@@ -111,6 +80,9 @@ public:
     } else {
       portBCallbacks_[pin] = cb;
     }
+  }
+  void registerCallback(MCP::PORT port, uint8_t pin, void (*func)(void *)) {
+    registerCallback<void>(port, pin, func, nullptr);
   }
 
 private:
