@@ -1,6 +1,11 @@
 #include "interruptManager.hpp"
 
 namespace MCP {
+SemaphoreHandle_t InterruptManager::portATrigger = NULL;
+SemaphoreHandle_t InterruptManager::portBTrigger = NULL;
+InterruptManager::ISRHandlerData InterruptManager::isrHandlerDataA = {};
+InterruptManager::ISRHandlerData InterruptManager::isrHandlerDataB = {};
+
 InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                                    std::shared_ptr<MCP::Register> iconA,
                                    std::shared_ptr<MCP::Register> iconB)
@@ -9,6 +14,68 @@ InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
 
   regA.setup(model, PORT::GPIOA, bankMode);
   regB.setup(model, PORT::GPIOA, bankMode);
+  startInterruptTask(this);
+}
+void InterruptManager::startInterruptTask(InterruptManager *manager) {
+  bool initialised = false;
+  if (manager) {
+    if (!initialised) {
+      portATrigger = xSemaphoreCreateBinary();
+      portBTrigger = xSemaphoreCreateBinary();
+      xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
+                              4196, manager, 5, &intrTaskHandle, 0);
+
+      if (intrTaskHandle != nullptr && portATrigger != nullptr &&
+          portBTrigger != nullptr) {
+        initialised = true;
+      }
+    }
+  }
+}
+
+bool InterruptManager::initIntrGPIOPins() {
+  bool success = false;
+  if (isEnable()) {
+    gpio_num_t intA_ = static_cast<gpio_num_t>(pinA_);
+    gpio_num_t intB_ = static_cast<gpio_num_t>(pinB_);
+
+    static bool isrServiceInstalled = false;
+    if (!isrServiceInstalled) {
+      gpio_install_isr_service(0);
+      isrServiceInstalled = true;
+    }
+
+    // --- Configure intA pin ---
+    if (intA_ != static_cast<gpio_num_t>(-1)) {
+      gpio_pad_select_gpio(intA_);
+      gpio_set_direction(intA_, GPIO_MODE_INPUT);
+      gpio_set_intr_type(intA_, setting_.modeA_);
+
+      if (isrHandlerDataA.handler) {
+
+        gpio_isr_handler_add(intA_, isrWrapper, &isrHandlerDataA);
+      } else {
+        gpio_isr_handler_add(intA_, defaultIntAHandler, this);
+      }
+    }
+
+    // --- Configure intB pin ---
+    if (intB_ != static_cast<gpio_num_t>(-1)) {
+      gpio_pad_select_gpio(intB_);
+      gpio_set_direction(intB_, GPIO_MODE_INPUT);
+      gpio_set_intr_type(intB_, setting_.modeB_);
+
+      if (isrHandlerDataB.handler) {
+
+        gpio_isr_handler_add(intB_, isrWrapper, &isrHandlerDataB);
+      } else {
+        gpio_isr_handler_add(intB_, defaultIntBHandler, this);
+      }
+    }
+
+    success = true;
+  }
+  return success;
 }
 
 void InterruptManager::setup(INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
@@ -26,6 +93,45 @@ void InterruptManager::setup(InterruptSetting &setting) {
   setting_.intrSharing = setting.intrSharing;
 
   ESP_LOGI(INT_TAG, "setting loaded");
+}
+void InterruptManager::updateSetting(uint8_t mcpIntrmode,
+                                     MCP::INTR_OUTPUT_TYPE intrOutMode) {
+  setting_.intrOutputType = intrOutMode;
+  switch (mcpIntrmode) {
+  case CHANGE:
+    setting_.intrType = MCP::INTR_TYPE::INTR_ON_CHANGE;
+    break;
+  case RISING:
+    setting_.intrType = MCP::INTR_TYPE::INTR_ON_RISING;
+    break;
+  case FALLING:
+    setting_.intrType = MCP::INTR_TYPE::INTR_ON_FALLING;
+    break;
+  default:
+    break;
+  }
+}
+
+bool InterruptManager::updateBankMode(bool value) {
+  // icon register not need to be invoked again as this method is already
+  // invoked and icon is updated  ,just notify this class for updating address
+  bankMode = value;
+  regA.updateAddress(bankMode);
+  regB.updateAddress(bankMode);
+  return true;
+}
+bool InterruptManager::isEnable() { return setting_.isEnabled; }
+bool InterruptManager::isSharing() { return setting_.intrSharing; }
+uint8_t InterruptManager::getMask(PORT p) const {
+  return p == PORT::GPIOA ? maskA_ : maskB_;
+}
+
+void InterruptManager::updateMask(MCP::PORT port, uint8_t mask) {
+  if (port == MCP::PORT::GPIOA) {
+    maskA_ |= mask;
+  } else {
+    maskB_ |= mask;
+  }
 }
 void InterruptManager::setupInterruptMask(PORT port, uint8_t mask) {
   if (port == PORT::GPIOA) {
@@ -50,7 +156,10 @@ uint8_t InterruptManager::getIntrFlagA() {
 uint8_t InterruptManager::getIntrFlagB() {
   return regB.intf->readFlag<REG::INTF>();
 }
-
+void InterruptManager::clearInterrupt() {
+  regA.intcap->clearInterrupt<REG::INTCAP>();
+  regB.intcap->clearInterrupt<REG::INTCAP>();
+}
 bool InterruptManager::enableInterrupt() {
   setting_.isEnabled = true;
   ESP_LOGI(INT_TAG, "enabling intterupt");
@@ -61,6 +170,11 @@ bool InterruptManager::enableInterrupt() {
     ESP_LOGE(INT_TAG, "Error in intterupt setup");
     return false;
   }
+}
+
+bool InterruptManager::disabeInterrupt() {
+  setting_.isEnabled = false;
+  return true;
 }
 bool InterruptManager::updateInterrputSetting() {
   bool success = false;
@@ -234,30 +348,64 @@ bool InterruptManager::confirmRegisterIsSet(PORT port, REG regType,
   return success;
 }
 
-bool InterruptManager::updateBankMode(bool value) {
-  // icon register not need to be invoked again as this method is already
-  // invoked and icon is updated  ,just notify this class for updating address
-  bankMode = value;
-  regA.updateAddress(bankMode);
-  regB.updateAddress(bankMode);
-  return true;
+void IRAM_ATTR InterruptManager::defaultIntAHandler(void *arg) {
+
+  BaseType_t urgentTask = pdFALSE;
+  xSemaphoreGiveFromISR(portATrigger, &urgentTask);
+  if (urgentTask) {
+    vPortEvaluateYieldFromISR(urgentTask);
+  }
 }
 
+void IRAM_ATTR InterruptManager::defaultIntBHandler(void *arg) {
 
-
-void IRAM_ATTR InterruptManager::handleInterrupt(MCP::PORT sourcePort) {
-  const bool isSharing = setting_.intrSharing;
-  uint8_t flagA = getIntrFlagA();
-  uint8_t flagB = getIntrFlagB();
-
-  if (isSharing) {
-    // Process both ports on any interrupt
-    processPort(PORT::GPIOA, flagA);
-    processPort(PORT::GPIOB, flagB);
-  } else {
-    // Process only the triggering port
-    processPort(sourcePort, (sourcePort == PORT::GPIOA) ? flagA : flagB);
+  BaseType_t urgentTask = pdFALSE;
+  xSemaphoreGiveFromISR(portBTrigger, &urgentTask);
+  if (urgentTask) {
+    vPortEvaluateYieldFromISR(urgentTask);
   }
+}
+void InterruptManager::InterruptProcessorTask(void *param) {
+  InterruptManager *manager = static_cast<InterruptManager *>(param);
+
+  while (true) {
+
+    if (xSemaphoreTake(portATrigger, portMAX_DELAY)) {
+
+      uint8_t flagA = manager->getIntrFlagA();
+      uint8_t flagB = manager->getIntrFlagB();
+
+      if (manager->isSharing()) {
+
+        manager->processPort(PORT::GPIOA, flagA);
+        manager->processPort(PORT::GPIOB, flagB);
+      } else {
+
+        manager->processPort(PORT::GPIOA, flagA);
+      }
+      manager->clearInterrupt();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    if (xSemaphoreTake(portBTrigger, portMAX_DELAY)) {
+
+      uint8_t flagA = manager->getIntrFlagA();
+      uint8_t flagB = manager->getIntrFlagB();
+
+      if (manager->isSharing()) {
+
+        manager->processPort(PORT::GPIOA, flagA);
+        manager->processPort(PORT::GPIOB, flagB);
+      } else {
+
+        manager->processPort(PORT::GPIOB, flagB);
+      }
+      manager->clearInterrupt();
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  vTaskDelete(NULL);
 }
 
 void IRAM_ATTR InterruptManager::processPort(MCP::PORT port, uint8_t flag) {

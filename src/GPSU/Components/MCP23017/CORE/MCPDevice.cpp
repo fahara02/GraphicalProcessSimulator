@@ -546,32 +546,6 @@ void MCPDevice::updateAddressMap(bool bankMode) {
 
 void MCPDevice::initIntrGPIOPins(gpio_int_type_t modeA, gpio_int_type_t modeB) {
 
-  // Install ISR service only once
-  static bool isrServiceInstalled = false;
-  if (!isrServiceInstalled) {
-    gpio_install_isr_service(0);
-    isrServiceInstalled = true;
-  }
-
-  // --- Configure intA pin as input with interrupt, if set ---
-  if (intA_ != static_cast<gpio_num_t>(-1)) {
-    gpio_pad_select_gpio(intA_);
-    gpio_set_direction(intA_, GPIO_MODE_INPUT);
-    gpio_set_intr_type(intA_, modeA);
-
-    // Attach interrupt handler
-    gpio_isr_handler_add(intA_, MCPDevice::defaultIntAHandler, this);
-  }
-
-  // --- Configure intB pin as input with interrupt, if set ---
-  if (intB_ != static_cast<gpio_num_t>(-1)) {
-    gpio_pad_select_gpio(intB_);
-    gpio_set_direction(intB_, GPIO_MODE_INPUT);
-    gpio_set_intr_type(intB_, modeB);
-
-    // Attach interrupt handler
-    gpio_isr_handler_add(intB_, MCPDevice::defaultIntBHandler, this);
-  }
 }
 
 void MCPDevice::setupDefaultIntterupt(MCP::INTR_TYPE type,
@@ -616,46 +590,30 @@ void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
 void MCPDevice::attachInterrupt(gpio_num_t pinA,
                                 std::function<void(void *)> intAHandler,
                                 uint8_t espIntrmode) {
-  intA_ = pinA;
-  customIntAHandler_ = intAHandler;
+
   intrSetting_.intrSharing = true;
+  intrSetting_.modeA_ = coverIntrMode(espIntrmode);
   interruptManager_->setup(intrSetting_);
-  initIntrGPIOPins(coverIntrMode(espIntrmode),
-                   gpio_int_type_t::GPIO_INTR_DISABLE);
+  interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
+                                             intAHandler, nullptr);
 }
 void MCPDevice::attachInterrupt(gpio_num_t pinA,
                                 std::function<void(void *)> intAHandler,
                                 uint8_t espIntrmodeA, gpio_num_t pinB,
                                 uint8_t espIntrmodeB,
                                 std::function<void(void *)> intBHandler) {
-  intA_ = pinA;
-  intB_ = pinB;
-  customIntAHandler_ = intAHandler;
-  customIntBHandler_ = intBHandler;
-  if (intA_ != static_cast<gpio_num_t>(-1) &&
-      intB_ != static_cast<gpio_num_t>(-1)) {
+
+  if (pinA != static_cast<gpio_num_t>(-1) &&
+      pinB != static_cast<gpio_num_t>(-1)) {
     intrSetting_.intrSharing = false;
   }
+  intrSetting_.modeA_ = coverIntrMode(espIntrmodeA);
+  intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
   interruptManager_->setup(intrSetting_);
-  initIntrGPIOPins(coverIntrMode(espIntrmodeA), coverIntrMode(espIntrmodeB));
-}
-
-void IRAM_ATTR MCPDevice::defaultIntAHandler(void *arg) {
-  MCPDevice *device = static_cast<MCPDevice *>(arg);
-  if (device->customIntAHandler_) {
-    device->customIntAHandler_(device->userDataA_);
-  } else {
-    device->interruptManager_->handleInterrupt(MCP::PORT::GPIOA);
-  }
-}
-
-void IRAM_ATTR MCPDevice::defaultIntBHandler(void *arg) {
-  MCPDevice *device = static_cast<MCPDevice *>(arg);
-  if (device->customIntBHandler_) {
-    device->customIntBHandler_(device->userDataB_);
-  } else {
-    device->interruptManager_->handleInterrupt(MCP::PORT::GPIOB);
-  }
+  interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
+                                             intAHandler, nullptr);
+  interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOB, pinB,
+                                             intBHandler, nullptr);
 }
 
 gpio_int_type_t MCPDevice::coverIntrMode(uint8_t mode) {

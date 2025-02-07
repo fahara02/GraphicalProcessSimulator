@@ -16,18 +16,26 @@ struct InterruptSetting {
   INTR_OUTPUT_TYPE intrOutputType = INTR_OUTPUT_TYPE::NA;
   INTR_ON_CHANGE_CONTROL icoControl = INTR_ON_CHANGE_CONTROL::NA;
   DEF_VAL_COMPARE savedValue = DEF_VAL_COMPARE::NA;
-
+  gpio_int_type_t modeA_ = gpio_int_type_t::GPIO_INTR_DISABLE;
+  gpio_int_type_t modeB_ = gpio_int_type_t::GPIO_INTR_DISABLE;
   bool isEnabled = false;
 };
 
 class InterruptManager {
 private:
+  // for user custom callbacks with default interrupt handling
   struct Callback {
     std::function<void()> fn;
     void *userData;
   };
   std::array<Callback, MCP::PIN_PER_BANK> portACallbacks_;
   std::array<Callback, MCP::PIN_PER_BANK> portBCallbacks_;
+  struct ISRHandlerData {
+    std::function<void(void *)> handler;
+    void *userData;
+  };
+  static ISRHandlerData isrHandlerDataA;
+  static ISRHandlerData isrHandlerDataB;
 
 public:
   explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
@@ -37,7 +45,10 @@ public:
              INTR_OUTPUT_TYPE outtype = INTR_OUTPUT_TYPE::INTR_ACTIVE_LOW,
              PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
   void setup(InterruptSetting &setting);
+  bool isEnable();
+  bool isSharing();
   bool enableInterrupt();
+  bool disabeInterrupt();
 
   uint8_t getIntrFlagA();
   uint8_t getIntrFlagB();
@@ -48,22 +59,14 @@ public:
   void setupInterruptMask(PORT port, uint8_t mask = 0x00);
   bool updateBankMode(bool value);
 
-  uint8_t getMask(PORT p) { return p == PORT::GPIOA ? maskA_ : maskB_; }
-
-  void updateMask(MCP::PORT port, uint8_t mask) {
-    if (port == MCP::PORT::GPIOA) {
-      maskA_ |= mask;
-    } else {
-      maskB_ |= mask;
-    }
-  }
+  uint8_t getMask(PORT p) const;
+  void updateMask(MCP::PORT port, uint8_t mask);
 
   void invokeCallback(PORT port, uint8_t pinindex);
 
   InterruptSetting getSetting() const { return setting_; }
 
-  void IRAM_ATTR handleInterrupt(MCP::PORT port);
-  void IRAM_ATTR processPort(MCP::PORT port, uint8_t flag);
+  void processPort(MCP::PORT port, uint8_t flag);
 
   template <typename T>
   void registerCallback(MCP::PORT port, uint8_t pin, void (*func)(T *),
@@ -85,6 +88,25 @@ public:
     registerCallback<void>(port, pin, func, nullptr);
   }
 
+  template <typename T>
+  void attachMainHandler(PORT port, gpio_num_t espPin,
+                         std::function<void(T *)> intHandler, T *userData) {
+
+    if (port == PORT::GPIOA) {
+      pinA_ = static_cast<int>(espPin);
+      isrHandlerDataA.handler = intHandler;
+      isrHandlerDataA.userData = static_cast<void *>(userData);
+
+    } else {
+      pinB_ = static_cast<int>(espPin);
+      isrHandlerDataB.handler = intHandler;
+      isrHandlerDataB.userData = static_cast<void *>(userData);
+    }
+  }
+
+  void updateSetting(uint8_t mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode);
+  void clearInterrupt();
+
 private:
   MCP::MCP_MODEL model;
   bool bankMode = false;
@@ -98,12 +120,31 @@ private:
   int pinA_ = -1;
   int pinB_ = -1;
 
+  bool initIntrGPIOPins();
+
+  void startInterruptTask(InterruptManager *manager);
+  static void InterruptProcessorTask(void *param);
+  TaskHandle_t intrTaskHandle;
+  static SemaphoreHandle_t portATrigger;
+  static SemaphoreHandle_t portBTrigger;
+
   bool updateInterrputSetting();
   bool setupIntteruptOnChnage();
   bool setupEnableRegister();
   bool setupIntrOutput();
   bool setupIntteruptWithDefval(bool savedValue);
   bool confirmRegisterIsSet(PORT port, REG regTpe, uint8_t bitMask);
+
+
+
+  static void IRAM_ATTR defaultIntAHandler(void *arg);
+  static void IRAM_ATTR defaultIntBHandler(void *arg);
+  static void IRAM_ATTR isrWrapper(void *arg) {
+    auto data = static_cast<ISRHandlerData *>(arg);
+    if (data && data->handler) {
+      data->handler(data->userData);
+    }
+  }
 
   using Field = Config::Field;
 };

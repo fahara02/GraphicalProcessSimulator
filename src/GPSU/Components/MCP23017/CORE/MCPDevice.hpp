@@ -195,7 +195,7 @@ public:
 
   void setMcpInterrupts(uint8_t mcpIntrmode,
                         MCP::INTR_OUTPUT_TYPE intrOutMode) {
-    updateInterruptSetting(mcpIntrmode, intrOutMode);
+    interruptManager_->updateSetting(mcpIntrmode, intrOutMode);
   }
 
   // Interrupt  handling on esp32 Side
@@ -216,24 +216,17 @@ public:
                        std::function<void(T *)> intBHandler, T *userDataA,
                        T *userDataB) {
 
-    intA_ = static_cast<int>(pinA);
-    intB_ = static_cast<int>(pinB);
-    customIntAHandler_ = [intAHandler](void *arg) {
-      intAHandler(static_cast<T *>(arg));
-    };
-    customIntBHandler_ = [intBHandler](void *arg) {
-      intBHandler(static_cast<T *>(arg));
-    };
-    userDataA_ = static_cast<void *>(userDataA);
-    userDataB_ = static_cast<void *>(userDataB);
-
     if (pinA != static_cast<gpio_num_t>(-1) &&
         pinB != static_cast<gpio_num_t>(-1)) {
       intrSetting_.intrSharing = false;
     }
-
+    intrSetting_.modeA_ = coverIntrMode(espIntrmodeA);
+    intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
     interruptManager_->setup(intrSetting_);
-    initIntrGPIOPins(coverIntrMode(espIntrmodeA), coverIntrMode(espIntrmodeB));
+    interruptManager_->attachMainHandler<T>(MCP::PORT::GPIOA, pinA, intAHandler,
+                                            userDataA);
+    interruptManager_->attachMainHandler<T>(MCP::PORT::GPIOB, pinB, intBHandler,
+                                            userDataB);
   }
 
   void dumpRegisters() const;
