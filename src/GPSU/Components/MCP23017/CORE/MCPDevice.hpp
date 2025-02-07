@@ -242,7 +242,9 @@ public:
     setInterrupts(std::forward<Rest>(rest)...);
   }
 
-  void setInterrupts(uint8_t mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode) {
+  void setInterrupts(uint8_t mcpIntrmode = CHANGE,
+                     MCP::INTR_OUTPUT_TYPE intrOutMode =
+                         MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH) {
     updateInterruptSetting(mcpIntrmode, intrOutMode);
     interruptManager_->setup(intrSetting_);
   }
