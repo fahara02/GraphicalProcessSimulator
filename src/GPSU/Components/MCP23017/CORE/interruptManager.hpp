@@ -105,17 +105,17 @@ public:
 
   void clearInterrupt();
   bool getInterruptFlags(uint8_t &flagA, uint8_t &flagB);
-  int getRetryA() { return retryCountA; }
-  int getRetryB() { return retryCountB; }
+  int getRetryA() const { return retryCountA; }
+  int getRetryB() const { return retryCountB; }
   void retryFlagReadA() {
     retryFalgReadA = true;
-    retryCountA = 0;
+    retryCountA++;
   }
   void resetRetryA() {
     retryFalgReadA = false;
-    retryCountA++;
+    retryCountA = 0;
   }
-  bool hasflagReadAFailed() { return retryFalgReadA; }
+  bool hasflagReadAFailed() const { return retryFalgReadA; }
   void retryFlagReadB() {
     retryFalgReadB = true;
     retryCountB++;
@@ -124,7 +124,7 @@ public:
     retryFalgReadB = false;
     retryCountB = 0;
   }
-  bool hasflagReadBFailed() { return retryFalgReadB; }
+  bool hasflagReadBFailed() const { return retryFalgReadB; }
 
 private:
   MCP::MCP_MODEL model;

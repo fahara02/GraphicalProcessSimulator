@@ -110,7 +110,7 @@ void setup() {
   expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
   delay(1000);
   int sensorThershold = 12;
-  expander.setInterrupts(GPB5, cb1, GPB6, cb2, RISING,
+  expander.setInterrupts(GPB5, GPB6, RISING,
                          MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
   expander.setInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,

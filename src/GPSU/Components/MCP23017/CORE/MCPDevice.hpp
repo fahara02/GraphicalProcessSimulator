@@ -150,17 +150,23 @@ public:
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
-  template <
-      typename FirstPin, typename... RestPins,
-      typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
-                                   std::is_same_v<RestPins, MCP::Pin>)>>
-  void setIntteruptPin(uint8_t mcpIntrmode, MCP::INTR_OUTPUT_TYPE intrOutMode,
-                       FirstPin first, RestPins... rest) {
+  template <typename Pin, typename... RestPins>
+  auto setInterupts(Pin &&first, RestPins &&...rest)
+      -> std::enable_if_t<(std::is_same_v<Pin, MCP::Pin> && ... &&
+                           std::is_same_v<RestPins, MCP::Pin>)> {
     uint8_t pinmask = generateMask(first, rest...);
     MCP::PORT port = first.getPort();
-    setIntteruptPin(port, pinmask, mcpIntrmode, intrOutMode);
+    interruptManager_->setupInterruptMask(port, pinmask);
   }
-
+  template <typename Pin, typename... Rest>
+  auto setInterrupts(Pin &&pin, Rest &&...rest)
+      -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
+                          !(std::is_invocable_v<Rest, void *> || ...)> {
+    MCP::PORT port = pin.getPort();
+    uint8_t mask = (1 << pin.getIndex());
+    interruptManager_->updateMask(port, mask);
+    setInterrupts(std::forward<Rest>(rest)...);
+  }
   template <typename Pin, typename Callback, typename... Rest>
   auto setInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
@@ -171,7 +177,8 @@ public:
     uint8_t mask = (1 << localIndex);
 
     interruptManager_->updateMask(port, mask);
-    interruptManager_->registerCallback(port, localIndex, callback);
+    interruptManager_->registerCallback<void>(port, localIndex, callback,
+                                              nullptr);
 
     setInterrupts(std::forward<Rest>(rest)...);
   }
