@@ -184,10 +184,23 @@ public:
                           std::is_same_v<std::decay_t<Pin2>, MCP::Pin> &&
                           (std::is_same_v<std::decay_t<Rest>, MCP::Pin> ||
                            ...)> {
-    uint8_t pinmask = generateMask(first, second, rest...);
     MCP::PORT port = first.getPort();
-    interruptManager_->setupInterruptMask(port, pinmask);
+    uint8_t pinmask = (1 << first.getIndex());
+    interruptManager_->updateMask(port, pinmask);
+    port = second.getPort();
+    pinmask = (1 << second.getIndex());
+    interruptManager_->updateMask(port, pinmask);
   }
+  // template <typename Pin, typename... Rest>
+  // auto setInterrupts(Pin &&pin, Rest &&...rest)
+  //     -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
+  //                         (std::is_same_v<std::decay_t<Rest>, MCP::Pin> ||
+  //                          ...)> {
+  //   MCP::PORT port = pin.getPort();
+  //   uint8_t mask = (1 << pin.getIndex());
+  //   interruptManager_->updateMask(port, mask);
+  //   setInterrupts(std::forward<Rest>(rest)...);
+  // }
   template <typename Pin, typename... Rest>
   auto setInterrupts(Pin &&pin, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
