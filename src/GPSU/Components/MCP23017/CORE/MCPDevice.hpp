@@ -40,12 +40,12 @@ private:
   MCP::Settings defaultSettings_;
   MCP::address_decoder_t decoder_;
   uint8_t address_;
-  gpio_num_t sda_;
-  gpio_num_t scl_;
-  gpio_num_t cs_;
-  gpio_num_t reset_;
-  gpio_num_t intA_;
-  gpio_num_t intB_;
+  gpio_num_t sda_ = GPIO_NUM_25;
+  gpio_num_t scl_ = GPIO_NUM_33;
+  gpio_num_t cs_ = GPIO_NUM_NC;
+  gpio_num_t reset_ = GPIO_NUM_33;
+  gpio_num_t intA_ = GPIO_NUM_NC;
+  gpio_num_t intB_ = GPIO_NUM_NC;
   MCP::I2CBus &i2cBus_;
   MCP::InterruptSetting intrSetting_;
 

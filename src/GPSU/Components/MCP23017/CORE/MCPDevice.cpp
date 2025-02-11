@@ -10,14 +10,8 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
     : model_(model), configuration_(model),
       settings_(configuration_.getSettings()),
       defaultSettings_(Settings(model)), decoder_(model, pinA2, pinA1, pinA0),
-      address_(decoder_.getDeviceAddress(false)), //
-      sda_(GPIO_NUM_25),                          //
-      scl_(GPIO_NUM_33),                          //
-      cs_(GPIO_NUM_NC),                           //
-      reset_(GPIO_NUM_33),                        //
-      intA_(GPIO_NUM_NC), intB_(GPIO_NUM_NC),
-      i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)), //
-
+      address_(decoder_.getDeviceAddress(false)),
+      i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
       cntrlRegA(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
                                                 MCP::PORT::GPIOA, bankMode_)),
       cntrlRegB(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
