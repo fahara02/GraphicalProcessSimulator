@@ -11,16 +11,14 @@ MCPDevice::MCPDevice(MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       defaultSettings_(Settings(model)), decoder_(model, pinA2, pinA1, pinA0),
       address_(decoder_.getDeviceAddress(false)),
       i2cBus_(I2CBus::getInstance(address_, sda_, scl_)),
-      cntrlRegA(std::make_shared<MCP::Register>(model_, REG::IOCON, PORT::GPIOA,
-                                                bankMode_)),
-      cntrlRegB(std::make_shared<MCP::Register>(model_, REG::IOCON, PORT::GPIOB,
-                                                bankMode_)),
-      gpioBankA(
-          std::make_unique<GPIO_BANK>(MCP::PORT::GPIOA, model, cntrlRegA)),
-      gpioBankB(
-          std::make_unique<GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
+      cntrlRegA(std::make_shared<Register>(model_, REG::IOCON, PORT::GPIOA,
+                                           bankMode_)),
+      cntrlRegB(std::make_shared<Register>(model_, REG::IOCON, PORT::GPIOB,
+                                           bankMode_)),
+      gpioBankA(std::make_unique<GPIO_BANK>(PORT::GPIOA, model, cntrlRegA)),
+      gpioBankB(std::make_unique<GPIO_BANK>(PORT::GPIOB, model, cntrlRegB)),
 
-      interruptManager_(std::make_unique<MCP::InterruptManager>(
+      interruptManager_(std::make_unique<InterruptManager>(
           model, i2cBus_, cntrlRegA, cntrlRegB)),
       addressMap_(populateAddressMap(bankMode_))
 
@@ -40,79 +38,81 @@ void MCPDevice::updatei2cAddress() {
 }
 
 void MCPDevice::loadSettings() {
+
+  if (settings_ == defaultSettings_) {
+    return;
+  }
   uint8_t result = 0;
 
-  if (settings_ != defaultSettings_) {
-    // Determine bankMode_ and byteMode_ at once
-    switch (settings_.opMode) {
-    case MCP::OperationMode::SequentialMode16: // SEQOP = 0, BANK = 0
-      bankMode_ = false;
-      byteMode_ = false;
-      break;
+  // Determine bankMode_ and byteMode_ at once
+  switch (settings_.opMode) {
+  case MCP::OperationMode::SequentialMode16: // SEQOP = 0, BANK = 0
+    bankMode_ = false;
+    byteMode_ = false;
+    break;
 
-    case MCP::OperationMode::SequentialMode8: // SEQOP = 0, BANK = 1
-      bankMode_ = true;
-      byteMode_ = false;
-      break;
+  case MCP::OperationMode::SequentialMode8: // SEQOP = 0, BANK = 1
+    bankMode_ = true;
+    byteMode_ = false;
+    break;
 
-    case MCP::OperationMode::ByteMode16: // SEQOP = 1, BANK = 0
-      bankMode_ = false;
-      byteMode_ = true;
-      break;
+  case MCP::OperationMode::ByteMode16: // SEQOP = 1, BANK = 0
+    bankMode_ = false;
+    byteMode_ = true;
+    break;
 
-    case MCP::OperationMode::ByteMode8: // SEQOP = 1, BANK = 1
-      bankMode_ = true;
-      byteMode_ = true;
-      break;
-    }
+  case MCP::OperationMode::ByteMode8: // SEQOP = 1, BANK = 1
+    bankMode_ = true;
+    byteMode_ = true;
+    break;
+  }
 
-    // Step 1: If switching to banked mode, write only BANK bit first
-    if (bankMode_) {
-      result |= i2cBus_.write_mcp_register(
-          cntrlRegA->getAddress(), static_cast<uint8_t>(0x80), bankMode_);
-      updateAddressMap(bankMode_);
-      gpioBankA->updateBankMode(bankMode_);
-      gpioBankB->updateBankMode(bankMode_);
-      interruptManager_->updateBankMode(bankMode_);
-    }
+  // Step 1: If switching to banked mode, write only BANK bit first
+  if (bankMode_) {
+    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
+                                         static_cast<uint8_t>(0x80), bankMode_);
+    updateAddressMap(bankMode_);
+    gpioBankA->updateBankMode(bankMode_);
+    gpioBankB->updateBankMode(bankMode_);
+    interruptManager_->updateBankMode(bankMode_);
+  }
 
-    // Step 2: Update remaining settings using configuration struct value
-    uint8_t updatedSetting = configuration_.getSettingValue();
-    cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
-    cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
+  // Step 2: Update remaining settings using configuration struct value
+  uint8_t updatedSetting = configuration_.getSettingValue();
+  cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
+  cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
 
-    if (bankMode_) {
-      // In BANK mode (8-bit register mapping), write separately to each bank
-      result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
-                                           updatedSetting, bankMode_);
-      result |= i2cBus_.write_mcp_register(cntrlRegB->getAddress(),
-                                           updatedSetting, bankMode_);
-    } else {
-      // In 16-bit register mapping, write to both registers in sequence
-      result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
-                                           updatedSetting, bankMode_);
-      result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress() + 1,
-                                           updatedSetting, bankMode_);
-    }
+  if (bankMode_) {
+    // In BANK mode (8-bit register mapping), write separately to each bank
+    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
+                                         updatedSetting, bankMode_);
+    result |= i2cBus_.write_mcp_register(cntrlRegB->getAddress(),
+                                         updatedSetting, bankMode_);
+  } else {
+    // In 16-bit register mapping, write to both registers in sequence
+    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
+                                         updatedSetting, bankMode_);
+    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress() + 1,
+                                         updatedSetting, bankMode_);
+  }
 
-    // Step 4: Update other MCP settings
-    mirrorMode_ = (settings_.mirror == PairedInterrupt::Enabled);
-    slewrateDisabled_ = (settings_.slew == Slew::Disabled);
-    hardwareAddressing_ = (settings_.haen == HardwareAddr::Enabled);
-    if (hardwareAddressing_) {
-      updatei2cAddress();
-    }
-    opendrainEnabled_ = (settings_.odr == OpenDrain::Enabled);
-    interruptPolarityHigh_ =
-        (settings_.intpol == MCP::InterruptPolarity::ActiveHigh);
+  // Step 4: Update other MCP settings
+  mirrorMode_ = (settings_.mirror == PairedInterrupt::Enabled);
+  slewrateDisabled_ = (settings_.slew == Slew::Disabled);
+  hardwareAddressing_ = (settings_.haen == HardwareAddr::Enabled);
+  if (hardwareAddressing_) {
+    updatei2cAddress();
+  }
+  opendrainEnabled_ = (settings_.odr == OpenDrain::Enabled);
+  interruptPolarityHigh_ =
+      (settings_.intpol == MCP::InterruptPolarity::ActiveHigh);
 
-    // Step 5: Handle result logging
-    if (result != 0) {
-      ESP_LOGE(MCP_TAG, "New settings change failed, reverting to defaults");
-      configuration_.configureDefault();
-    } else {
-      ESP_LOGI(MCP_TAG, "Successfully changed the settings");
-    }
+  // Step 5: Handle result logging
+  if (result != 0) {
+    ESP_LOGE(MCP_TAG, "New settings change failed, reverting to defaults");
+    configuration_.configureDefault();
+  } else {
+    ESP_LOGI(MCP_TAG, "Successfully changed the settings");
   }
 }
 
@@ -390,7 +390,7 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
              valueB);
 
     if (intrFunctions) {
-      uint8_t newValue = port == MCP::PORT::GPIOA ? valueA : valueB;
+      uint8_t newValue = port == PORT::GPIOA ? valueA : valueB;
 
       interruptManager_->updateRegisterValue(port, currentAddress, newValue);
 
@@ -439,7 +439,7 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
 }
 
 void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
-  // MCP::PORT port = ev->regIdentity.port;
+
   uint8_t reg = ev->regIdentity.regAddress;
   uint16_t settings = ev->data;
   uint8_t result = i2cBus_.write_mcp_register(reg, settings, bankMode_);
@@ -453,7 +453,7 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
   EventManager::clearBits(RegisterEvent::SETTINGS_CHANGED);
 }
 
-Register *MCPDevice::getGPIORegister(MCP::REG reg, MCP::PORT port) {
+Register *MCPDevice::getGPIORegister(REG reg, PORT port) {
   if (port == PORT::GPIOA) {
 
     return gpioBankA->getRegisterForUpdate(reg);
@@ -463,16 +463,16 @@ Register *MCPDevice::getGPIORegister(MCP::REG reg, MCP::PORT port) {
     return gpioBankB->getRegisterForUpdate(reg);
   }
 }
-Register *MCPDevice::getIntRegister(MCP::REG reg, MCP::PORT port) {
+Register *MCPDevice::getIntRegister(REG reg, PORT port) {
 
   return interruptManager_->getRegister(port, reg);
 }
-uint8_t MCPDevice::getsavedSettings(MCP::PORT port) const {
+uint8_t MCPDevice::getsavedSettings(PORT port) const {
   return port == MCP::PORT::GPIOA ? cntrlRegA->getSavedValue()
                                   : cntrlRegB->getSavedValue();
 }
 
-uint8_t MCPDevice::getRegisterAddress(MCP::REG reg, MCP::PORT port) const {
+uint8_t MCPDevice::getRegisterAddress(REG reg, PORT port) const {
   auto key = std::make_tuple(port, reg);
   auto it = addressMap_.find(key);
 
@@ -484,7 +484,7 @@ uint8_t MCPDevice::getRegisterAddress(MCP::REG reg, MCP::PORT port) const {
   }
 }
 
-uint8_t MCPDevice::getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const {
+uint8_t MCPDevice::getRegisterSavedValue(REG reg, PORT port) const {
   if (port == MCP::PORT::GPIOA) {
     return gpioBankA->getSavedValue(reg);
   } else {
@@ -492,9 +492,9 @@ uint8_t MCPDevice::getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const {
   }
 }
 
-std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t>
+std::unordered_map<std::tuple<PORT, REG>, uint8_t>
 MCPDevice::populateAddressMap(bool bankMode) {
-  std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap;
+  std::unordered_map<std::tuple<PORT, REG>, uint8_t> addressMap;
 
   const std::vector<REG> registers = {
       REG::IODIR, REG::IPOL, REG::GPINTEN, REG::DEFVAL, REG::INTCON, REG::IOCON,
@@ -553,10 +553,8 @@ void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
 void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
                                 uint8_t espIntrmode) {
   intrSetting_.intrSharing = true;
-
   intrSetting_.modeA_ = coverIntrMode(espIntrmode);
   interruptManager_->setup(intrSetting_);
-
   interruptManager_->attachMainHandler<void>(PORT::GPIOA, pinA, intAHandler,
                                              nullptr);
 }
@@ -572,7 +570,6 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
   intrSetting_.modeA_ = coverIntrMode(espIntrmodeA);
   intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
   interruptManager_->setup(intrSetting_);
-
   interruptManager_->attachMainHandler<void>(PORT::GPIOA, pinA, intAHandler,
                                              nullptr);
   interruptManager_->attachMainHandler<void>(PORT::GPIOB, pinB, intBHandler,
@@ -602,7 +599,6 @@ void MCPDevice::dumpRegisters() const {
   ESP_LOGI(MCP_TAG, "Dumping Registers for MCP_Device (Address: 0x%02X)",
            address_);
   bool is16Bit = !bankMode_; // True if in 16-bit mode
-
   if (is16Bit) {
     ESP_LOGI(MCP_TAG,
              "Register mapping: 16-bit mode (PORTA & PORTB separated)");
@@ -645,10 +641,10 @@ void MCPDevice::dumpRegisters() const {
     }
   }
 }
-std::pair<MCP::PORT, uint8_t> MCPDevice::getPortAndMask(int pin) {
+std::pair<PORT, uint8_t> MCPDevice::getPortAndMask(int pin) {
   assert(pin >= 0 && pin <= 15 && "Invalid pin");
-  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
-  MCP::PORT port = Util::getPortFromPin(pinEnum);
+  PIN pinEnum = static_cast<PIN>(pin);
+  PORT port = Util::getPortFromPin(pinEnum);
   uint8_t mask = 1 << (static_cast<uint8_t>(pinEnum) % 8);
   return {port, mask};
 }

@@ -147,7 +147,6 @@ private:
   I2CBus &i2cBus_;
   InterruptRegisters regA;
   InterruptRegisters regB;
-
   InterruptSetting setting_;
   uint8_t maskA_ = 0x00;
   uint8_t maskB_ = 0x00;

@@ -13,7 +13,7 @@ public:
       acquired_ = true;
     } else {
 
-      ESP_LOGE("I2CBUS", "Failed to take mutex");
+      ESP_LOGE("SemLock", "Failed to take mutex");
     }
   }
 

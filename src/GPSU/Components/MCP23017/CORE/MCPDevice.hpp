@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 
-
 #define MCP_TAG "MCPDevice"
 namespace std {
 template <> struct hash<std::tuple<MCP::PORT, MCP::REG>> {
@@ -236,9 +235,9 @@ public:
     intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
     interruptManager_->setup(intrSetting_);
 
-    interruptManager_->attachMainHandler<T>(MCP::PORT::GPIOA, pinA, intAHandler,
+    interruptManager_->attachMainHandler<T>(PORT::GPIOA, pinA, intAHandler,
                                             userDataA);
-    interruptManager_->attachMainHandler<T>(MCP::PORT::GPIOB, pinB, intBHandler,
+    interruptManager_->attachMainHandler<T>(PORT::GPIOB, pinB, intBHandler,
                                             userDataB);
   }
 
@@ -268,7 +267,7 @@ private:
   template <typename Pin1, typename Pin2, typename... Rest>
   constexpr uint8_t generateMask(Pin1 first, Pin2 second, Rest... rest) {
     static_assert(sizeof...(rest) <= 6, "Too many pins, max is 8");
-    MCP::PORT port = first.getPort();
+    PORT port = first.getPort();
     assert(((second.getPort() == port)));
     assert((... && (rest.getPort() == port)));
 
