@@ -264,19 +264,19 @@ void RunTask(void *param) {
     vTaskDelay(pdMS_TO_TICKS(100));
     uint8_t readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
     Serial.printf("pins value is %d", readmask);
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(10));
     send_req += 1;
     if (send_req == 2) {
       send_req = 0;
       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
       vTaskDelay(pdMS_TO_TICKS(10));
       expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
-      // Serial.printf("pins value is %d", readmask);
-      vTaskDelay(pdMS_TO_TICKS(20));
+      Serial.printf("B ports value is %d", readmask);
+      vTaskDelay(pdMS_TO_TICKS(10));
     }
-    readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
-    vTaskDelay(pdMS_TO_TICKS(20));
-    Serial.printf("pins value is %d", readmask);
+     readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
+    vTaskDelay(pdMS_TO_TICKS(10));
+      Serial.printf("pins value is %d", readmask);
 
     vTaskDelay(pdMS_TO_TICKS(10));
 

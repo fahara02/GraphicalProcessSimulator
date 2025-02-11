@@ -25,8 +25,8 @@ void InterruptManager::init(InterruptManager *manager) {
     if (!initialised) {
       portATrigger = xSemaphoreCreateBinary();
       portBTrigger = xSemaphoreCreateBinary();
-      // xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
-      //                         4196, manager, 5, &intrTaskHandle, 1);
+      xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
+                              4196, manager, 5, &intrTaskHandle, 1);
 
       if (portATrigger != nullptr && portBTrigger != nullptr) {
         initialised = true;

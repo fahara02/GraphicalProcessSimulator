@@ -282,17 +282,6 @@ void MCPDevice::EventMonitorTask(void *param) {
   while (true) {
     // Wait for events
     size_t queueSize = EventManager::getQueueSize();
-    if (MAX_EVENT - queueSize < 2) {
-
-      if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-        // EventManager::clearOldestEvent();
-        Serial.printf("QUE Cleared");
-      } else {
-        Serial.printf(" Monitor task: Failed to get mutex!");
-      }
-
-      xSemaphoreGive(regRWmutex);
-    }
 
     const EventBits_t CHECK_BITS_MASK =
         static_cast<EventBits_t>(RegisterEvent::READ_REQUEST) |
@@ -364,67 +353,6 @@ void MCPDevice::EventMonitorTask(void *param) {
         Serial.printf(" Monitor task (Settings): Failed to get mutex!");
       }
     }
-    if (xSemaphoreTake(manager->portATrigger, portMAX_DELAY) ||
-        manager->hasflagReadAFailed()) {
-
-      uint8_t flagA = 0;
-      uint8_t flagB = 0;
-      bool result = manager->getInterruptFlags(flagA, flagB);
-
-      if (!result) {
-        Serial.printf(
-            "Port A: Interrupt flag read failed retrying for %d time...\n",
-            manager->getRetryA());
-        manager->retryFlagReadA();
-
-        if (manager->getRetryA() > MCP::MAX_RETRY) {
-          manager->resetRetryA();
-          Serial.println("Port A: Interrupt flag read retry limit reached !");
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
-
-      if (manager->isSharing()) {
-
-        manager->processPort(PORT::GPIOA, flagA);
-        manager->processPort(PORT::GPIOB, flagB);
-      } else {
-
-        manager->processPort(PORT::GPIOA, flagA);
-      }
-      manager->clearInterrupt();
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    if (xSemaphoreTake(manager->portBTrigger, portMAX_DELAY) ||
-        manager->hasflagReadBFailed()) {
-      uint8_t flagA = 0;
-      uint8_t flagB = 0;
-      bool result = manager->getInterruptFlags(flagA, flagB);
-
-      if (!result) {
-        Serial.printf(
-            "Port B: Interrupt flag read failed retrying for %d time...\n",
-            manager->getRetryB());
-        manager->retryFlagReadB();
-
-        if (manager->getRetryB() > MCP::MAX_RETRY) {
-          manager->resetRetryB();
-          Serial.println("Port B: Interrupt flag read retry limit reached !");
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
-      }
-
-      if (manager->isSharing()) {
-
-        manager->processPort(PORT::GPIOA, flagA);
-        manager->processPort(PORT::GPIOB, flagB);
-      } else {
-
-        manager->processPort(PORT::GPIOB, flagB);
-      }
-      manager->clearInterrupt();
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
 
     vTaskDelay(pdMS_TO_TICKS(10));
   }
@@ -435,7 +363,13 @@ void MCPDevice::handleBankModeEvent(currentEvent *ev) {
 
   uint8_t regAddress = ev->regIdentity.regAddress;
   uint8_t settings = ev->data;
-  i2cBus_.write_mcp_register(regAddress, settings, bankMode_);
+  int value = i2cBus_.write_mcp_register(regAddress, settings, bankMode_);
+  if (value == -1) {
+    ESP_LOGE(MCP_TAG, "Write failed for id=%d ; Invalid data received\n",
+             ev->id);
+    xSemaphoreGive(regRWmutex);
+    return;
+  }
 
   Serial.printf("New Event %d BankMode changed \n", ev->id);
   EventManager::acknowledgeEvent(ev);
@@ -454,6 +388,7 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
   if (value == -1) {
     ESP_LOGE(MCP_TAG, "Read failed for id=%d ; Invalid data received\n",
              ev->id);
+    xSemaphoreGive(regRWmutex);
     return;
   }
 
@@ -502,11 +437,10 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
 
   EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::READ_REQUEST);
+  xSemaphoreGive(regRWmutex);
 
   EventManager::createEvent(ev->regIdentity, RegisterEvent::DATA_RECEIVED,
                             value);
-
-  xSemaphoreGive(regRWmutex);
 }
 
 void MCPDevice::handleWriteEvent(currentEvent *ev) {
@@ -521,6 +455,7 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
     EventManager::acknowledgeEvent(ev);
   } else {
     ESP_LOGE(MCP_TAG, "New Write failed for id=%d ; \n", ev->id);
+    xSemaphoreGive(regRWmutex);
   }
 
   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
@@ -537,6 +472,7 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
     EventManager::acknowledgeEvent(ev);
   } else {
     Serial.printf("New Setting Event failed for id=%d ; \n", ev->id);
+    xSemaphoreGive(regRWmutex);
   }
 
   EventManager::clearBits(RegisterEvent::SETTINGS_CHANGED);
