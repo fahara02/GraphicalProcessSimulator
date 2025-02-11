@@ -20,20 +20,20 @@ struct address_decoder_t {
   const bool A0_;
 
   address_decoder_t(MCP::MCP_MODEL m, bool A2, bool A1, bool A0)
-      : model_(m), A2_(A2), A1_(A1), A0_(A0),
-        device_i2c_address(decodeDeviceAddress()) {}
+      : model_(m), A2_(A2), A1_(A1), A0_(A0) {}
 
-  constexpr uint8_t decodeDeviceAddress() {
-    if (model_ == MCP::MCP_MODEL::MCP23017 ||
-        model_ == MCP::MCP_MODEL::MCP23S17) {
+  uint8_t getDeviceAddress(bool haen) { return decodeDeviceAddress(haen); }
+
+private:
+  constexpr uint8_t decodeDeviceAddress(bool haen) {
+    if ((model_ == MCP::MCP_MODEL::MCP23017 ||
+         model_ == MCP::MCP_MODEL::MCP23S17) &&
+        haen) {
+
       return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
     }
     return MCP_ADDRESS_BASE;
   }
-  uint8_t getDeviceAddress() const { return device_i2c_address; }
-
-private:
-  uint8_t device_i2c_address;
 };
 struct Settings {
   OperationMode opMode = OperationMode::SequentialMode16;

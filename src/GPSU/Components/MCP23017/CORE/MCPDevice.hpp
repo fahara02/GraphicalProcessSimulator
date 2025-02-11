@@ -72,6 +72,7 @@ public:
             bool pinA0 = false);
   ~MCPDevice();
   void init();
+  void updatei2cAddress();
   void configure(const MCP::Settings &config);
 
   bool enableInterrupt();

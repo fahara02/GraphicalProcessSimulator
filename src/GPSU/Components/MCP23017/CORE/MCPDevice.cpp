@@ -10,11 +10,11 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
     : model_(model), configuration_(model),
       settings_(configuration_.getSettings()),
       defaultSettings_(Settings(model)), decoder_(model, pinA2, pinA1, pinA0),
-      address_(decoder_.getDeviceAddress()), //
-      sda_(GPIO_NUM_25),                     //
-      scl_(GPIO_NUM_33),                     //
-      cs_(GPIO_NUM_NC),                      //
-      reset_(GPIO_NUM_33),                   //
+      address_(decoder_.getDeviceAddress(false)), //
+      sda_(GPIO_NUM_25),                          //
+      scl_(GPIO_NUM_33),                          //
+      cs_(GPIO_NUM_NC),                           //
+      reset_(GPIO_NUM_33),                        //
       intA_(GPIO_NUM_NC), intB_(GPIO_NUM_NC),
       i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)), //
 
@@ -40,6 +40,10 @@ void MCPDevice::configure(const MCP::Settings &setting) {
       loadSettings();
     }
   }
+}
+void MCPDevice::updatei2cAddress() {
+  bool haen = configuration_.getBitField(MCP::Config::Field::HAEN);
+  address_ = decoder_.getDeviceAddress(haen);
 }
 
 void MCPDevice::loadSettings() {
@@ -102,6 +106,9 @@ void MCPDevice::loadSettings() {
     mirrorMode_ = (settings_.mirror == MCP::PairedInterrupt::Enabled);
     slewrateDisabled_ = (settings_.slew == MCP::Slew::Disabled);
     hardwareAddressing_ = (settings_.haen == MCP::HardwareAddr::Enabled);
+    if (hardwareAddressing_) {
+      updatei2cAddress();
+    }
     opendrainEnabled_ = (settings_.odr == MCP::OpenDrain::Enabled);
     interruptPolarityHigh_ =
         (settings_.intpol == MCP::InterruptPolarity::ActiveHigh);
@@ -593,7 +600,7 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
 
   intrSetting_.modeA_ = coverIntrMode(espIntrmode);
   interruptManager_->setup(intrSetting_);
- 
+
   interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
                                              intAHandler, nullptr);
 }
