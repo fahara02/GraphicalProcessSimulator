@@ -280,10 +280,9 @@ void MCPDevice::invertInput(int pin, bool invert) {
 
 void MCPDevice::EventMonitorTask(void *param) {
   MCPDevice *device = static_cast<MCPDevice *>(param);
-  MCP::InterruptManager *manager = device->interruptManager_.get();
+
   while (true) {
     // Wait for events
-    size_t queueSize = EventManager::getQueueSize();
 
     const EventBits_t CHECK_BITS_MASK =
         static_cast<EventBits_t>(RegisterEvent::READ_REQUEST) |
@@ -561,13 +560,6 @@ void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
   updateInterruptSetting(mcpIntrmode, intrOutMode);
   interruptManager_->setupInterruptMask(port, pinmask);
   interruptManager_->setup(intrSetting_);
-}
-
-void MCPDevice::setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode,
-                                MCP::INTR_OUTPUT_TYPE intrOutMode) {
-
-  setIntteruptPin(Util::getPortFromPin(pin.getEnum()), pin.getMask(),
-                  mcpIntrmode, intrOutMode);
 }
 
 void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,

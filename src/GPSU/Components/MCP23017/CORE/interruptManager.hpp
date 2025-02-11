@@ -6,7 +6,6 @@
 #include "RegisterEvents.hpp"
 #include "Utility.hpp"
 #include "i2cBus.hpp"
-#include <functional>
 
 #define INT_TAG "INTR_MANAGER"
 

@@ -143,9 +143,6 @@ public:
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
-  void setIntteruptPin(MCP::Pin pin, uint8_t mcpIntrmode = CHANGE,
-                       MCP::INTR_OUTPUT_TYPE intrOutMode =
-                           MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
   template <typename Pin>
   auto setInterrupts(Pin &&pin)
