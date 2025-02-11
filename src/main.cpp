@@ -66,7 +66,7 @@ COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 void RunTask(void *param);
-COMPONENT::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
+MCP::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
 // void cb1(void *param);
 // void cb2(void *param);
 
@@ -103,7 +103,7 @@ void setup() {
 
   // expander.enableInterrupt();
 
-  expander.pinMode(MCP::PORT::GPIOA, OUTPUT_OPEN_DRAIN);
+  expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
   delay(1000);
   expander.pinMode(MCP::PORT::GPIOB, INPUT);
   delay(1000);
@@ -245,7 +245,7 @@ void loop() {
 // }
 
 void RunTask(void *param) {
-  COMPONENT::MCPDevice *expander = static_cast<COMPONENT::MCPDevice *>(param);
+  MCP::MCPDevice *expander = static_cast<MCP::MCPDevice *>(param);
   while (true) {
     Serial.println("....MAIN TASK......");
     // uint8_t readmask = 0;

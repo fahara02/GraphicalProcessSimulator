@@ -2,24 +2,23 @@
 
 #include "climits"
 
-using namespace MCP;
-namespace COMPONENT {
+namespace MCP {
 
 SemaphoreHandle_t MCPDevice::regRWmutex = xSemaphoreCreateMutex();
-MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
+MCPDevice::MCPDevice(MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
     : model_(model), configuration_(model),
       settings_(configuration_.getSettings()),
       defaultSettings_(Settings(model)), decoder_(model, pinA2, pinA1, pinA0),
       address_(decoder_.getDeviceAddress(false)),
-      i2cBus_(MCP::I2CBus::getInstance(address_, sda_, scl_)),
-      cntrlRegA(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
-                                                MCP::PORT::GPIOA, bankMode_)),
-      cntrlRegB(std::make_shared<MCP::Register>(model_, MCP::REG::IOCON,
-                                                MCP::PORT::GPIOB, bankMode_)),
+      i2cBus_(I2CBus::getInstance(address_, sda_, scl_)),
+      cntrlRegA(std::make_shared<MCP::Register>(model_, REG::IOCON, PORT::GPIOA,
+                                                bankMode_)),
+      cntrlRegB(std::make_shared<MCP::Register>(model_, REG::IOCON, PORT::GPIOB,
+                                                bankMode_)),
       gpioBankA(
-          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, cntrlRegA)),
+          std::make_unique<GPIO_BANK>(MCP::PORT::GPIOA, model, cntrlRegA)),
       gpioBankB(
-          std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
+          std::make_unique<GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
 
       interruptManager_(std::make_unique<MCP::InterruptManager>(
           model, i2cBus_, cntrlRegA, cntrlRegB)),
@@ -27,7 +26,7 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
 
 {}
 MCPDevice::~MCPDevice() = default;
-void MCPDevice::configure(const MCP::Settings &setting) {
+void MCPDevice::configure(const Settings &setting) {
   if (cntrlRegA && cntrlRegB) {
     if (configuration_.configure(setting)) {
       settings_ = configuration_.getSettings();
@@ -36,7 +35,7 @@ void MCPDevice::configure(const MCP::Settings &setting) {
   }
 }
 void MCPDevice::updatei2cAddress() {
-  bool haen = configuration_.getBitField(MCP::Config::Field::HAEN);
+  bool haen = configuration_.getBitField(Config::Field::HAEN);
   address_ = decoder_.getDeviceAddress(haen);
 }
 
@@ -97,13 +96,13 @@ void MCPDevice::loadSettings() {
     }
 
     // Step 4: Update other MCP settings
-    mirrorMode_ = (settings_.mirror == MCP::PairedInterrupt::Enabled);
-    slewrateDisabled_ = (settings_.slew == MCP::Slew::Disabled);
-    hardwareAddressing_ = (settings_.haen == MCP::HardwareAddr::Enabled);
+    mirrorMode_ = (settings_.mirror == PairedInterrupt::Enabled);
+    slewrateDisabled_ = (settings_.slew == Slew::Disabled);
+    hardwareAddressing_ = (settings_.haen == HardwareAddr::Enabled);
     if (hardwareAddressing_) {
       updatei2cAddress();
     }
-    opendrainEnabled_ = (settings_.odr == MCP::OpenDrain::Enabled);
+    opendrainEnabled_ = (settings_.odr == OpenDrain::Enabled);
     interruptPolarityHigh_ =
         (settings_.intpol == MCP::InterruptPolarity::ActiveHigh);
 
@@ -123,7 +122,7 @@ void MCPDevice::init() {
   i2cBus_.init();
   EventManager::initializeEventGroups();
   startEventMonitorTask(this);
-  interruptManager_->setupInterruptMask(MCP::PORT::GPIOB, 0XFF);
+  interruptManager_->setupInterruptMask(PORT::GPIOB, 0XFF);
   setupDefaultIntterupt();
   resetInterruptRegisters();
 }
@@ -149,12 +148,11 @@ void MCPDevice::startEventMonitorTask(MCPDevice *device) {
   }
 }
 
-void MCPDevice::pinMode(const MCP::PORT port, const uint8_t pinmask,
+void MCPDevice::pinMode(const PORT port, const uint8_t pinmask,
                         const uint8_t mode) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
-  auto *cntrlReg =
-      (port == MCP::PORT::GPIOA) ? cntrlRegA.get() : cntrlRegB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+  auto *cntrlReg = (port == PORT::GPIOA) ? cntrlRegA.get() : cntrlRegB.get();
   if (!gpioBank) {
     assert(false && "Invalid port");
     return;
@@ -162,11 +160,11 @@ void MCPDevice::pinMode(const MCP::PORT port, const uint8_t pinmask,
   gpioBank->setGeneralMask(pinmask);
   switch (mode) {
   case INPUT:
-    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_INPUT);
+    gpioBank->setPinDirection(pinmask, GPIO_MODE::GPIO_INPUT);
     break;
   case INPUT_PULLUP:
-    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_INPUT);
-    gpioBank->setPullup(pinmask, MCP::PULL_MODE::ENABLE_PULLUP);
+    gpioBank->setPinDirection(pinmask, GPIO_MODE::GPIO_INPUT);
+    gpioBank->setPullup(pinmask, PULL_MODE::ENABLE_PULLUP);
     break;
   case INPUT_PULLDOWN:
 
@@ -174,107 +172,95 @@ void MCPDevice::pinMode(const MCP::PORT port, const uint8_t pinmask,
              "PullDown not available in MCP devices, defaulting to INPUT.");
     break;
   case OUTPUT:
-    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_OUTPUT);
+    gpioBank->setPinDirection(pinmask, GPIO_MODE::GPIO_OUTPUT);
     break;
   case OUTPUT_OPEN_DRAIN:
-    gpioBank->setPinDirection(pinmask, MCP::GPIO_MODE::GPIO_OUTPUT);
-    cntrlReg->setOpenDrain<MCP::REG::IOCON>(true);
+    gpioBank->setPinDirection(pinmask, GPIO_MODE::GPIO_OUTPUT);
+    cntrlReg->setOpenDrain<REG::IOCON>(true);
     break;
   default:
     assert(false && "Invalid mode");
     break;
   }
 }
-void MCPDevice::pinMode(const MCP::PORT port, const uint8_t mode) {
+void MCPDevice::pinMode(const PORT port, const uint8_t mode) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   return pinMode(port, gpioBank->getGeneralMask(), mode);
 }
 
-void MCPDevice::pinMode(const MCP::Pin pin, const uint8_t mode) {
+void MCPDevice::pinMode(const Pin pin, const uint8_t mode) {
   pinMode(Util::getPortFromPin(pin.getEnum()), pin.getMask(), mode);
 }
 
 void MCPDevice::pinMode(const int pin, const uint8_t mode) {
-  assert(pin >= 0 && pin <= 15 && "Invalid pin");
-  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
-  MCP::PORT port = Util::getPortFromPin(pinEnum);
-  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  auto [port, mask] = getPortAndMask(pin);
   pinMode(port, mask, mode);
 }
 
-void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t pinmask,
+void MCPDevice::digitalWrite(const PORT port, const uint8_t pinmask,
                              const uint8_t level) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   gpioBank->setGeneralMask(pinmask);
   gpioBank->setPinState(pinmask, static_cast<bool>(level));
 }
-void MCPDevice::digitalWrite(const MCP::PORT port, const uint8_t level) {
+void MCPDevice::digitalWrite(const PORT port, const uint8_t level) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   gpioBank->setPinState(static_cast<bool>(level));
 }
-void MCPDevice::digitalWrite(const MCP::Pin pin, const uint8_t level) {
+void MCPDevice::digitalWrite(const Pin pin, const uint8_t level) {
   digitalWrite(Util::getPortFromPin(pin.getEnum()), pin.getMask(), level);
 }
 
 void MCPDevice::digitalWrite(const int pin, const uint8_t level) {
-  assert(pin >= 0 && pin <= 15 && "Invalid pin");
-  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
-  MCP::PORT port = Util::getPortFromPin(pinEnum);
-  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  auto [port, mask] = getPortAndMask(pin);
   digitalWrite(port, mask, level);
 }
 
-uint8_t MCPDevice::digitalRead(const MCP::PORT port, const uint8_t pinmask) {
+uint8_t MCPDevice::digitalRead(const PORT port, const uint8_t pinmask) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   gpioBank->setGeneralMask(pinmask);
   return gpioBank->getPinState(pinmask);
 }
-bool MCPDevice::digitalRead(const MCP::Pin pin) {
+bool MCPDevice::digitalRead(const Pin pin) {
   return digitalRead(Util::getPortFromPin(pin.getEnum()), pin.getMask());
 }
-uint8_t MCPDevice::digitalRead(const MCP::PORT port) {
+uint8_t MCPDevice::digitalRead(const PORT port) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   return gpioBank->getPinState();
 }
 
 bool MCPDevice::digitalRead(const int pin) {
-  assert(pin >= 0 && pin <= 15 && "Invalid pin");
-  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
-  MCP::PORT port = Util::getPortFromPin(pinEnum);
-  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  auto [port, mask] = getPortAndMask(pin);
   return digitalRead(port, mask);
 }
 
-void MCPDevice::invertInput(const MCP::PORT port, const uint8_t pinmask,
+void MCPDevice::invertInput(const PORT port, const uint8_t pinmask,
                             bool invert) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
   gpioBank->setGeneralMask(pinmask);
-  gpioBank->setInputPolarity(pinmask, invert ? MCP::INPUT_POLARITY::INVERTED
-                                             : MCP::INPUT_POLARITY::UNCHANGED);
+  gpioBank->setInputPolarity(pinmask, invert ? INPUT_POLARITY::INVERTED
+                                             : INPUT_POLARITY::UNCHANGED);
 }
-void MCPDevice::invertInput(const MCP::PORT port, bool invert) {
+void MCPDevice::invertInput(const PORT port, bool invert) {
   GPIO_BANK *gpioBank =
-      (port == MCP::PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
+      (port == PORT::GPIOA) ? gpioBankA.get() : gpioBankB.get();
 
-  gpioBank->setInputPolarity(invert ? MCP::INPUT_POLARITY::INVERTED
-                                    : MCP::INPUT_POLARITY::UNCHANGED);
+  gpioBank->setInputPolarity(invert ? INPUT_POLARITY::INVERTED
+                                    : INPUT_POLARITY::UNCHANGED);
 }
 
-void MCPDevice::invertInput(const MCP::Pin pin, bool invert) {
+void MCPDevice::invertInput(const Pin pin, bool invert) {
   invertInput(Util::getPortFromPin(pin.getEnum()), pin.getMask(), invert);
 }
 
 void MCPDevice::invertInput(int pin, bool invert) {
-  assert(pin >= 0 && pin <= 15 && "Invalid pin");
-  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
-  MCP::PORT port = Util::getPortFromPin(pinEnum);
-  uint8_t mask = 1 << static_cast<uint8_t>(pinEnum) % 8;
+  auto [port, mask] = getPortAndMask(pin);
   invertInput(port, mask, invert);
 }
 
@@ -282,8 +268,7 @@ void MCPDevice::EventMonitorTask(void *param) {
   MCPDevice *device = static_cast<MCPDevice *>(param);
 
   while (true) {
-    // Wait for events
-
+    // Wait for events.
     const EventBits_t CHECK_BITS_MASK =
         static_cast<EventBits_t>(RegisterEvent::READ_REQUEST) |
         static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST) |
@@ -291,67 +276,63 @@ void MCPDevice::EventMonitorTask(void *param) {
         static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED);
     EventBits_t eventBits =
         xEventGroupWaitBits(EventManager::registerEventGroup, CHECK_BITS_MASK,
-
-                            pdFALSE, // Clear the bits after processing
+                            pdFALSE, // Don't clear bits automatically
                             pdFALSE, // Wait for any event
                             MUTEX_TIMEOUT);
 
-    // Handle READ_REQUEST
-
+    // Handle READ_REQUEST.
     if (eventBits & static_cast<EventBits_t>(RegisterEvent::READ_REQUEST)) {
-
-      if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-        currentEvent *event =
-            EventManager::getEvent(RegisterEvent::READ_REQUEST);
-        if (event && event->event != RegisterEvent::MAX) {
-
-          device->handleReadEvent(event);
-        }
-      } else {
-        Serial.printf(" Monitor task(read): Failed to get mutex!");
+      SemLock lock(regRWmutex, MUTEX_TIMEOUT);
+      if (!lock.acquired()) {
+        ESP_LOGE(MCP_TAG, "Failed to acquire mutex in READ_REQUEST");
+        continue;
+      }
+      currentEvent *event = EventManager::getEvent(RegisterEvent::READ_REQUEST);
+      if (event && event->event != RegisterEvent::MAX) {
+        device->handleReadEvent(event);
       }
     }
 
-    // Handle WRITE_REQUEST
+    // Handle WRITE_REQUEST.
     if (eventBits & static_cast<EventBits_t>(RegisterEvent::WRITE_REQUEST)) {
-      if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-        currentEvent *event =
-            EventManager::getEvent(RegisterEvent::WRITE_REQUEST);
-        if (event && event->event != RegisterEvent::MAX) {
-
-          device->handleWriteEvent(event);
-        }
-      } else {
-        Serial.printf(" Monitor task(write): Failed to get mutex!");
+      SemLock lock(regRWmutex, MUTEX_TIMEOUT);
+      if (!lock.acquired()) {
+        ESP_LOGE(MCP_TAG, "Failed to acquire mutex in WRITE_REQUEST");
+        continue;
+      }
+      currentEvent *event =
+          EventManager::getEvent(RegisterEvent::WRITE_REQUEST);
+      if (event && event->event != RegisterEvent::MAX) {
+        device->handleWriteEvent(event);
       }
     }
 
-    // Handle BANK_MODE_CHANGED
+    // Handle BANK_MODE_CHANGED.
     if (eventBits &
         static_cast<EventBits_t>(RegisterEvent::BANK_MODE_CHANGED)) {
-      if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-        currentEvent *event =
-            EventManager::getEvent(RegisterEvent::BANK_MODE_CHANGED);
-        if (event && event->event != RegisterEvent::MAX) {
-
-          device->handleBankModeEvent(event);
-        }
-      } else {
-        Serial.printf(" Monitor task: Failed to get mutex!");
+      SemLock lock(regRWmutex, MUTEX_TIMEOUT);
+      if (!lock.acquired()) {
+        ESP_LOGE(MCP_TAG, "Failed to acquire mutex in BANK_MODE_CHANGED");
+        continue;
+      }
+      currentEvent *event =
+          EventManager::getEvent(RegisterEvent::BANK_MODE_CHANGED);
+      if (event && event->event != RegisterEvent::MAX) {
+        device->handleBankModeEvent(event);
       }
     }
 
-    // Handle SETTINGS_CHANGED
+    // Handle SETTINGS_CHANGED.
     if (eventBits & static_cast<EventBits_t>(RegisterEvent::SETTINGS_CHANGED)) {
-      if (xSemaphoreTake(regRWmutex, MUTEX_TIMEOUT)) {
-        currentEvent *event =
-            EventManager::getEvent(RegisterEvent::SETTINGS_CHANGED);
-        if (event && event->event != RegisterEvent::MAX) {
-
-          device->handleSettingChangeEvent(event);
-        }
-      } else {
-        Serial.printf(" Monitor task (Settings): Failed to get mutex!");
+      SemLock lock(regRWmutex, MUTEX_TIMEOUT);
+      if (!lock.acquired()) {
+        ESP_LOGE(MCP_TAG, "Failed to acquire mutex in SETTINGS_CHANGED");
+        continue;
+      }
+      currentEvent *event =
+          EventManager::getEvent(RegisterEvent::SETTINGS_CHANGED);
+      if (event && event->event != RegisterEvent::MAX) {
+        device->handleSettingChangeEvent(event);
       }
     }
 
@@ -360,28 +341,25 @@ void MCPDevice::EventMonitorTask(void *param) {
   vTaskDelete(NULL);
 }
 void MCPDevice::handleBankModeEvent(currentEvent *ev) {
-  // MCP::PORT port = ev->regIdentity.port;
-
   uint8_t regAddress = ev->regIdentity.regAddress;
   uint8_t settings = ev->data;
   int value = i2cBus_.write_mcp_register(regAddress, settings, bankMode_);
   if (value == -1) {
     ESP_LOGE(MCP_TAG, "Write failed for id=%d ; Invalid data received\n",
              ev->id);
-    xSemaphoreGive(regRWmutex);
+
     return;
   }
 
   Serial.printf("New Event %d BankMode changed \n", ev->id);
   EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::BANK_MODE_CHANGED);
-  xSemaphoreGive(regRWmutex);
 }
 
 void MCPDevice::handleReadEvent(currentEvent *ev) {
-  MCP::REG reg = ev->regIdentity.reg;
+  REG reg = ev->regIdentity.reg;
   uint8_t currentAddress = ev->regIdentity.regAddress;
-  MCP::PORT port = ev->regIdentity.port;
+  PORT port = ev->regIdentity.port;
   bool intrFunctions = ev->intteruptFunction_;
   uint8_t regAddress = 0;
 
@@ -389,7 +367,7 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
   if (value == -1) {
     ESP_LOGE(MCP_TAG, "Read failed for id=%d ; Invalid data received\n",
              ev->id);
-    xSemaphoreGive(regRWmutex);
+
     return;
   }
 
@@ -426,7 +404,7 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
       interruptManager_->updateRegisterValue(port, currentAddress,
                                              static_cast<uint8_t>(value));
     } else {
-      if (port == MCP::PORT::GPIOA) {
+      if (port == PORT::GPIOA) {
         gpioBankA->updateRegisterValue(currentAddress,
                                        static_cast<uint8_t>(value));
       } else {
@@ -438,7 +416,6 @@ void MCPDevice::handleReadEvent(currentEvent *ev) {
 
   EventManager::acknowledgeEvent(ev);
   EventManager::clearBits(RegisterEvent::READ_REQUEST);
-  xSemaphoreGive(regRWmutex);
 
   EventManager::createEvent(ev->regIdentity, RegisterEvent::DATA_RECEIVED,
                             value);
@@ -456,11 +433,9 @@ void MCPDevice::handleWriteEvent(currentEvent *ev) {
     EventManager::acknowledgeEvent(ev);
   } else {
     ESP_LOGE(MCP_TAG, "New Write failed for id=%d ; \n", ev->id);
-    xSemaphoreGive(regRWmutex);
   }
 
   EventManager::clearBits(RegisterEvent::WRITE_REQUEST);
-  xSemaphoreGive(regRWmutex);
 }
 
 void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
@@ -473,15 +448,13 @@ void MCPDevice::handleSettingChangeEvent(currentEvent *ev) {
     EventManager::acknowledgeEvent(ev);
   } else {
     Serial.printf("New Setting Event failed for id=%d ; \n", ev->id);
-    xSemaphoreGive(regRWmutex);
   }
 
   EventManager::clearBits(RegisterEvent::SETTINGS_CHANGED);
-  xSemaphoreGive(regRWmutex);
 }
 
-MCP::Register *MCPDevice::getGPIORegister(MCP::REG reg, MCP::PORT port) {
-  if (port == MCP::PORT::GPIOA) {
+Register *MCPDevice::getGPIORegister(MCP::REG reg, MCP::PORT port) {
+  if (port == PORT::GPIOA) {
 
     return gpioBankA->getRegisterForUpdate(reg);
 
@@ -490,7 +463,7 @@ MCP::Register *MCPDevice::getGPIORegister(MCP::REG reg, MCP::PORT port) {
     return gpioBankB->getRegisterForUpdate(reg);
   }
 }
-MCP::Register *MCPDevice::getIntRegister(MCP::REG reg, MCP::PORT port) {
+Register *MCPDevice::getIntRegister(MCP::REG reg, MCP::PORT port) {
 
   return interruptManager_->getRegister(port, reg);
 }
@@ -523,16 +496,15 @@ std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t>
 MCPDevice::populateAddressMap(bool bankMode) {
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap;
 
-  const std::vector<MCP::REG> registers = {
-      MCP::REG::IODIR,  MCP::REG::IPOL,  MCP::REG::GPINTEN, MCP::REG::DEFVAL,
-      MCP::REG::INTCON, MCP::REG::IOCON, MCP::REG::GPPU,    MCP::REG::INTF,
-      MCP::REG::INTCAP, MCP::REG::GPIO,  MCP::REG::OLAT};
+  const std::vector<REG> registers = {
+      REG::IODIR, REG::IPOL, REG::GPINTEN, REG::DEFVAL, REG::INTCON, REG::IOCON,
+      REG::GPPU,  REG::INTF, REG::INTCAP,  REG::GPIO,   REG::OLAT};
 
   for (const auto reg : registers) {
-    addressMap[{MCP::PORT::GPIOA, reg}] =
-        MCP::Util::calculateAddress(reg, MCP::PORT::GPIOA, bankMode);
-    addressMap[{MCP::PORT::GPIOB, reg}] =
-        MCP::Util::calculateAddress(reg, MCP::PORT::GPIOB, bankMode);
+    addressMap[{PORT::GPIOA, reg}] =
+        Util::calculateAddress(reg, PORT::GPIOA, bankMode);
+    addressMap[{PORT::GPIOB, reg}] =
+        Util::calculateAddress(reg, PORT::GPIOB, bankMode);
   }
 
   return addressMap;
@@ -547,15 +519,13 @@ void MCPDevice::initIntrGPIOPins(gpio_int_type_t modeA, gpio_int_type_t modeB) {
 
 }
 
-void MCPDevice::setupDefaultIntterupt(MCP::INTR_TYPE type,
-                                      MCP::INTR_OUTPUT_TYPE outtype,
-                                      MCP::PairedInterrupt sharedIntr) {
+void MCPDevice::setupDefaultIntterupt(INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
+                                      PairedInterrupt sharedIntr) {
   interruptManager_->setup(type, outtype, sharedIntr);
 }
 
-void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
-                                uint8_t mcpIntrmode,
-                                MCP::INTR_OUTPUT_TYPE intrOutMode) {
+void MCPDevice::setIntteruptPin(PORT port, uint8_t pinmask, uint8_t mcpIntrmode,
+                                INTR_OUTPUT_TYPE intrOutMode) {
 
   updateInterruptSetting(mcpIntrmode, intrOutMode);
   interruptManager_->setupInterruptMask(port, pinmask);
@@ -563,17 +533,17 @@ void MCPDevice::setIntteruptPin(MCP::PORT port, uint8_t pinmask,
 }
 
 void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
-                                       MCP::INTR_OUTPUT_TYPE intrOutMode) {
+                                       INTR_OUTPUT_TYPE intrOutMode) {
   intrSetting_.intrOutputType = intrOutMode;
   switch (mcpIntrmode) {
   case CHANGE:
-    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_CHANGE;
+    intrSetting_.intrType = INTR_TYPE::INTR_ON_CHANGE;
     break;
   case RISING:
-    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_RISING;
+    intrSetting_.intrType = INTR_TYPE::INTR_ON_RISING;
     break;
   case FALLING:
-    intrSetting_.intrType = MCP::INTR_TYPE::INTR_ON_FALLING;
+    intrSetting_.intrType = INTR_TYPE::INTR_ON_FALLING;
     break;
   default:
     break;
@@ -587,8 +557,8 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
   intrSetting_.modeA_ = coverIntrMode(espIntrmode);
   interruptManager_->setup(intrSetting_);
 
-  interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
-                                             intAHandler, nullptr);
+  interruptManager_->attachMainHandler<void>(PORT::GPIOA, pinA, intAHandler,
+                                             nullptr);
 }
 
 void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
@@ -603,10 +573,10 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
   intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
   interruptManager_->setup(intrSetting_);
 
-  interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
-                                             intAHandler, nullptr);
-  interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOB, pinB,
-                                             intBHandler, nullptr);
+  interruptManager_->attachMainHandler<void>(PORT::GPIOA, pinA, intAHandler,
+                                             nullptr);
+  interruptManager_->attachMainHandler<void>(PORT::GPIOB, pinB, intBHandler,
+                                             nullptr);
 }
 
 gpio_int_type_t MCPDevice::coverIntrMode(uint8_t mode) {
@@ -637,11 +607,11 @@ void MCPDevice::dumpRegisters() const {
     ESP_LOGI(MCP_TAG,
              "Register mapping: 16-bit mode (PORTA & PORTB separated)");
 
-    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; i++) {
-      MCP::REG regA = static_cast<MCP::REG>(i);
-      MCP::REG regB = static_cast<MCP::REG>(i);
+    for (uint8_t i = 0; i < MAX_REG_PER_PORT; i++) {
+      REG regA = static_cast<REG>(i);
+      REG regB = static_cast<REG>(i);
 
-      uint8_t addressA = getRegisterAddress(regA, MCP::PORT::GPIOA);
+      uint8_t addressA = getRegisterAddress(regA, PORT::GPIOA);
       uint8_t valueA = i2cBus_.read_mcp_register(addressA, true);
       uint8_t valueB = i2cBus_.read_mcp_register(addressA + 1, true);
 
@@ -656,9 +626,9 @@ void MCPDevice::dumpRegisters() const {
 
     // Read PORTA Registers
     ESP_LOGI(MCP_TAG, "PORTA:");
-    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; i++) {
-      MCP::REG reg = static_cast<MCP::REG>(i);
-      uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOA);
+    for (uint8_t i = 0; i < MAX_REG_PER_PORT; i++) {
+      REG reg = static_cast<REG>(i);
+      uint8_t address = getRegisterAddress(reg, PORT::GPIOA);
       uint8_t value = i2cBus_.read_mcp_register(address, bankMode_);
       ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
                Util::ToString::REG(reg), address, value);
@@ -666,14 +636,21 @@ void MCPDevice::dumpRegisters() const {
 
     // Read PORTB Registers
     ESP_LOGI(MCP_TAG, "PORTB:");
-    for (uint8_t i = 0; i < MCP::MAX_REG_PER_PORT; i++) {
-      MCP::REG reg = static_cast<MCP::REG>(i);
-      uint8_t address = getRegisterAddress(reg, MCP::PORT::GPIOB);
+    for (uint8_t i = 0; i < MAX_REG_PER_PORT; i++) {
+      REG reg = static_cast<REG>(i);
+      uint8_t address = getRegisterAddress(reg, PORT::GPIOB);
       uint8_t value = i2cBus_.read_mcp_register(address, bankMode_);
       ESP_LOGI(MCP_TAG, "Register: %s, Address: 0x%02X, Value: 0x%02X",
                Util::ToString::REG(reg), address, value);
     }
   }
 }
+std::pair<MCP::PORT, uint8_t> MCPDevice::getPortAndMask(int pin) {
+  assert(pin >= 0 && pin <= 15 && "Invalid pin");
+  MCP::PIN pinEnum = static_cast<MCP::PIN>(pin);
+  MCP::PORT port = Util::getPortFromPin(pinEnum);
+  uint8_t mask = 1 << (static_cast<uint8_t>(pinEnum) % 8);
+  return {port, mask};
+}
 
-} // namespace COMPONENT
+} // namespace MCP

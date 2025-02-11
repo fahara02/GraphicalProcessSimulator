@@ -196,13 +196,6 @@ private:
 
   void init() {}
 
-  // void setInterruptMask(uint8_t pinMask) {
-  //   interruptMask = pinMask & 0xFF;
-  //   if (interruptEnabled) {
-  //     updatePinInterruptState();
-  //   }
-  // }
-
   void updatePinInterruptState() {
     for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
       bool isGeneralMaskSet = Util::BIT::isSet(generalMask, i);
@@ -223,7 +216,3 @@ private:
 
 } // namespace MCP
 #endif
-
-// Helper to calculate the general mask
-
-// Helper to validate pins belong to the same port

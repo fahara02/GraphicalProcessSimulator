@@ -2,8 +2,7 @@
 #define I2C_BUS_HPP
 #include "Arduino.h"
 #include "MCP_Constants.hpp"
-
-#include "I2cLock.hpp"
+#include "SemLock.hpp"
 #include "Wire.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"

@@ -6,6 +6,7 @@
 #include "MCP_Primitives.hpp"
 #include "MCP_Registers.hpp"
 #include "RegisterEvents.hpp"
+#include "SemLock.hpp"
 #include "Wire.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -19,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+
 #define MCP_TAG "MCPDevice"
 namespace std {
 template <> struct hash<std::tuple<MCP::PORT, MCP::REG>> {
@@ -30,15 +32,15 @@ template <> struct hash<std::tuple<MCP::PORT, MCP::REG>> {
 };
 } // namespace std
 
-namespace COMPONENT {
+namespace MCP {
 
 class MCPDevice {
 private:
-  MCP::MCP_MODEL model_;
-  MCP::Config configuration_;
-  MCP::Settings settings_;
-  MCP::Settings defaultSettings_;
-  MCP::address_decoder_t decoder_;
+  MCP_MODEL model_;
+  Config configuration_;
+  Settings settings_;
+  Settings defaultSettings_;
+  address_decoder_t decoder_;
   uint8_t address_;
   gpio_num_t sda_ = GPIO_NUM_25;
   gpio_num_t scl_ = GPIO_NUM_33;
@@ -46,8 +48,8 @@ private:
   gpio_num_t reset_ = GPIO_NUM_33;
   gpio_num_t intA_ = GPIO_NUM_NC;
   gpio_num_t intB_ = GPIO_NUM_NC;
-  MCP::I2CBus &i2cBus_;
-  MCP::InterruptSetting intrSetting_;
+  I2CBus &i2cBus_;
+  InterruptSetting intrSetting_;
 
   bool bankMode_ = false;
   bool mirrorMode_ = false;
@@ -60,27 +62,27 @@ private:
   static SemaphoreHandle_t regRWmutex;
   TaskHandle_t eventTaskHandle;
 
-  std::shared_ptr<MCP::Register> cntrlRegA;
-  std::shared_ptr<MCP::Register> cntrlRegB;
-  std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
-  std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
-  std::unique_ptr<MCP::InterruptManager> interruptManager_;
-  std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
+  std::shared_ptr<Register> cntrlRegA;
+  std::shared_ptr<Register> cntrlRegB;
+  std::unique_ptr<GPIO_BANK> gpioBankA;
+  std::unique_ptr<GPIO_BANK> gpioBankB;
+  std::unique_ptr<InterruptManager> interruptManager_;
+  std::unordered_map<std::tuple<PORT, REG>, uint8_t> addressMap_;
 
 public:
-  MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
+  MCPDevice(MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
   ~MCPDevice();
   void init();
   void updatei2cAddress();
-  void configure(const MCP::Settings &config);
+  void configure(const Settings &config);
 
   bool enableInterrupt();
 
-  void pinMode(const MCP::Pin pin, const uint8_t mode);
+  void pinMode(const Pin pin, const uint8_t mode);
   void pinMode(const int pin, const uint8_t mode);
-  void pinMode(const MCP::PORT port, uint8_t pinmask, const uint8_t mode);
-  void pinMode(const MCP::PORT port, const uint8_t mode);
+  void pinMode(const PORT port, uint8_t pinmask, const uint8_t mode);
+  void pinMode(const PORT port, const uint8_t mode);
   template <
       typename FirstPin, typename... RestPins,
       typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
@@ -94,38 +96,38 @@ public:
   }
 
   void digitalWrite(const int pin, const uint8_t level);
-  void digitalWrite(const MCP::Pin pin, const uint8_t level);
-  void digitalWrite(const MCP::PORT port, const uint8_t pinmask,
+  void digitalWrite(const Pin pin, const uint8_t level);
+  void digitalWrite(const PORT port, const uint8_t pinmask,
                     const uint8_t level);
-  void digitalWrite(const MCP::PORT port, const uint8_t level);
+  void digitalWrite(const PORT port, const uint8_t level);
   template <
       typename FirstPin, typename... RestPins,
       typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
                                    std::is_same_v<RestPins, MCP::Pin>)>>
   void digitalWrite(const uint8_t level, FirstPin first, RestPins... rest) {
     uint8_t pinmask = generateMask(first, rest...);
-    MCP::PORT port = first.getPort();
+    PORT port = first.getPort();
     return digitalWrite(port, pinmask, static_cast<bool>(level));
   }
 
   bool digitalRead(const int pin);
-  bool digitalRead(const MCP::Pin pin);
-  uint8_t digitalRead(const MCP::PORT port, const uint8_t pinmask);
-  uint8_t digitalRead(const MCP::PORT port);
+  bool digitalRead(const Pin pin);
+  uint8_t digitalRead(const PORT port, const uint8_t pinmask);
+  uint8_t digitalRead(const PORT port);
   template <
       typename FirstPin, typename... RestPins,
       typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
                                    std::is_same_v<RestPins, MCP::Pin>)>>
   uint8_t digitalRead(FirstPin first, RestPins... rest) {
     uint8_t pinmask = generateMask(first, rest...);
-    MCP::PORT port = first.getPort();
+    PORT port = first.getPort();
     return digitalRead(port, pinmask);
   }
 
   void invertInput(const int pin, bool invert);
-  void invertInput(const MCP::Pin pin, bool invert);
-  void invertInput(const MCP::PORT port, const uint8_t pinmask, bool invert);
-  void invertInput(const MCP::PORT port, bool invert);
+  void invertInput(const Pin pin, bool invert);
+  void invertInput(const PORT port, const uint8_t pinmask, bool invert);
+  void invertInput(const PORT port, bool invert);
   template <
       typename FirstPin, typename... RestPins,
       typename = std::enable_if_t<(std::is_same_v<FirstPin, MCP::Pin> && ... &&
@@ -133,16 +135,14 @@ public:
   void invertInput(bool invert, FirstPin first, RestPins... rest) {
 
     uint8_t pinmask = generateMask(first, rest...);
-    MCP::PORT port = first.getPort();
+    PORT port = first.getPort();
 
     return invertInput(port, pinmask, invert);
   }
 
-  void setIntteruptPin(MCP::PORT port, uint8_t pinmask,
-                       uint8_t mcpIntrmode = CHANGE,
+  void setIntteruptPin(PORT port, uint8_t pinmask, uint8_t mcpIntrmode = CHANGE,
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
-
 
   template <typename Pin>
   auto setInterrupts(Pin &&pin)
@@ -158,7 +158,7 @@ public:
                           std::is_same_v<std::decay_t<Pin2>, MCP::Pin> &&
                           (std::is_same_v<std::decay_t<Rest>, MCP::Pin> ||
                            ...)> {
-    MCP::PORT port = first.getPort();
+    PORT port = first.getPort();
     uint8_t pinmask = (1 << first.getIndex());
     interruptManager_->updateMask(port, pinmask);
     port = second.getPort();
@@ -171,7 +171,7 @@ public:
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           (sizeof...(Rest) > 0) &&
                           !(std::is_invocable_v<Rest, void *> || ...)> {
-    MCP::PORT port = pin.getPort();
+    PORT port = pin.getPort();
     uint8_t mask = (1 << pin.getIndex());
     interruptManager_->updateMask(port, mask);
     setInterrupts(std::forward<Rest>(rest)...);
@@ -180,7 +180,7 @@ public:
   auto setInterrupts(Pin &&pin, Callback &&callback, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           std::is_invocable_v<Callback, void *>> {
-    MCP::PORT port = pin.getPort();
+    PORT port = pin.getPort();
     uint8_t localIndex = pin.getIndex();
     uint8_t mask = (1 << localIndex);
 
@@ -196,7 +196,7 @@ public:
                      Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
                           std::is_invocable_v<Callback, T *>> {
-    MCP::PORT port = pin.getPort();
+    PORT port = pin.getPort();
     uint8_t localIndex = pin.getIndex();
     uint8_t mask = (1 << localIndex);
 
@@ -250,12 +250,12 @@ private:
   void loadSettings();
   void resetDevice();
 
-  MCP::Register *getGPIORegister(MCP::REG reg, MCP::PORT port);
-  MCP::Register *getIntRegister(MCP::REG reg, MCP::PORT port);
+  MCP::Register *getGPIORegister(REG reg, PORT port);
+  MCP::Register *getIntRegister(REG reg, PORT port);
 
-  uint8_t getsavedSettings(MCP::PORT port) const;
-  uint8_t getRegisterAddress(MCP::REG reg, MCP::PORT port) const;
-  uint8_t getRegisterSavedValue(MCP::REG reg, MCP::PORT port) const;
+  uint8_t getsavedSettings(PORT port) const;
+  uint8_t getRegisterAddress(REG reg, PORT port) const;
+  uint8_t getRegisterSavedValue(REG reg, PORT port) const;
 
   void startEventMonitorTask(MCPDevice *device);
   static void EventMonitorTask(void *param);
@@ -276,7 +276,7 @@ private:
            (0 | ... | (1 << rest.getIndex()));
   }
 
-  std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t>
+  std::unordered_map<std::tuple<PORT, REG>, uint8_t>
   populateAddressMap(bool bankMode);
 
   void updateAddressMap(bool bankMode);
@@ -286,18 +286,20 @@ private:
   static void IRAM_ATTR defaultIntBHandler(void *arg);
 
   void setupDefaultIntterupt(
-      MCP::INTR_TYPE type = MCP::INTR_TYPE::INTR_ON_CHANGE,
-      MCP::INTR_OUTPUT_TYPE outtype = MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH,
-      MCP::PairedInterrupt sharedIntr = MCP::PairedInterrupt::Disabled);
+      INTR_TYPE type = INTR_TYPE::INTR_ON_CHANGE,
+      INTR_OUTPUT_TYPE outtype = INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH,
+      PairedInterrupt sharedIntr = PairedInterrupt::Disabled);
 
-  uint8_t getInterruptMask(MCP::PORT port) {
+  uint8_t getInterruptMask(PORT port) {
     return interruptManager_->getMask(port);
   }
   void updateInterruptSetting(uint8_t mcpIntrmode,
-                              MCP::INTR_OUTPUT_TYPE intrOutMode);
+                              INTR_OUTPUT_TYPE intrOutMode);
   gpio_int_type_t coverIntrMode(uint8_t mode);
+
+  std::pair<MCP::PORT, uint8_t> getPortAndMask(int pin);
 };
 
-} // namespace COMPONENT
+} // namespace MCP
 
 #endif
