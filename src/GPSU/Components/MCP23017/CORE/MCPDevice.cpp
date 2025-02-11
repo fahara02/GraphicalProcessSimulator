@@ -26,9 +26,10 @@ MCPDevice::MCPDevice(MCP::MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOA, model, cntrlRegA)),
       gpioBankB(
           std::make_unique<MCP::GPIO_BANK>(MCP::PORT::GPIOB, model, cntrlRegB)),
-      addressMap_(populateAddressMap(bankMode_)),
+
       interruptManager_(std::make_unique<MCP::InterruptManager>(
-          model, i2cBus_, cntrlRegA, cntrlRegB))
+          model, i2cBus_, cntrlRegA, cntrlRegB)),
+      addressMap_(populateAddressMap(bankMode_))
 
 {}
 MCPDevice::~MCPDevice() = default;
@@ -586,22 +587,19 @@ void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
   }
 }
 
-void MCPDevice::attachInterrupt(gpio_num_t pinA,
-                                std::function<void(void *)> intAHandler,
+void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
                                 uint8_t espIntrmode) {
-
   intrSetting_.intrSharing = true;
   intrSetting_.modeA_ = coverIntrMode(espIntrmode);
   interruptManager_->setup(intrSetting_);
   interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
                                              intAHandler, nullptr);
 }
-void MCPDevice::attachInterrupt(gpio_num_t pinA,
-                                std::function<void(void *)> intAHandler,
+
+void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
                                 uint8_t espIntrmodeA, gpio_num_t pinB,
                                 uint8_t espIntrmodeB,
-                                std::function<void(void *)> intBHandler) {
-
+                                void (*intBHandler)(void *)) {
   if (pinA != static_cast<gpio_num_t>(-1) &&
       pinB != static_cast<gpio_num_t>(-1)) {
     intrSetting_.intrSharing = false;

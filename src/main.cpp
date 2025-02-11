@@ -110,14 +110,14 @@ void setup() {
   expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
   delay(1000);
   int sensorThershold = 12;
-  // expander.setInterrupts(GPB1, GPB2, RISING);
-  // expander.setInterrupts(GPB3, GPB4, RISING,
-  //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
-  // expander.setInterrupts(GPB5, cb1, GPB6, cb2, RISING,
-  //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
-  // expander.setInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
-  //                        &sensorThershold, RISING,
-  //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  expander.setInterrupts(GPB1, GPB2, RISING);
+  expander.setInterrupts(GPB3, GPB4, RISING,
+                         MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  expander.setInterrupts(GPB5, cb1, GPB6, cb2, RISING,
+                         MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+  expander.setInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
+                         &sensorThershold, RISING,
+                         MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   expander.dumpRegisters();
 
   xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
@@ -274,9 +274,9 @@ void RunTask(void *param) {
       Serial.printf("B ports value is %d", readmask);
       vTaskDelay(pdMS_TO_TICKS(10));
     }
-     readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
+    readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
     vTaskDelay(pdMS_TO_TICKS(10));
-      Serial.printf("pins value is %d", readmask);
+    Serial.printf("pins value is %d", readmask);
 
     vTaskDelay(pdMS_TO_TICKS(10));
 

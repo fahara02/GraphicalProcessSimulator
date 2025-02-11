@@ -64,6 +64,7 @@ private:
   std::shared_ptr<MCP::Register> cntrlRegB;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
+  std::unique_ptr<MCP::InterruptManager> interruptManager_;
 
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
   std::function<void(void *)> customIntAHandler_;
@@ -72,7 +73,6 @@ private:
   void *userDataB_ = nullptr;
 
 public:
-  std::unique_ptr<MCP::InterruptManager> interruptManager_;
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
   ~MCPDevice();
@@ -151,26 +151,6 @@ public:
                        MCP::INTR_OUTPUT_TYPE intrOutMode =
                            MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
 
-  // template <typename Pin, typename... RestPins>
-  // auto setInterrupts(Pin &&first, RestPins &&...rest)
-  //     -> std::enable_if_t<(std::is_same_v<std::decay_t<Pin>, MCP::Pin> && ...
-  //     &&
-  //                          std::is_same_v<std::decay_t<RestPins>, MCP::Pin>)>
-  //                          {
-  //   uint8_t pinmask = generateMask(first, rest...);
-  //   MCP::PORT port = first.getPort();
-  //   interruptManager_->setupInterruptMask(port, pinmask);
-  // }
-
-  // template <typename Pin, typename... Rest>
-  // auto setInterrupts(Pin &&pin, Rest &&...rest)
-  //     -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
-  //                         !(std::is_invocable_v<Rest, void *> || ...)> {
-  //   MCP::PORT port = pin.getPort();
-  //   uint8_t mask = (1 << pin.getIndex());
-  //   interruptManager_->updateMask(port, mask);
-  //   setInterrupts(std::forward<Rest>(rest)...);
-  // }
   template <typename Pin>
   auto setInterrupts(Pin &&pin)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin>> {
@@ -192,16 +172,7 @@ public:
     pinmask = (1 << second.getIndex());
     interruptManager_->updateMask(port, pinmask);
   }
-  // template <typename Pin, typename... Rest>
-  // auto setInterrupts(Pin &&pin, Rest &&...rest)
-  //     -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
-  //                         (std::is_same_v<std::decay_t<Rest>, MCP::Pin> ||
-  //                          ...)> {
-  //   MCP::PORT port = pin.getPort();
-  //   uint8_t mask = (1 << pin.getIndex());
-  //   interruptManager_->updateMask(port, mask);
-  //   setInterrupts(std::forward<Rest>(rest)...);
-  // }
+
   template <typename Pin, typename... Rest>
   auto setInterrupts(Pin &&pin, Rest &&...rest)
       -> std::enable_if_t<std::is_same_v<std::decay_t<Pin>, MCP::Pin> &&
@@ -251,22 +222,19 @@ public:
   }
 
   // Interrupt  handling on esp32 Side
-  void attachInterrupt(gpio_num_t pinA,
-                       std::function<void(void *)> intAHandler = nullptr,
+  void attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *) = nullptr,
                        uint8_t espIntrmode = CHANGE);
-  void attachInterrupt(gpio_num_t pinA,
-                       std::function<void(void *)> intAHandler = nullptr,
+  void attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *) = nullptr,
                        uint8_t espIntrmodeA = CHANGE,
                        gpio_num_t pinB = gpio_num_t::GPIO_NUM_NC,
                        uint8_t espIntrmodeB = CHANGE,
-                       std::function<void(void *)> intBHandler = nullptr);
+                       void (*intBHandler)(void *) = nullptr);
 
   template <typename T>
-  void attachInterrupt(gpio_num_t pinA, std::function<void(T *)> intAHandler,
+  void attachInterrupt(gpio_num_t pinA, void (*intAHandler)(T *),
                        uint8_t espIntrmodeA, gpio_num_t pinB,
-                       uint8_t espIntrmodeB,
-                       std::function<void(T *)> intBHandler, T *userDataA,
-                       T *userDataB) {
+                       uint8_t espIntrmodeB, void (*intBHandler)(T *),
+                       T *userDataA, T *userDataB) {
     if (pinA != static_cast<gpio_num_t>(-1) &&
         pinB != static_cast<gpio_num_t>(-1)) {
       intrSetting_.intrSharing = false;

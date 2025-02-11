@@ -88,17 +88,15 @@ public:
   }
 
   template <typename T>
-  void attachMainHandler(PORT port, gpio_num_t espPin,
-                         std::function<void(T *)> intHandler, T *userData) {
-
+  void attachMainHandler(PORT port, gpio_num_t espPin, void (*func)(void *),
+                         T *userData) {
     if (port == PORT::GPIOA) {
       pinA_ = static_cast<int>(espPin);
-      isrHandlerDataA.handler = intHandler;
+      isrHandlerDataA.handler = func;
       isrHandlerDataA.userData = static_cast<void *>(userData);
-
     } else {
       pinB_ = static_cast<int>(espPin);
-      isrHandlerDataB.handler = intHandler;
+      isrHandlerDataB.handler = func;
       isrHandlerDataB.userData = static_cast<void *>(userData);
     }
   }
