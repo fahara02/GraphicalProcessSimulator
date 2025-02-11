@@ -65,12 +65,7 @@ private:
   std::unique_ptr<MCP::GPIO_BANK> gpioBankA;
   std::unique_ptr<MCP::GPIO_BANK> gpioBankB;
   std::unique_ptr<MCP::InterruptManager> interruptManager_;
-
   std::unordered_map<std::tuple<MCP::PORT, MCP::REG>, uint8_t> addressMap_;
-  std::function<void(void *)> customIntAHandler_;
-  std::function<void(void *)> customIntBHandler_;
-  void *userDataA_ = nullptr;
-  void *userDataB_ = nullptr;
 
 public:
   MCPDevice(MCP::MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
@@ -242,6 +237,7 @@ public:
     intrSetting_.modeA_ = coverIntrMode(espIntrmodeA);
     intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
     interruptManager_->setup(intrSetting_);
+
     interruptManager_->attachMainHandler<T>(MCP::PORT::GPIOA, pinA, intAHandler,
                                             userDataA);
     interruptManager_->attachMainHandler<T>(MCP::PORT::GPIOB, pinB, intBHandler,

@@ -5,9 +5,8 @@ SemaphoreHandle_t InterruptManager::portATrigger = NULL;
 SemaphoreHandle_t InterruptManager::portBTrigger = NULL;
 InterruptManager::ISRHandlerData InterruptManager::isrHandlerDataA = {};
 InterruptManager::ISRHandlerData InterruptManager::isrHandlerDataB = {};
-
-int InterruptManager::retryCountA = 0;
-int InterruptManager::retryCountB = 0;
+InterruptManager::RetryInfo InterruptManager::retryA = {};
+InterruptManager::RetryInfo InterruptManager::retryB = {};
 
 InterruptManager::InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                                    std::shared_ptr<MCP::Register> iconA,
@@ -23,10 +22,13 @@ void InterruptManager::init(InterruptManager *manager) {
   bool initialised = false;
   if (manager) {
     if (!initialised) {
-      portATrigger = xSemaphoreCreateBinary();
-      portBTrigger = xSemaphoreCreateBinary();
-      xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
-                              4196, manager, 5, &intrTaskHandle, 1);
+      if (isrMode == ISRMode::Default) {
+        portATrigger = xSemaphoreCreateBinary();
+        portBTrigger = xSemaphoreCreateBinary();
+        xTaskCreatePinnedToCore(InterruptProcessorTask, "interruptMonitorTask",
+                                4196, manager, 5, &intrTaskHandle, 1);
+        initialised = true;
+      }
 
       if (portATrigger != nullptr && portBTrigger != nullptr) {
         initialised = true;
@@ -34,50 +36,36 @@ void InterruptManager::init(InterruptManager *manager) {
     }
   }
 }
+void InterruptManager::setupISR(gpio_num_t pin, ISRHandlerData &handlerData,
+                                gpio_int_type_t mode,
+                                void (*defaultHandler)(void *)) {
+  if (pin == -1)
+    return;
+
+  gpio_pad_select_gpio(pin);
+  gpio_set_direction(pin, GPIO_MODE_INPUT);
+  gpio_set_intr_type(pin, mode);
+
+  gpio_isr_handler_add(pin, handlerData.handler ? isrWrapper : defaultHandler,
+                       &handlerData);
+}
 
 bool InterruptManager::initIntrGPIOPins() {
-  bool success = false;
-  if (isEnable()) {
-    gpio_num_t intA_ = static_cast<gpio_num_t>(pinA_);
-    gpio_num_t intB_ = static_cast<gpio_num_t>(pinB_);
+  if (!isEnable())
+    return false;
 
-    static bool isrServiceInstalled = false;
-    if (!isrServiceInstalled) {
-      gpio_install_isr_service(0);
-      isrServiceInstalled = true;
-    }
-
-    // --- Configure intA pin ---
-    if (intA_ != static_cast<gpio_num_t>(-1)) {
-      gpio_pad_select_gpio(intA_);
-      gpio_set_direction(intA_, GPIO_MODE_INPUT);
-      gpio_set_intr_type(intA_, setting_.modeA_);
-
-      if (isrHandlerDataA.handler) {
-
-        gpio_isr_handler_add(intA_, isrWrapper, &isrHandlerDataA);
-      } else {
-        gpio_isr_handler_add(intA_, defaultIntAHandler, this);
-      }
-    }
-
-    // --- Configure intB pin ---
-    if (intB_ != static_cast<gpio_num_t>(-1)) {
-      gpio_pad_select_gpio(intB_);
-      gpio_set_direction(intB_, GPIO_MODE_INPUT);
-      gpio_set_intr_type(intB_, setting_.modeB_);
-
-      if (isrHandlerDataB.handler) {
-
-        gpio_isr_handler_add(intB_, isrWrapper, &isrHandlerDataB);
-      } else {
-        gpio_isr_handler_add(intB_, defaultIntBHandler, this);
-      }
-    }
-
-    success = true;
+  static bool isrServiceInstalled = false;
+  if (!isrServiceInstalled) {
+    gpio_install_isr_service(0);
+    isrServiceInstalled = true;
   }
-  return success;
+
+  setupISR(static_cast<gpio_num_t>(pinA_), isrHandlerDataA, setting_.modeA_,
+           defaultIntAHandler);
+  setupISR(static_cast<gpio_num_t>(pinB_), isrHandlerDataB, setting_.modeB_,
+           defaultIntBHandler);
+
+  return true;
 }
 
 void InterruptManager::setup(INTR_TYPE type, INTR_OUTPUT_TYPE outtype,
@@ -128,13 +116,12 @@ void InterruptManager::setupInterruptMask(PORT port, uint8_t mask) {
 }
 
 Register *InterruptManager::getRegister(PORT port, REG reg) {
-  return port == PORT::GPIOA ? regA.getRegisterForUpdate(reg)
-                             : regB.getRegisterForUpdate(reg);
+  return (port == PORT::GPIOA ? regA : regB).getRegisterForUpdate(reg);
 }
 bool InterruptManager::updateRegisterValue(PORT port, uint8_t reg_address,
                                            uint8_t value) {
-  return port == PORT::GPIOA ? regA.updateRegisterValue(reg_address, value)
-                             : regB.updateRegisterValue(reg_address, value);
+  return (port == PORT::GPIOA ? regA : regB)
+      .updateRegisterValue(reg_address, value);
 }
 
 void InterruptManager::clearInterrupt() {

@@ -32,13 +32,29 @@ private:
   std::array<Callback, MCP::PIN_PER_BANK> portACallbacks_;
   std::array<Callback, MCP::PIN_PER_BANK> portBCallbacks_;
   struct ISRHandlerData {
-    std::function<void(void *)> handler;
+    void (*handler)(void *);
     void *userData;
   };
   static ISRHandlerData isrHandlerDataA;
   static ISRHandlerData isrHandlerDataB;
 
 public:
+  struct RetryInfo {
+    bool flagReadFailed = false;
+    int retryCount = 0;
+
+    void retry() {
+      flagReadFailed = true;
+      retryCount++;
+    }
+    void reset() {
+      flagReadFailed = false;
+      retryCount = 0;
+    }
+  };
+  static RetryInfo retryA, retryB;
+  enum class ISRMode { Default, Custom };
+
   explicit InterruptManager(MCP::MCP_MODEL m, I2CBus &bus,
                             std::shared_ptr<MCP::Register> iconA,
                             std::shared_ptr<MCP::Register> iconB);
@@ -88,43 +104,43 @@ public:
   }
 
   template <typename T>
-  void attachMainHandler(PORT port, gpio_num_t espPin, void (*func)(void *),
-                         T *userData) {
+  void attachMainHandler(PORT port, gpio_num_t espPin,
+                         void (*func)(void *) = nullptr,
+                         T *userData = nullptr) {
     if (port == PORT::GPIOA) {
       pinA_ = static_cast<int>(espPin);
-      isrHandlerDataA.handler = func;
+      if (func) {
+        setCustomISRhandler();
+        isrHandlerDataA.handler = func;
+      }
+
       isrHandlerDataA.userData = static_cast<void *>(userData);
     } else {
       pinB_ = static_cast<int>(espPin);
-      isrHandlerDataB.handler = func;
+      if (func) {
+        setCustomISRhandler();
+        isrHandlerDataB.handler = func;
+      }
+
       isrHandlerDataB.userData = static_cast<void *>(userData);
     }
   }
 
   void clearInterrupt();
   bool getInterruptFlags(uint8_t &flagA, uint8_t &flagB);
-  int getRetryA() const { return retryCountA; }
-  int getRetryB() const { return retryCountB; }
-  void retryFlagReadA() {
-    retryFalgReadA = true;
-    retryCountA++;
-  }
-  void resetRetryA() {
-    retryFalgReadA = false;
-    retryCountA = 0;
-  }
-  bool hasflagReadAFailed() const { return retryFalgReadA; }
-  void retryFlagReadB() {
-    retryFalgReadB = true;
-    retryCountB++;
-  }
-  void resetRetryB() {
-    retryFalgReadB = false;
-    retryCountB = 0;
-  }
-  bool hasflagReadBFailed() const { return retryFalgReadB; }
+  int getRetryA() const { return retryA.retryCount; }
+  int getRetryB() const { return retryB.retryCount; }
+  void retryFlagReadA() { retryA.retry(); }
+  void resetRetryA() { retryA.reset(); }
+  bool hasflagReadAFailed() const { return retryA.flagReadFailed; }
+
+  void retryFlagReadB() { retryB.retry(); }
+  void resetRetryB() { retryB.reset(); }
+  bool hasflagReadBFailed() const { return retryB.flagReadFailed; }
+
   static SemaphoreHandle_t portATrigger;
   static SemaphoreHandle_t portBTrigger;
+  void setCustomISRhandler() { isrMode = ISRMode::Custom; }
 
 private:
   MCP::MCP_MODEL model;
@@ -138,12 +154,12 @@ private:
   uint8_t maskB_ = 0x00;
   int pinA_ = -1;
   int pinB_ = -1;
-  bool retryFalgReadA = false;
-  bool retryFalgReadB = false;
-  static int retryCountA;
-  static int retryCountB;
+
+  ISRMode isrMode = ISRMode::Default;
 
   bool initIntrGPIOPins();
+  void setupISR(gpio_num_t pin, ISRHandlerData &handlerData,
+                gpio_int_type_t mode, void (*defaultHandler)(void *));
 
   void init(InterruptManager *manager);
   static void InterruptProcessorTask(void *param);

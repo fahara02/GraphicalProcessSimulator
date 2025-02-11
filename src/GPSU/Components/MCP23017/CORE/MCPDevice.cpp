@@ -590,8 +590,10 @@ void MCPDevice::updateInterruptSetting(uint8_t mcpIntrmode,
 void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
                                 uint8_t espIntrmode) {
   intrSetting_.intrSharing = true;
+
   intrSetting_.modeA_ = coverIntrMode(espIntrmode);
   interruptManager_->setup(intrSetting_);
+ 
   interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
                                              intAHandler, nullptr);
 }
@@ -607,6 +609,7 @@ void MCPDevice::attachInterrupt(gpio_num_t pinA, void (*intAHandler)(void *),
   intrSetting_.modeA_ = coverIntrMode(espIntrmodeA);
   intrSetting_.modeB_ = coverIntrMode(espIntrmodeB);
   interruptManager_->setup(intrSetting_);
+
   interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOA, pinA,
                                              intAHandler, nullptr);
   interruptManager_->attachMainHandler<void>(MCP::PORT::GPIOB, pinB,
