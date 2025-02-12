@@ -12,12 +12,6 @@ public:
   static constexpr uint8_t getPinIndex(PIN pin) {
     return static_cast<uint8_t>(pin) % 8;
   }
-  // static constexpr uint8_t getIndexFromPin(PIN pin) {
-  //   uint8_t index = 0;
-  //   PORT port = getPortFromPin(pin);
-  //   uint8_t pinEnum = static_cast<uint8_t>(pin);
-  //   return index = (port == PORT::GPIOB) ? (pinEnum - 8) : pinEnum;
-  // }
 
   static constexpr uint8_t calculateAddress(REG reg, PORT port, bool bankMode) {
     uint8_t baseAddress = static_cast<uint8_t>(reg);

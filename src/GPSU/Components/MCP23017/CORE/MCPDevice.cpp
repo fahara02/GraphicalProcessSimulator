@@ -10,7 +10,7 @@ MCPDevice::MCPDevice(MCP_MODEL model, bool pinA2, bool pinA1, bool pinA0)
       settings_(configuration_.getSettings()),
       defaultSettings_(Settings(model)), decoder_(model, pinA2, pinA1, pinA0),
       address_(decoder_.getDeviceAddress(false)),
-      i2cBus_(I2CBus::getInstance(address_, sda_, scl_)),
+      i2cBus_(I2CBus::getInstance(address_)),
       cntrlRegA(std::make_shared<Register>(model_, REG::IOCON, PORT::GPIOA,
                                            bankMode_)),
       cntrlRegB(std::make_shared<Register>(model_, REG::IOCON, PORT::GPIOB,
@@ -119,6 +119,7 @@ void MCPDevice::loadSettings() {
 void MCPDevice::resetDevice() { ESP_LOGI(MCP_TAG, "resetting the device"); }
 void MCPDevice::init() {
   initGPIOPins();
+  setupI2c(sda_, scl_);
   i2cBus_.init();
   EventManager::initializeEventGroups();
   startEventMonitorTask(this);
@@ -126,11 +127,19 @@ void MCPDevice::init() {
   setupDefaultIntterupt();
   resetInterruptRegisters();
 }
-void MCPDevice::initGPIOPins() {
 
-  gpio_pad_select_gpio(reset_);
-  gpio_set_direction(reset_, GPIO_MODE_OUTPUT);
-  gpio_set_level(reset_, 0);
+void MCPDevice::setupI2c(int sda, int scl, uint32_t clock, TickType_t timeout) {
+  if (sda != -1 && scl != -1) {
+    i2cBus_.setup(sda, scl, clock, timeout);
+  }
+}
+
+void MCPDevice::initGPIOPins() {
+  if (reset_ != gpio_num_t::GPIO_NUM_NC) {
+    gpio_pad_select_gpio(reset_);
+    gpio_set_direction(reset_, GPIO_MODE_OUTPUT);
+    gpio_set_level(reset_, 0);
+  }
 }
 
 bool MCPDevice::enableInterrupt() {

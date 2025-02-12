@@ -3,15 +3,14 @@
 namespace MCP {
 
 SemaphoreHandle_t MCP::I2CBus::i2cMutex = nullptr;
-I2CBus::I2CBus(uint8_t addr, int sda, int scl)
-    : address_(addr), sda_(sda), scl_(scl),
-      wire_(std::make_unique<TwoWire>(0)) {
+I2CBus::I2CBus(uint8_t addr)
+    : address_(addr), wire_(std::make_unique<TwoWire>(0)) {
   initMutex();
 }
 
 void I2CBus::init() {
 
-  if (!wire_->begin(sda_, scl_, 100000)) {
+  if (!wire_->begin(sda_, scl_, i2cClock_)) {
     ESP_LOGE(I2C_BUS, "I2C initialization failed!");
   }
 }
@@ -27,9 +26,12 @@ void I2CBus::initMutex() {
   }
 }
 
-void I2CBus::setPin(int sda, int scl) {
+void I2CBus::setup(int sda, int scl, uint32_t clock, TickType_t timeout) {
+
   sda_ = sda;
   scl_ = scl;
+  i2cClock_ = clock;
+  timeout_ = timeout;
 }
 
 int I2CBus::read_mcp_register(const uint8_t reg, bool map8Bit) {

@@ -14,12 +14,13 @@ namespace MCP {
 class I2CBus {
 
 public:
-  static I2CBus &getInstance(uint8_t addr, int sda = 25, int scl = 33) {
-    static I2CBus instance{addr, sda, scl};
+  static I2CBus &getInstance(uint8_t addr) {
+    static I2CBus instance{addr};
 
     return instance;
   }
-  void setPin(int sda, int scl);
+  void setup(int sda, int scl, uint32_t clock = DEFAULT_I2C_CLK_FRQ,
+             TickType_t timeout = DEFAULT_I2C_TIMEOUT);
   void init();
   I2CBus(const I2CBus &) = delete;
   I2CBus &operator=(const I2CBus &) = delete;
@@ -37,10 +38,12 @@ public:
   static void initMutex();
 
 private:
-  I2CBus(uint8_t addr, int sda, int scl);
+  I2CBus(uint8_t addr);
   uint8_t address_;
   int sda_;
   int scl_;
+  uint32_t i2cClock_;
+  TickType_t timeout_;
   std::unique_ptr<TwoWire> wire_;
 };
 

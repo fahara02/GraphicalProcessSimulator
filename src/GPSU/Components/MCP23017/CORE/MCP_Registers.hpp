@@ -25,10 +25,8 @@ struct address_decoder_t {
 
 private:
   constexpr uint8_t decodeDeviceAddress(bool haen) {
-    if ((model_ == MCP::MCP_MODEL::MCP23017 ||
-         model_ == MCP::MCP_MODEL::MCP23S17) &&
-        haen) {
-
+    if (model_ == MCP::MCP_MODEL::MCP23017 ||
+        (model_ == MCP::MCP_MODEL::MCP23S17 && haen)) {
       return MCP_ADDRESS_BASE | (A2_ << 2) | (A1_ << 1) | A0_;
     }
     return MCP_ADDRESS_BASE;

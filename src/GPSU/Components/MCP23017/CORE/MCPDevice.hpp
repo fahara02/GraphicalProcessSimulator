@@ -39,16 +39,17 @@ private:
   Config configuration_;
   Settings settings_;
   Settings defaultSettings_;
+  InterruptSetting intrSetting_;
+
   address_decoder_t decoder_;
   uint8_t address_;
+
   gpio_num_t sda_ = GPIO_NUM_25;
   gpio_num_t scl_ = GPIO_NUM_33;
   gpio_num_t cs_ = GPIO_NUM_NC;
   gpio_num_t reset_ = GPIO_NUM_33;
   gpio_num_t intA_ = GPIO_NUM_NC;
   gpio_num_t intB_ = GPIO_NUM_NC;
-  I2CBus &i2cBus_;
-  InterruptSetting intrSetting_;
 
   bool bankMode_ = false;
   bool mirrorMode_ = false;
@@ -58,9 +59,7 @@ private:
   bool opendrainEnabled_ = false;
   bool interruptPolarityHigh_ = false;
 
-  static SemaphoreHandle_t regRWmutex;
-  TaskHandle_t eventTaskHandle;
-
+  I2CBus &i2cBus_;
   std::shared_ptr<Register> cntrlRegA;
   std::shared_ptr<Register> cntrlRegB;
   std::unique_ptr<GPIO_BANK> gpioBankA;
@@ -68,11 +67,16 @@ private:
   std::unique_ptr<InterruptManager> interruptManager_;
   std::unordered_map<std::tuple<PORT, REG>, uint8_t> addressMap_;
 
+  static SemaphoreHandle_t regRWmutex;
+  TaskHandle_t eventTaskHandle;
+
 public:
   MCPDevice(MCP_MODEL model, bool pinA2 = false, bool pinA1 = false,
             bool pinA0 = false);
   ~MCPDevice();
   void init();
+  void setupI2c(int sda, int scl, uint32_t clock = DEFAULT_I2C_CLK_FRQ,
+                TickType_t timeout = DEFAULT_I2C_TIMEOUT);
   void updatei2cAddress();
   void configure(const Settings &config);
 
