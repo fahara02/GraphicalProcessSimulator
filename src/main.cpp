@@ -86,7 +86,7 @@ void setup() {
 
   // encoder.begin();
   //  encoder.setup(readEncoderISR);
-  bool circleValues = true;
+  // bool circleValues = true;
   // encoder.setBoundaries(0, 10, circleValues);
   encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 

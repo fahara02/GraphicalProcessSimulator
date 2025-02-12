@@ -13,15 +13,12 @@ namespace MCP {
 class GPIO_BANK {
 private:
   std::array<Pin, PIN_PER_BANK> Pins;
-  std::array<bool, PIN_PER_BANK> pinInterruptState;
   GPIORegisters regs;
 
 public:
   GPIO_BANK(PORT port, MCP::MCP_MODEL m, std::shared_ptr<MCP::Register> icon)
-      : Pins(createPins(port)), pinInterruptState{false},
-        regs(GPIORegisters(icon)), model(m), generalMask(0XFF),
-        interruptMask(0x00), port_name(port), intr_type(INTR_TYPE::NONE),
-        intr_out_type(INTR_OUTPUT_TYPE::NA) {
+      : Pins(createPins(port)), regs(GPIORegisters(icon)), model(m),
+        generalMask(0XFF), port_name(port) {
 
     regs.setup(model, port_name, bankMode);
     init();
@@ -57,9 +54,7 @@ public:
   // Pin masks
   void setGeneralMask(MASK mask) { generalMask = static_cast<uint8_t>(mask); }
   void setGeneralMask(uint8_t mask) { generalMask = mask; }
-  void setInterruptMask(uint8_t mask) { interruptMask = mask; }
   uint8_t getGeneralMask() const { return generalMask; }
-  uint8_t getInterruptMask() const { return interruptMask; }
 
   // PIN DIRECTION SELECTION
   void setPinDirection(PIN p, GPIO_MODE m) {
@@ -162,47 +157,14 @@ public:
     }
   }
 
-  // Interrupt Setting
-  void setupInterrupt(uint8_t pinMask = 0xFF,
-                      INTR_TYPE intrType = INTR_TYPE::NONE,
-                      INTR_OUTPUT_TYPE intrOutType = INTR_OUTPUT_TYPE::NA) {
-    uint8_t maskToApply = pinMask & generalMask;
-    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      if (maskToApply & (1 << i)) {
-        intr_type = intrType;
-        intr_out_type = intrOutType;
-
-        pinInterruptState[i] = true; // Update interrupt state
-      } else {
-        pinInterruptState[i] = false;
-      }
-    }
-    setInterruptMask(maskToApply);
-  }
-
-  // Set pull-up resistor for a pin by index
-
-  bool isInterruptEnabled() const { return interruptEnabled; }
-
 private:
   MCP::MCP_MODEL model;
   bool bankMode = false;
   bool interruptEnabled = false;
   uint8_t generalMask;
-  uint8_t interruptMask;
   PORT port_name;
-  INTR_TYPE intr_type;
-  INTR_OUTPUT_TYPE intr_out_type;
 
   void init() {}
-
-  void updatePinInterruptState() {
-    for (uint8_t i = 0; i < PIN_PER_BANK; ++i) {
-      bool isGeneralMaskSet = Util::BIT::isSet(generalMask, i);
-      bool isInterruptMaskSet = Util::BIT::isSet(interruptMask, i);
-      pinInterruptState[i] = isGeneralMaskSet && isInterruptMaskSet;
-    }
-  }
 
   static constexpr std::array<Pin, PIN_PER_BANK> createPins(PORT port) {
     std::array<Pin, PIN_PER_BANK> pins{};
