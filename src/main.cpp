@@ -1,5 +1,5 @@
 #include "IO_Controller.hpp"
-#include "MCPDevice.hpp"
+#include "MCP23017.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
 #include "esp_task_wdt.h"
@@ -66,7 +66,8 @@ COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 void RunTask(void *param);
-MCP::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
+// MCP::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
+COMPONENT::MCP23017 expander;
 // void cb1(void *param);
 // void cb2(void *param);
 
