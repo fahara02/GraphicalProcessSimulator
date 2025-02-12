@@ -66,10 +66,11 @@ void MCPDevice::loadSettings() {
     byteMode_ = true;
     break;
   }
-
+  uint8_t cntrlAddressA = cntrlRegA->getAddress();
+  uint8_t cntrlAddressB = cntrlRegB->getAddress();
   // Step 1: If switching to banked mode, write only BANK bit first
   if (bankMode_) {
-    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
+    result |= i2cBus_.write_mcp_register(cntrlAddressA,
                                          static_cast<uint8_t>(0x80), bankMode_);
     updateAddressMap(bankMode_);
     gpioBankA->updateBankMode(bankMode_);
@@ -79,21 +80,22 @@ void MCPDevice::loadSettings() {
 
   // Step 2: Update remaining settings using configuration struct value
   uint8_t updatedSetting = configuration_.getSettingValue();
+
   cntrlRegA->configure<MCP::REG::IOCON>(updatedSetting);
   cntrlRegB->configure<MCP::REG::IOCON>(updatedSetting);
 
   if (bankMode_) {
     // In BANK mode (8-bit register mapping), write separately to each bank
-    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
-                                         updatedSetting, bankMode_);
-    result |= i2cBus_.write_mcp_register(cntrlRegB->getAddress(),
-                                         updatedSetting, bankMode_);
+    result |=
+        i2cBus_.write_mcp_register(cntrlAddressA, updatedSetting, bankMode_);
+    result |=
+        i2cBus_.write_mcp_register(cntrlAddressB, updatedSetting, bankMode_);
   } else {
     // In 16-bit register mapping, write to both registers in sequence
-    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress(),
-                                         updatedSetting, bankMode_);
-    result |= i2cBus_.write_mcp_register(cntrlRegA->getAddress() + 1,
-                                         updatedSetting, bankMode_);
+    result |=
+        i2cBus_.write_mcp_register(cntrlAddressA, updatedSetting, bankMode_);
+    result |= i2cBus_.write_mcp_register(cntrlAddressA + 1, updatedSetting,
+                                         bankMode_);
   }
 
   // Step 4: Update other MCP settings

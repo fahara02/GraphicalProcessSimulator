@@ -48,8 +48,6 @@ private:
   gpio_num_t scl_ = GPIO_NUM_33;
   gpio_num_t cs_ = GPIO_NUM_NC;
   gpio_num_t reset_ = GPIO_NUM_33;
-  gpio_num_t intA_ = GPIO_NUM_NC;
-  gpio_num_t intB_ = GPIO_NUM_NC;
 
   bool bankMode_ = false;
   bool mirrorMode_ = false;

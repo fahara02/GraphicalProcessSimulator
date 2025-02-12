@@ -62,12 +62,6 @@ struct currentEvent {
       : event(e), regIdentity(identity), data(valueOrSettings), id(_id),
         intteruptFunction_(intrFn), acknowledged_(false) {}
 
-  bool isIdentical(const RegisterEvent &e, const registerIdentity &identity,
-                   uint8_t valueOrSettings) const {
-    return (event == e) && (regIdentity == identity) &&
-           (data == valueOrSettings);
-  }
-
   void AcknowledgeEvent() { acknowledged_ = true; }
   bool isAcknowledged() const { return acknowledged_; }
 };
