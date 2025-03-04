@@ -1,0 +1,70 @@
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:7176
+load:0x40078000,len:15620
+load:0x40080400,len:4
+load:0x40080404,len:3904
+entry 0x40080638
+[0;32mI (29) boot: ESP-IDF 5.3.2.250210 2nd stage bootloader[0m
+[0;32mI (29) boot: compile time Mar  5 2025 01:32:30[0m
+[0;32mI (29) boot: Multicore bootloader[0m
+[0;32mI (34) boot: chip revision: v3.0[0m
+[0;32mI (38) boot.esp32: SPI Speed      : 40MHz[0m
+[0;32mI (43) boot.esp32: SPI Mode       : DIO[0m
+[0;32mI (47) boot.esp32: SPI Flash Size : 4MB[0m
+[0;32mI (52) boot: Enabling RNG early entropy source...[0m
+[0;32mI (57) boot: Partition Table:[0m
+[0;32mI (61) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (68) boot:  0 nvs              WiFi data        01 02 00009000 00005000[0m
+[0;32mI (75) boot:  1 phy_init         RF data          01 01 0000e000 00001000[0m
+[0;32mI (83) boot:  2 factory          factory app      00 00 00010000 001d0000[0m
+[0;32mI (90) boot:  3 spiffs           Unknown data     01 82 001e0000 00100000[0m
+[0;32mI (98) boot: End of partition table[0m
+[0;32mI (102) esp_image: segment 0: paddr=00010020 vaddr=3f400020 size=1d038h (118840) map[0m
+[0;32mI (151) esp_image: segment 1: paddr=0002d060 vaddr=3ffb0000 size=02600h (  9728) load[0m
+[0;32mI (155) esp_image: segment 2: paddr=0002f668 vaddr=40080000 size=009b0h (  2480) load[0m
+[0;32mI (158) esp_image: segment 3: paddr=00030020 vaddr=400d0020 size=32df8h (208376) map[0m
+[0;32mI (237) esp_image: segment 4: paddr=00062e20 vaddr=400809b0 size=0f4a0h ( 62624) load[0m
+[0;32mI (270) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (270) boot: Disabling RNG early entropy source...[0m
+[0;32mI (282) cpu_start: Multicore app[0m
+[0;32mI (315) cpu_start: Pro cpu start user code[0m
+[0;32mI (315) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (315) app_init: Application information:[0m
+[0;32mI (318) app_init: Project name:     GRAPHICAL_PROCESS_SIMULATOR[0m
+[0;32mI (325) app_init: App version:      3baa9b6-dirty[0m
+[0;32mI (330) app_init: Compile time:     Mar  5 2025 01:44:19[0m
+[0;32mI (336) app_init: ELF file SHA256:  714dfe48dd1454eb...[0m
+[0;32mI (342) app_init: ESP-IDF:          5.3.2.250210[0m
+[0;32mI (347) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (352) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (357) efuse_init: Chip rev:         v3.0[0m
+[0;32mI (362) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (369) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (375) heap_init: At 3FFB63E8 len 00029C18 (167 KiB): DRAM[0m
+[0;32mI (381) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (388) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (394) heap_init: At 4008FE50 len 000101B0 (64 KiB): IRAM[0m
+[0;32mI (402) spi_flash: detected chip: generic[0m
+[0;32mI (405) spi_flash: flash io: dio[0m
+[0;33mW (409) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`[0m
+[0;32mI (421) main_task: Started on CPU0[0m
+[0;32mI (424) main_task: Calling app_main()[0m
+[0;32mI (458) main_tas[0;32mI (462) gpio: GPIO[37]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:3 [0m
+[0;32mI (462) gpio: GPIO[38]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:3 [0m
+[0;32mI (470) gpio: GPIO[32]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:1 [0m
+[0;32mI (480) gpio: GPIO[5]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (488) gpio: GPIO[16]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (497) gpio: GPIO[23]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (507) gpio: GPIO[18]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (516) gpio: GPIO[19]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (525) gpio: GPIO[5]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (534) gpio: GPIO[16]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (543) gpio: GPIO[23]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   714][E][esp32-hal-gpio.c:176] __digitalWrite(): IO 4 is not set as GPIO.
+[0;32mI (1122) gpio: GPIO[4]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (1122) gpio: GPIO[4]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m

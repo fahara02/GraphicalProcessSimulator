@@ -1,11 +1,11 @@
 #include "FS.h"
+#include "GUI/GUI.hpp"
 #include "IO_Controller.hpp"
 #include "MCP23017.hpp"
 #include "MenuSelector.hpp"
 #include "Process/Process.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
-#include "Services/GraphicManager.hpp"
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -22,7 +22,7 @@ gpio_num_t scl = GPIO_NUM_33;
 gpio_num_t reset = GPIO_NUM_13;
 TaskHandle_t runTaskhandle = nullptr;
 
-Service::Display &display = Service::Display::getInstance();
+GUI::Display &display = GUI::Display::getInstance();
 // void action1() { Serial.println("Action 1 selected"); }
 // void action2() { Serial.println("Action 2 selected"); }
 // void action3() { Serial.println("Action 3 selected"); }

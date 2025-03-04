@@ -1,15 +1,15 @@
 #ifndef PROCESS_HPP
 #define PROCESS_HPP
-#include "Services/GraphicManager.hpp"
+#include "GUI/GUI.hpp"
 namespace GPSU {
 
 class ProcessBase {
 
 public:
-  ProcessBase() : display_(Service::Display::getInstance()) {}
+  ProcessBase() : display_(GUI::Display::getInstance()) {}
 
 protected:
-  Service::Display &display_;
+  GUI::Display &display_;
 
 private:
 };
