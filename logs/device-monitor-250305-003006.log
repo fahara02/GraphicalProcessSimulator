@@ -1,0 +1,1252 @@
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:7176
+load:0x40078000,len:15620
+load:0x40080400,len:4
+load:0x40080404,len:3904
+entry 0x40080638
+[0;32mI (29) boot: ESP-IDF 5.3.2.250210 2nd stage bootloader[0m
+[0;32mI (29) boot: compile time Mar  4 2025 21:09:44[0m
+[0;32mI (29) boot: Multicore bootloader[0m
+[0;32mI (34) boot: chip revision: v3.0[0m
+[0;32mI (38) boot.esp32: SPI Speed      : 40MHz[0m
+[0;32mI (43) boot.esp32: SPI Mode       : DIO[0m
+[0;32mI (47) boot.esp32: SPI Flash Size : 4MB[0m
+[0;32mI (52) boot: Enabling RNG early entropy source...[0m
+[0;32mI (57) boot: Partition Table:[0m
+[0;32mI (61) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (68) boot:  0 nvs              WiFi data        01 02 00009000 00005000[0m
+[0;32mI (75) boot:  1 phy_init         RF data          01 01 0000e000 00001000[0m
+[0;32mI (83) boot:  2 factory          factory app      00 00 00010000 001d0000[0m
+[0;32mI (90) boot:  3 spiffs           Unknown data     01 82 001e0000 00100000[0m
+[0;32mI (98) boot: End of partition table[0m
+[0;32mI (102) esp_image: segment 0: paddr=00010020 vaddr=3f400020 size=1e3e4h (123876) map[0m
+[0;32mI (153) esp_image: segment 1: paddr=0002e40c vaddr=3ffb0000 size=01c0ch (  7180) load[0m
+[0;32mI (156) esp_image: segment 2: paddr=00030020 vaddr=400d0020 size=33e40h (212544) map[0m
+[0;32mI (232) esp_image: segment 3: paddr=00063e68 vaddr=3ffb1c0c size=009f4h (  2548) load[0m
+[0;32mI (233) esp_image: segment 4: paddr=00064864 vaddr=40080000 size=0fe0ch ( 65036) load[0m
+[0;32mI (271) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (271) boot: Disabling RNG early entropy source...[0m
+[0;32mI (283) cpu_start: Multicore app[0m
+[0;32mI (316) cpu_start: Pro cpu start user code[0m
+[0;32mI (316) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (316) app_init: Application information:[0m
+[0;32mI (319) app_init: Project name:     GRAPHICAL_PROCESS_SIMULATOR[0m
+[0;32mI (326) app_init: App version:      130bde7-dirty[0m
+[0;32mI (331) app_init: Compile time:     Mar  4 2025 23:56:00[0m
+[0;32mI (337) app_init: ELF file SHA256:  ea2e7c30002336ae...[0m
+[0;32mI (343) app_init: ESP-IDF:          5.3.2.250210[0m
+[0;32mI (348) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (353) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (358) efuse_init: Chip rev:         v3.0[0m
+[0;32mI (363) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (370) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (376) heap_init: At 3FFB6608 len 000299F8 (166 KiB): DRAM[0m
+[0;32mI (382) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (389) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (395) heap_init: At 4008FE0C len 000101F4 (64 KiB): IRAM[0m
+[0;32mI (403) spi_flash: detected chip: generic[0m
+[0;32mI (406) spi_flash: flash io: dio[0m
+[0;33mW (410) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`[0m
+[    19][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RX (2) successfully set to 0x400d9404
+  #0  0x400d9404 in _uartDetachBus_RX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:166
+
+[    41][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_TX (3) successfully set to 0x400d93d4
+  #0  0x400d93d4 in _uartDetachBus_TX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:173
+
+[    55][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_CTS (4) successfully set to 0x400d93a4
+  #0  0x400d93a4 in _uartDetachBus_CTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:180
+
+[    68][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RTS (5) successfully set to 0x400d9374
+  #0  0x400d9374 in _uartDetachBus_RTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:187
+
+[    82][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RX (2) successfully set to 0x400d9404
+  #0  0x400d9404 in _uartDetachBus_RX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:166
+
+[    95][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_TX (3) successfully set to 0x400d93d4
+  #0  0x400d93d4 in _uartDetachBus_TX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:173
+
+[   108][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_CTS (4) successfully set to 0x400d93a4
+  #0  0x400d93a4 in _uartDetachBus_CTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:180
+
+[   122][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RTS (5) successfully set to 0x400d9374
+  #0  0x400d9374 in _uartDetachBus_RTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:187
+
+[   135][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RX (2) successfully set to 0x400d9404
+  #0  0x400d9404 in _uartDetachBus_RX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:166
+
+[   149][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_TX (3) successfully set to 0x400d93d4
+  #0  0x400d93d4 in _uartDetachBus_TX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:173
+
+[   162][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_CTS (4) successfully set to 0x400d93a4
+  #0  0x400d93a4 in _uartDetachBus_CTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:180
+
+[   176][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RTS (5) successfully set to 0x400d9374
+  #0  0x400d9374 in _uartDetachBus_RTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:187
+
+[0;32mI (592) main_task: Started on CPU0[0m
+[0;32mI (594) main_task: Calling app_main()[0m
+[0;32mI (625) main_task: Returned from app_main()[0m
+[   224][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 3 successfully set to type UART_RX (2) with bus 0x3ffb004c
+  #0  0x3ffb004c in ?? at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:89
+
+[   240][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 1 successfully set to type UART_TX (3) with bus 0x3ffb004c
+  #0  0x3ffb004c in ?? at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:89
+
+=========== Before Setup Start ===========
+Chip Info:
+------------------------------------------
+  Model             : ESP32
+  Package           : D0WD-Q6
+  Revision          : 3.00
+  Cores             : 2
+  CPU Frequency     : 160 MHz
+  XTAL Frequency    : 40 MHz
+  Features Bitfield : 0x00000032
+  Embedded Flash    : No
+  Embedded PSRAM    : No
+  2.4GHz WiFi       : Yes
+  Classic BT        : Yes
+  BT Low Energy     : Yes
+  IEEE 802.15.4     : No
+------------------------------------------
+INTERNAL Memory Info:
+------------------------------------------
+  Total Size        :   371868 B ( 363.2 KB)
+  Free Bytes        :   330460 B ( 322.7 KB)
+  Allocated Bytes   :    37620 B (  36.7 KB)
+  Minimum Free Bytes:   326200 B ( 318.6 KB)
+  Largest Free Block:   131072 B ( 128.0 KB)
+------------------------------------------
+Flash Info:
+------------------------------------------
+  Chip Size         :  4194304 B (4 MB)
+  Block Size        :    65536 B (  64.0 KB)
+  Sector Size       :     4096 B (   4.0 KB)
+  Page Size         :      256 B (   0.2 KB)
+  Bus Speed         : 40 MHz
+  Bus Mode          : DIO
+------------------------------------------
+Partitions Info:
+------------------------------------------
+                nvs : addr: 0x00009000, size:    20.0 KB, type: DATA, subtype: NVS
+           phy_init : addr: 0x0000E000, size:     4.0 KB, type: DATA, subtype: PHY
+            factory : addr: 0x00010000, size:  1856.0 KB, type:  APP, subtype: FACTORY
+             spiffs : addr: 0x001E0000, size:  1024.0 KB, type: DATA, subtype: SPIFFS
+------------------------------------------
+Software Info:
+------------------------------------------
+  Compile Date/Time : Mar  4 2025 21:08:36
+  ESP-IDF Version   : 5.3.2.250210
+  Arduino Version   : 3.1.2
+------------------------------------------
+Board Info:
+------------------------------------------
+  Arduino Board     : ESP32_DEV
+  Arduino Variant   : esp32
+  Core Debug Level  : 5
+  Arduino Runs Core : 1
+  Arduino Events on : 1
+  CDC On Boot       : 0
+============ Before Setup End ============
+[   703][V][esp32-hal-uart.c:421] uartBegin(): UART0 baud(115200) Mode(800001c) rxPin(3) txPin(1)
+[   712][V][esp32-hal-uart.c:510] uartBegin(): UART0 not installed. Starting installation
+[   724][V][esp32-hal-uart.c:575] uartBegin(): UART0 initialization done.
+[   738][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40101a18
+  #0  0x40101a18 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1150) gpio: GPIO[15]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   750][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 15 successfully set to type GPIO (1) with bus 0x10
+[   769][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40101a18
+  #0  0x40101a18 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1181) gpio: GPIO[0]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   780][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 0 successfully set to type GPIO (1) with bus 0x1
+[   799][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40101a18
+  #0  0x40101a18 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1211) gpio: GPIO[2]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   810][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 2 successfully set to type GPIO (1) with bus 0x3
+[   829][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_SCK (37) successfully set to 0x400df2f0
+  #0  0x400df2f0 in spiDetachBus_SCK at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:223
+
+[   841][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_MISO (38) successfully set to 0x400df3d8
+  #0  0x400df3d8 in spiDetachBus_MISO at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:233
+
+[   853][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_MOSI (39) successfully set to 0x400df4c8
+  #0  0x400df4c8 in spiDetachBus_MOSI at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:243
+
+[   865][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_SS (40) successfully set to 0x400df5b8
+  #0  0x400df5b8 in spiDetachBus_SS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:253
+
+[   877][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40101a18
+  #0  0x40101a18 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1289) gpio: GPIO[14]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   889][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 14 successfully set to type GPIO (1) with bus 0xf
+[   908][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 14 successfully set to type SPI_MASTER_SCK (37) with bus 0x4
+[   918][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40101a18
+  #0  0x40101a18 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1331) gpio: GPIO[12]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   930][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 12 successfully set to type GPIO (1) with bus 0xd
+[   949][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 12 successfully set to type SPI_MASTER_MISO (38) with bus 0x4
+[   960][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40101a18
+  #0  0x40101a18 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1372) gpio: GPIO[13]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   971][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 13 successfully set to type GPIO (1) with bus 0xe
+[   990][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 13 successfully set to type SPI_MASTER_MOSI (39) with bus 0x4
+[0;32mI (1402) gpio: GPIO[15]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (1402) gpio: GPIO[0]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (1410) gpio: GPIO[2]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (2716) gpio: GPIO[37]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:3 [0m
+[0;32mI (2717) gpio: GPIO[38]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:3 [0m
+[0;32mI (2724) gpio: GPIO[32]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:1 [0m
+=========== After Setup Start ============
+INTERNAL Memory Info:
+------------------------------------------
+  Total Size        :   371868 B ( 363.2 KB)
+  Free Bytes        :   254104 B ( 248.1 KB)
+  Allocated Bytes   :   113860 B ( 111.2 KB)
+  Minimum Free Bytes:   254104 B ( 248.1 KB)
+  Largest Free Block:   110592 B ( 108.0 KB)
+------------------------------------------
+GPIO Info:
+------------------------------------------
+  GPIO : BUS_TYPE[bus/unit][chan]
+  --------------------------------------  
+     0 : GPIO
+     1 : UART_TX[0]
+     2 : GPIO
+     3 : UART_RX[0]
+    12 : SPI_MASTER_MISO[3]
+    13 : SPI_MASTER_MOSI[3]
+    14 : SPI_MASTER_SCK[3]
+    15 : GPIO
+============ After Setup End =============
+[0;31mE (7880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (7880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (7880) task_wdt: Tasks currently running:[0m
+[0;31mE (7880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (7880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (7880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (12880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (12880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (12880) task_wdt: Tasks currently running:[0m
+[0;31mE (12880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (12880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (12880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D32AE:0x3FFBF370 0x400D69E1:0x3FFBF3B0 0x400D7469:0x3FFBF410 0x400D2362:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D32AE in TFT_eSprite::fillRect(long, long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1883 (discriminator 1)
+      (inlined by) TFT_eSprite::fillRect(long, long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1872 (discriminator 1)
+  #5  0x400D69E1 in TFT_eSprite::drawChar(unsigned short, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:2235 (discriminator 1)
+  #6  0x400D7469 in TFT_eSPI::drawString(char const*, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:5651
+  #7  0x400D2362 in loop() at src/main.cpp:241
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (17880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (17880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (17880) task_wdt: Tasks currently running:[0m
+[0;31mE (17880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (17880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (17880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (22880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (22880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (22880) task_wdt: Tasks currently running:[0m
+[0;31mE (22880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (22880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (22880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (27880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (27880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (27880) task_wdt: Tasks currently running:[0m
+[0;31mE (27880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (27880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (27880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (32880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (32880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (32880) task_wdt: Tasks currently running:[0m
+[0;31mE (32880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (32880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (32880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D315A:0x3FFBF3F0 0x400D5C7F:0x3FFBF420 0x400D23EF:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D315A in TFT_eSprite::drawFastHLine(long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1817 (discriminator 4)
+      (inlined by) TFT_eSprite::drawFastHLine(long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1809 (discriminator 4)
+  #5  0x400D5C7F in TFT_eSPI::fillCircle(long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:2440
+  #6  0x400D23EF in loop() at src/main.cpp:257
+  #7  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #8  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (37880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (37880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (37880) task_wdt: Tasks currently running:[0m
+[0;31mE (37880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (37880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (37880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (42880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (42880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (42880) task_wdt: Tasks currently running:[0m
+[0;31mE (42880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (42880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (42880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (47880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (47880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (47880) task_wdt: Tasks currently running:[0m
+[0;31mE (47880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (47880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (47880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (52880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (52880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (52880) task_wdt: Tasks currently running:[0m
+[0;31mE (52880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (52880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (52880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (57880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (57880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (57880) task_wdt: Tasks currently running:[0m
+[0;31mE (57880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (57880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (57880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (62880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (62880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (62880) task_wdt: Tasks currently running:[0m
+[0;31mE (62880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (62880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (62880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (67880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (67880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (67880) task_wdt: Tasks currently running:[0m
+[0;31mE (67880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (67880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (67880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (72880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (72880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (72880) task_wdt: Tasks currently running:[0m
+[0;31mE (72880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (72880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (72880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (77880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (77880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (77880) task_wdt: Tasks currently running:[0m
+[0;31mE (77880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (77880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (77880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (82880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (82880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (82880) task_wdt: Tasks currently running:[0m
+[0;31mE (82880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (82880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (82880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (87880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (87880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (87880) task_wdt: Tasks currently running:[0m
+[0;31mE (87880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (87880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (87880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D328B:0x3FFBF370 0x400D69E1:0x3FFBF3B0 0x400D7469:0x3FFBF410 0x400D232B:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D328B in TFT_eSprite::fillRect(long, long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1880 (discriminator 2)
+      (inlined by) TFT_eSprite::fillRect(long, long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1872 (discriminator 2)
+  #5  0x400D69E1 in TFT_eSprite::drawChar(unsigned short, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:2235 (discriminator 1)
+  #6  0x400D7469 in TFT_eSPI::drawString(char const*, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:5651
+  #7  0x400D232B in loop() at src/main.cpp:236
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (92880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (92880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (92880) task_wdt: Tasks currently running:[0m
+[0;31mE (92880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (92880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (92880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (97880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (97880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (97880) task_wdt: Tasks currently running:[0m
+[0;31mE (97880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (97880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (97880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (102880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (102880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (102880) task_wdt: Tasks currently running:[0m
+[0;31mE (102880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (102880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (102880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (107880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (107880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (107880) task_wdt: Tasks currently running:[0m
+[0;31mE (107880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (107880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (107880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x40101940:0x3FFBF360 0x400D6DA6:0x3FFBF380 0x400D7469:0x3FFBF3E0 0x400D7599:0x3FFBF430 0x400D241E:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x40101940 in TFT_eSprite::writeColor(unsigned short) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1359
+      (inlined by) TFT_eSprite::writeColor(unsigned short) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1354
+  #5  0x400D6DA6 in TFT_eSprite::drawChar(unsigned short, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:2350 (discriminator 2)
+  #6  0x400D7469 in TFT_eSPI::drawString(char const*, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:5651
+  #7  0x400D7599 in TFT_eSPI::drawString(String const&, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:5492
+  #8  0x400D241E in loop() at src/main.cpp:259 (discriminator 2)
+  #9  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #10 0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (112880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (112880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (112880) task_wdt: Tasks currently running:[0m
+[0;31mE (112880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (112880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (112880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (117880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (117880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (117880) task_wdt: Tasks currently running:[0m
+[0;31mE (117880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (117880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (117880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (122880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (122880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (122880) task_wdt: Tasks currently running:[0m
+[0;31mE (122880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (122880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (122880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (127880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (127880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (127880) task_wdt: Tasks currently running:[0m
+[0;31mE (127880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (127880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (127880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D32CB:0x3FFBF370 0x400D69E1:0x3FFBF3B0 0x400D7469:0x3FFBF410 0x400D2389:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D32CB in TFT_eSprite::fillRect(long, long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1888
+      (inlined by) TFT_eSprite::fillRect(long, long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1872
+  #5  0x400D69E1 in TFT_eSprite::drawChar(unsigned short, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:2235 (discriminator 1)
+  #6  0x400D7469 in TFT_eSPI::drawString(char const*, long, long, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:5651
+  #7  0x400D2389 in loop() at src/main.cpp:243
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (132880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (132880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (132880) task_wdt: Tasks currently running:[0m
+[0;31mE (132880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (132880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (132880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (137880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (137880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (137880) task_wdt: Tasks currently running:[0m
+[0;31mE (137880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (137880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (137880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (142880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (142880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (142880) task_wdt: Tasks currently running:[0m
+[0;31mE (142880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (142880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (142880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (147880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (147880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (147880) task_wdt: Tasks currently running:[0m
+[0;31mE (147880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (147880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (147880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D6623:0x3FFBF3E0 0x400D688A:0x3FFBF430 0x400D24A9:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D6623 in TFT_eSprite::pushImage(long, long, long, long, unsigned short*, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1053
+      (inlined by) TFT_eSprite::pushImage(long, long, long, long, unsigned short*, unsigned char) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1031
+  #5  0x400D688A in TFT_eSprite::pushImage(long, long, long, long, unsigned short const*) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1173
+  #6  0x400D24A9 in loop() at src/main.cpp:263
+  #7  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #8  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (152880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (152880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (152880) task_wdt: Tasks currently running:[0m
+[0;31mE (152880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (152880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (152880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (157880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (157880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (157880) task_wdt: Tasks currently running:[0m
+[0;31mE (157880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (157880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (157880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (162880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (162880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (162880) task_wdt: Tasks currently running:[0m
+[0;31mE (162880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (162880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (162880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (167880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (167880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (167880) task_wdt: Tasks currently running:[0m
+[0;31mE (167880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (167880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (167880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (172880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (172880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (172880) task_wdt: Tasks currently running:[0m
+[0;31mE (172880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (172880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (172880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (177880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (177880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (177880) task_wdt: Tasks currently running:[0m
+[0;31mE (177880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (177880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (177880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (182880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (182880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (182880) task_wdt: Tasks currently running:[0m
+[0;31mE (182880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (182880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (182880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D5BA5:0x3FFBF410 0x400D229A:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D5BA5 in TFT_eSPI::drawCircle(long, long, long, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:2329
+  #5  0x400D229A in loop() at src/main.cpp:228
+  #6  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #7  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (187880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (187880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (187880) task_wdt: Tasks currently running:[0m
+[0;31mE (187880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (187880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (187880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (192880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (192880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (192880) task_wdt: Tasks currently running:[0m
+[0;31mE (192880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (192880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (192880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (197880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (197880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (197880) task_wdt: Tasks currently running:[0m
+[0;31mE (197880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (197880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (197880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (202880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (202880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (202880) task_wdt: Tasks currently running:[0m
+[0;31mE (202880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (202880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (202880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (207880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (207880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (207880) task_wdt: Tasks currently running:[0m
+[0;31mE (207880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (207880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (207880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (212880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (212880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (212880) task_wdt: Tasks currently running:[0m
+[0;31mE (212880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (212880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (212880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (217880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (217880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (217880) task_wdt: Tasks currently running:[0m
+[0;31mE (217880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (217880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (217880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x4000C46D:0x3FFBF430 0x400D6F9F:0x3FFBF440 0x400D2222:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D6F9F in TFT_eSprite::fillSprite(unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1542
+      (inlined by) TFT_eSprite::fillSprite(unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:1516
+  #5  0x400D2222 in loop() at src/main.cpp:222
+  #6  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #7  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (222880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (222880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (222880) task_wdt: Tasks currently running:[0m
+[0;31mE (222880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (222880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (222880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+
+[0;31mE (227880) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:[0m
+[0;31mE (227880) task_wdt:  - IDLE1 (CPU 1)[0m
+[0;31mE (227880) task_wdt: Tasks currently running:[0m
+[0;31mE (227880) task_wdt: CPU 0: IDLE0[0m
+[0;31mE (227880) task_wdt: CPU 1: loopTask[0m
+[0;31mE (227880) task_wdt: Print CPU 1 backtrace[0m
+
+
+Backtrace: 0x4008236E:0x3FFB1790 0x40084FD5:0x3FFB17B0 0x400D4BAA:0x3FFBF3D0 0x400D563F:0x3FFBF3F0 0x400D6521:0x3FFBF430 0x400D24B5:0x3FFBF460 0x400DAAD8:0x3FFBF4B0 0x40088E36:0x3FFBF4D0
+  #0  0x4008236E in esp_crosscore_isr at C:\Users\user\.platformio\packages\framework-espidf\components\esp_system/crosscore_int.c:73
+  #1  0x3FFB1790 in _xt_exception_table at ??:?
+  #2  0x40084FD5 in _xt_lowint1 at C:\Users\user\.platformio\packages\framework-espidf\components\xtensa/xtensa_vectors.S:1240
+  #3  0x3FFB17B0 in _xt_exception_table at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:67
+  #4  0x400D4BAA in TFT_eSPI::pushPixels(void const*, unsigned long) at .pio/libdeps/esp32dev/TFT_eSPI/Processors/TFT_eSPI_ESP32.c:383
+  #5  0x400D563F in TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1460 (discriminator 1)
+      (inlined by) TFT_eSPI::pushImage(long, long, long, long, unsigned short*) at .pio/libdeps/esp32dev/TFT_eSPI/TFT_eSPI.cpp:1448 (discriminator 1)
+  #6  0x400D6521 in TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:667
+      (inlined by) TFT_eSprite::pushSprite(long, long) at .pio/libdeps/esp32dev/TFT_eSPI/Extensions/Sprite.cpp:659
+  #7  0x400D24B5 in loop() at src/main.cpp:265
+  #8  0x400DAAD8 in loopTask(void*) at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/main.cpp:74
+  #9  0x40088E36 in vPortTaskWrapper at C:\Users\user\.platformio\packages\framework-espidf\components\freertos\FreeRTOS-Kernel\portable\xtensa/port.c:139
+
+

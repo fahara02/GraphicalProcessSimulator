@@ -7,7 +7,6 @@
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
 
-
 namespace GPSU_CORE {
 #define POOL_POLLER_NAME "PZP_Poll"
 #define POLLER_NAME "GPIO_POLLER"
@@ -20,8 +19,6 @@ constexpr uint16_t TIMER_CMD_TIMEOUT = 100;
 constexpr size_t MAX_INPUTS = 4;
 constexpr size_t MAX_AI_CHANNEL = 2;
 constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x48;
-
-
 
 static const uint32_t PCNTaskStack = 4096;
 static const UBaseType_t PCNTask_Priority = 3;
@@ -54,16 +51,6 @@ struct GPIO {
 enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
 
 enum class EncoderType { SINGLE, HALF, FULL };
-enum class Process {
-  TRAFFIC_LIGHT = 0,
-  WATER_LEVEL = 1,
-  STEPPER_MOTOR_CONTROL = 2,
-  STATE_MACHINE = 3,
-  OBJECT_COUNTER = 4,
-  MOTOR_CONTROl = 5,
-  ANY = -1,
-
-};
 
 } // namespace GPSU_CORE
 

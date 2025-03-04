@@ -3,6 +3,7 @@
 
 #include "GPSU_Defines.hpp"
 #include "Poller.hpp"
+#include "Process/ProcessDefines.hpp"
 #include <ADS1115_WE.h>
 #include <Wire.h>
 #include <driver/gpio.h>
@@ -24,7 +25,8 @@ struct GPIO_Config {
 class IO_Controller : public Poller<IO_Controller> {
 public:
   static IO_Controller &
-  getInstance(Process sp = Process::ANY, uint32_t pollrate = 100,
+  getInstance(GPSU::ProcessType sp = GPSU::ProcessType::ANY,
+              uint32_t pollrate = 100,
               uint16_t I2C_ADDRESS = DEFAULT_I2C_ADDRESS) {
     static IO_Controller instance(sp, pollrate, I2C_ADDRESS);
     return instance;
@@ -52,12 +54,12 @@ public:
     updateAnalogInputs();
   }
 
-  Process getSelectedProcess() const { return selected_process; }
+  GPSU::ProcessType getSelectedProcess() const { return selected_process; }
   std::array<int, MAX_INPUTS> getInputs() const { return INPUT_ARRAY; }
 
 private:
   std::unique_ptr<ADS1115_WE> ADC_MANAGER;
-  Process selected_process;
+  GPSU::ProcessType selected_process;
   uint16_t _pollrate = 100;
   uint16_t _address = 0x48;
   bool _initialised_adc = false;
@@ -67,7 +69,7 @@ private:
   std::array<int, MAX_INPUTS> INPUT_ARRAY{};
   std::array<float, MAX_AI_CHANNEL> ANALOG_DATA{};
 
-  explicit IO_Controller(Process sp = Process::ANY,
+  explicit IO_Controller(GPSU::ProcessType sp = GPSU::ProcessType::ANY,
                          uint32_t pollrate = POLLER_PERIOD,
                          uint16_t I2C_ADDRESS = DEFAULT_I2C_ADDRESS)
       : Poller(this, POLLER_PERIOD),
@@ -94,7 +96,7 @@ private:
     allowed_output_pins.clear();
 
     switch (selected_process) {
-    case Process::TRAFFIC_LIGHT:
+    case GPSU::ProcessType::TRAFFIC_LIGHT:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},
@@ -112,7 +114,7 @@ private:
                              GPIO::DO::DO_PIN_2};
       break;
 
-    case Process::WATER_LEVEL:
+    case GPSU::ProcessType::WATER_LEVEL:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},
@@ -128,7 +130,7 @@ private:
       _initialised_adc = true;
       break;
 
-    case Process::STEPPER_MOTOR_CONTROL:
+    case GPSU::ProcessType::STEPPER_MOTOR_CONTROL:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},
@@ -150,7 +152,7 @@ private:
                              GPIO::DO::DO_PIN_2, GPIO::DO::DO_PIN_3};
       break;
 
-    case Process::STATE_MACHINE:
+    case GPSU::ProcessType::STATE_MACHINE:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},
@@ -172,8 +174,8 @@ private:
                              GPIO::DO::DO_PIN_2, GPIO::DO::DO_PIN_3};
       break;
 
-    case Process::OBJECT_COUNTER:
-    case Process::MOTOR_CONTROl:
+    case GPSU::ProcessType::OBJECT_COUNTER:
+    case GPSU::ProcessType::MOTOR_CONTROl:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},
