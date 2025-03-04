@@ -50,7 +50,8 @@ private:
   static constexpr size_t MENU_ITEM_COUNT = 6;
 
   // helpers
-  void drawAlignText(AlignMent align, const char *text, uint8_t font);
+  void drawAlignText(AlignMent align, const char *text, uint8_t font,
+                     Colors txt = Colors::main, Colors bg = Colors::none);
   std::tuple<int16_t, int16_t>
   calculateAlignment(AlignMent align, int16_t Width, int16_t Height);
 };

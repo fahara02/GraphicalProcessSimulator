@@ -9,7 +9,11 @@ static constexpr uint8_t BOTTOM_MARGIN_PX = 5;
 static constexpr uint8_t LEFT_MARGIN_PX = 5;
 static constexpr uint8_t RIGHT_MARGIN_PX = 5;
 static constexpr uint8_t PADDING_PX = 2;
-enum class Colors {
+enum class Colors : uint16_t {
+  none = 0,
+  main = 0xE6FD,
+  menu = 0x30BA,
+  logo = 0xB990
 
 };
 enum class AlignMent : uint8_t {

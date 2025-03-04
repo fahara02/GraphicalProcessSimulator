@@ -36,7 +36,8 @@ TFT_eSprite &Display::Sprite() { return *sprite_; }
 void Display::show_menu() {
   canvas_->fillScreen(TFT_BLACK);
   drawAlignText(AlignMent::TOP_MIDDLE,
-                GPSU::Util::ToString::Process(current_process_), 2);
+                GPSU::Util::ToString::Process(current_process_), 2,
+                Colors::main, Colors::logo);
 }
 
 std::tuple<int16_t, int16_t>
@@ -79,7 +80,8 @@ Display::calculateAlignment(AlignMent align, int16_t Width, int16_t Height) {
 
   return std::make_tuple(x, y);
 }
-void Display::drawAlignText(AlignMent align, const char *text, uint8_t font) {
+void Display::drawAlignText(AlignMent align, const char *text, uint8_t font,
+                            Colors txt, Colors bg) {
   if (!text) {
     ESP_LOGE("GUI", "Null pointer passed!");
     return;
@@ -89,7 +91,7 @@ void Display::drawAlignText(AlignMent align, const char *text, uint8_t font) {
   int16_t textHeight = canvas_->fontHeight(font);
 
   auto [x, y] = calculateAlignment(align, textWidth, textHeight);
-
+  canvas_->setTextColor(static_cast<uint16_t>(txt), static_cast<uint16_t>(bg));
   canvas_->drawString(text, x, y, font);
 }
 
