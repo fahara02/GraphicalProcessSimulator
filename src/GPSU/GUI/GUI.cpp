@@ -35,58 +35,61 @@ TFT_eSprite &Display::Sprite() { return *sprite_; }
 
 void Display::show_menu() {
   canvas_->fillScreen(TFT_BLACK);
-  Serial.printf("text width of Hello is %d \n", canvas_->textWidth("hello", 2));
   drawAlignText(AlignMent::TOP_MIDDLE,
                 GPSU::Util::ToString::Process(current_process_), 2);
 }
 
+std::tuple<int16_t, int16_t>
+Display::calculateAlignment(AlignMent align, int16_t Width, int16_t Height) {
+  int16_t x = 0;
+  int16_t y = 0;
+
+  switch (align) {
+  case AlignMent::TOP_MIDDLE:
+    x = (MAX_WIDTH - Width) / 2;
+    y = TOP_MARGIN_PX;
+    break;
+
+  case AlignMent::MIDDLE:
+    x = (MAX_WIDTH - Width) / 2;
+    y = (MAX_HEIGHT - Height) / 2;
+    break;
+
+  case AlignMent::LEFT_X:
+    x = LEFT_MARGIN_PX;
+    y = (MAX_HEIGHT - Height) / 2;
+    break;
+
+  case AlignMent::RIGHT_X:
+    x = MAX_WIDTH - Width - RIGHT_MARGIN_PX;
+    y = (MAX_HEIGHT - Height) / 2;
+    break;
+
+  case AlignMent::BOTTOM_MIDDLE:
+    x = (MAX_WIDTH - Width) / 2;
+    y = MAX_HEIGHT - Height - BOTTOM_MARGIN_PX;
+    break;
+
+  default:
+    ESP_LOGW("GUI", "Unknown alignment, defaulting to TOP_MIDDLE");
+    x = (MAX_WIDTH - Width) / 2;
+    y = TOP_MARGIN_PX;
+    break;
+  }
+
+  return std::make_tuple(x, y);
+}
 void Display::drawAlignText(AlignMent align, const char *text, uint8_t font) {
   if (!text) {
     ESP_LOGE("GUI", "Null pointer passed!");
     return;
   }
 
-  // Manual text width calculation
   int16_t textWidth = canvas_->textWidth(text, font);
   int16_t textHeight = canvas_->fontHeight(font);
 
-  int16_t x = 0;
-  int16_t y = 0;
+  auto [x, y] = calculateAlignment(align, textWidth, textHeight);
 
-  switch (align) {
-  case AlignMent::TOP_MIDDLE:
-    x = (MAX_WIDTH - textWidth) / 2;
-    y = TOP_MARGIN_PX;
-    break;
-
-  case AlignMent::MIDDLE:
-    x = (MAX_WIDTH - textWidth) / 2;
-    y = (MAX_HEIGHT - textHeight) / 2;
-    break;
-
-  case AlignMent::LEFT_X:
-    x = LEFT_MARGIN_PX;
-    y = (MAX_HEIGHT - textHeight) / 2;
-    break;
-
-  case AlignMent::RIGHT_X:
-    x = MAX_WIDTH - textWidth - RIGHT_MARGIN_PX; // Add margin if needed
-    y = (MAX_HEIGHT - textHeight) / 2;
-    break;
-
-  case AlignMent::BOTTOM_MIDDLE:
-    x = (MAX_WIDTH - textWidth) / 2;
-    y = MAX_HEIGHT - textHeight - BOTTOM_MARGIN_PX; // Add margin if needed
-    break;
-
-  default:
-    ESP_LOGW("GUI", "Unknown alignment, defaulting to TOP_MIDDLE");
-    x = (MAX_WIDTH - textWidth) / 2;
-    y = TOP_MARGIN_PX;
-    break;
-  }
-
-  // Draw the text at calculated position
   canvas_->drawString(text, x, y, font);
 }
 

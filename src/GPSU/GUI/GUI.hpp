@@ -6,6 +6,7 @@
 #include "Process/ProcessDefines.hpp"
 #include <TFT_eSPI.h>
 #include <memory>
+#include <tuple>
 
 namespace GUI {
 
@@ -50,6 +51,8 @@ private:
 
   // helpers
   void drawAlignText(AlignMent align, const char *text, uint8_t font);
+  std::tuple<int16_t, int16_t>
+  calculateAlignment(AlignMent align, int16_t Width, int16_t Height);
 };
 
 } // namespace GUI

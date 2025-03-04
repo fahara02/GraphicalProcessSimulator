@@ -8,6 +8,7 @@ static constexpr uint8_t TOP_MARGIN_PX = 5;
 static constexpr uint8_t BOTTOM_MARGIN_PX = 5;
 static constexpr uint8_t LEFT_MARGIN_PX = 5;
 static constexpr uint8_t RIGHT_MARGIN_PX = 5;
+static constexpr uint8_t PADDING_PX = 2;
 enum class Colors {
 
 };
