@@ -1,6 +1,7 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
+#include "GUIConstants.hpp"
 #include "MenuSelector.hpp"
 #include "Process/ProcessDefines.hpp"
 #include <TFT_eSPI.h>
@@ -15,7 +16,7 @@ public:
   Display(const Display &) = delete;
   Display &operator=(const Display &) = delete;
 
-  TFT_eSPI &TFT();
+  TFT_eSPI &Canvas();
   TFT_eSprite &Sprite();
 
   void show_menu();
@@ -39,13 +40,16 @@ private:
   static void onItemSelected(size_t index);
 
   bool initialised;
-  std::unique_ptr<TFT_eSPI> tft_;
+  std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> sprite_;
   std::unique_ptr<MenuSelector> menu_;
   GPSU::ProcessType current_process_;
 
   static const MenuItem menuItems[];
   static constexpr size_t MENU_ITEM_COUNT = 6;
+
+  // helpers
+  void drawAlignText(AlignMent align, const char *text, uint8_t font);
 };
 
 } // namespace GUI
