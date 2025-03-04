@@ -1,0 +1,232 @@
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:7176
+load:0x40078000,len:15620
+load:0x40080400,len:4
+load:0x40080404,len:3904
+entry 0x40080638
+[0;32mI (29) boot: ESP-IDF 5.3.2.250210 2nd stage bootloader[0m
+[0;32mI (29) boot: compile time Mar  5 2025 00:43:36[0m
+[0;32mI (30) boot: Multicore bootloader[0m
+[0;32mI (34) boot: chip revision: v3.0[0m
+[0;32mI (38) boot.esp32: SPI Speed      : 40MHz[0m
+[0;32mI (43) boot.esp32: SPI Mode       : DIO[0m
+[0;32mI (47) boot.esp32: SPI Flash Size : 4MB[0m
+[0;32mI (52) boot: Enabling RNG early entropy source...[0m
+[0;32mI (57) boot: Partition Table:[0m
+[0;32mI (61) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (68) boot:  0 nvs              WiFi data        01 02 00009000 00005000[0m
+[0;32mI (75) boot:  1 phy_init         RF data          01 01 0000e000 00001000[0m
+[0;32mI (83) boot:  2 factory          factory app      00 00 00010000 001d0000[0m
+[0;32mI (90) boot:  3 spiffs           Unknown data     01 82 001e0000 00100000[0m
+[0;32mI (98) boot: End of partition table[0m
+[0;32mI (102) esp_image: segment 0: paddr=00010020 vaddr=3f400020 size=1d83ch (120892) map[0m
+[0;32mI (152) esp_image: segment 1: paddr=0002d864 vaddr=3ffb0000 size=02610h (  9744) load[0m
+[0;32mI (156) esp_image: segment 2: paddr=0002fe7c vaddr=40080000 size=0019ch (   412) load[0m
+[0;32mI (158) esp_image: segment 3: paddr=00030020 vaddr=400d0020 size=33448h (209992) map[0m
+[0;32mI (238) esp_image: segment 4: paddr=00063470 vaddr=4008019c size=0fcb4h ( 64692) load[0m
+[0;32mI (272) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (272) boot: Disabling RNG early entropy source...[0m
+[0;32mI (284) cpu_start: Multicore app[0m
+[0;32mI (317) cpu_start: Pro cpu start user code[0m
+[0;32mI (317) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (317) app_init: Application information:[0m
+[0;32mI (320) app_init: Project name:     GRAPHICAL_PROCESS_SIMULATOR[0m
+[0;32mI (327) app_init: App version:      42908eb-dirty[0m
+[0;32mI (332) app_init: Compile time:     Mar  5 2025 01:17:16[0m
+[0;32mI (338) app_init: ELF file SHA256:  7c4debed6a7509a1...[0m
+[0;32mI (344) app_init: ESP-IDF:          5.3.2.250210[0m
+[0;32mI (349) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (354) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (359) efuse_init: Chip rev:         v3.0[0m
+[0;32mI (364) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (371) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (377) heap_init: At 3FFB63F8 len 00029C08 (167 KiB): DRAM[0m
+[0;32mI (383) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (390) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (396) heap_init: At 4008FE50 len 000101B0 (64 KiB): IRAM[0m
+[0;32mI (404) spi_flash: detected chip: generic[0m
+[0;32mI (407) spi_flash: flash io: dio[0m
+[0;33mW (411) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`[0m
+[    19][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RX (2) successfully set to 0x400d901c
+  #0  0x400d901c in _uartDetachBus_RX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:166
+
+[    41][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_TX (3) successfully set to 0x400d8fec
+  #0  0x400d8fec in _uartDetachBus_TX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:173
+
+[    55][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_CTS (4) successfully set to 0x400d8fbc
+  #0  0x400d8fbc in _uartDetachBus_CTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:180
+
+[    68][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RTS (5) successfully set to 0x400d8f8c
+  #0  0x400d8f8c in _uartDetachBus_RTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:187
+
+[    82][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RX (2) successfully set to 0x400d901c
+  #0  0x400d901c in _uartDetachBus_RX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:166
+
+[    95][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_TX (3) successfully set to 0x400d8fec
+  #0  0x400d8fec in _uartDetachBus_TX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:173
+
+[   108][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_CTS (4) successfully set to 0x400d8fbc
+  #0  0x400d8fbc in _uartDetachBus_CTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:180
+
+[   122][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RTS (5) successfully set to 0x400d8f8c
+  #0  0x400d8f8c in _uartDetachBus_RTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:187
+
+[   135][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RX (2) successfully set to 0x400d901c
+  #0  0x400d901c in _uartDetachBus_RX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:166
+
+[   149][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_TX (3) successfully set to 0x400d8fec
+  #0  0x400d8fec in _uartDetachBus_TX at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:173
+
+[   162][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_CTS (4) successfully set to 0x400d8fbc
+  #0  0x400d8fbc in _uartDetachBus_CTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:180
+
+[   176][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type UART_RTS (5) successfully set to 0x400d8f8c
+  #0  0x400d8f8c in _uartDetachBus_RTS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:187
+
+[0;32mI (593) main_task: Started on CPU0[0m
+[0;32mI (595) main_task: Calling app_main()[0m
+[0;32mI (626) main_task: Returned from app_main()[0m
+[   224][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 3 successfully set to type UART_RX (2) with bus 0x3ffb004c
+  #0  0x3ffb004c in ?? at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:89
+
+[   240][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 1 successfully set to type UART_TX (3) with bus 0x3ffb004c
+  #0  0x3ffb004c in ?? at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-uart.c:89
+
+=========== Before Setup Start ===========
+Chip Info:
+------------------------------------------
+  Model             : ESP32
+  Package           : D0WD-Q6
+  Revision          : 3.00
+  Cores             : 2
+  CPU Frequency     : 160 MHz
+  XTAL Frequency    : 40 MHz
+  Features Bitfield : 0x00000032
+  Embedded Flash    : No
+  Embedded PSRAM    : No
+  2.4GHz WiFi       : Yes
+  Classic BT        : Yes
+  BT Low Energy     : Yes
+  IEEE 802.15.4     : No
+------------------------------------------
+INTERNAL Memory Info:
+------------------------------------------
+  Total Size        :   372328 B ( 363.6 KB)
+  Free Bytes        :   330172 B ( 322.4 KB)
+  Allocated Bytes   :    38356 B (  37.5 KB)
+  Minimum Free Bytes:   325912 B ( 318.3 KB)
+  Largest Free Block:   131072 B ( 128.0 KB)
+------------------------------------------
+Flash Info:
+------------------------------------------
+  Chip Size         :  4194304 B (4 MB)
+  Block Size        :    65536 B (  64.0 KB)
+  Sector Size       :     4096 B (   4.0 KB)
+  Page Size         :      256 B (   0.2 KB)
+  Bus Speed         : 40 MHz
+  Bus Mode          : DIO
+------------------------------------------
+Partitions Info:
+------------------------------------------
+                nvs : addr: 0x00009000, size:    20.0 KB, type: DATA, subtype: NVS
+           phy_init : addr: 0x0000E000, size:     4.0 KB, type: DATA, subtype: PHY
+            factory : addr: 0x00010000, size:  1856.0 KB, type:  APP, subtype: FACTORY
+             spiffs : addr: 0x001E0000, size:  1024.0 KB, type: DATA, subtype: SPIFFS
+------------------------------------------
+Software Info:
+------------------------------------------
+  Compile Date/Time : Mar  5 2025 00:42:32
+  ESP-IDF Version   : 5.3.2.250210
+  Arduino Version   : 3.1.2
+------------------------------------------
+Board Info:
+------------------------------------------
+  Arduino Board     : ESP32_DEV
+  Arduino Variant   : esp32
+  Core Debug Level  : 5
+  Arduino Runs Core : 1
+  Arduino Events on : 1
+  CDC On Boot       : 0
+============ Before Setup End ============
+[   703][V][esp32-hal-uart.c:421] uartBegin(): UART0 baud(115200) Mode(800001c) rxPin(3) txPin(1)
+[   712][V][esp32-hal-uart.c:510] uartBegin(): UART0 not installed. Starting installation
+[   725][V][esp32-hal-uart.c:575] uartBegin(): UART0 initialization done.
+[0;32mI (1140) gpio: GPIO[37]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:3 [0m
+[0;32mI (1141) gpio: GPIO[38]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:3 [0m
+[0;32mI (1148) gpio: GPIO[32]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:1 [0m
+[   756][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40100ff0
+  #0  0x40100ff0 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1179) gpio: GPIO[5]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   778][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 5 successfully set to type GPIO (1) with bus 0x6
+[   796][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40100ff0
+  #0  0x40100ff0 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1210) gpio: GPIO[16]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   808][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 16 successfully set to type GPIO (1) with bus 0x11
+[   827][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40100ff0
+  #0  0x40100ff0 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1240) gpio: GPIO[23]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   838][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 23 successfully set to type GPIO (1) with bus 0x18
+[   857][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_SCK (37) successfully set to 0x400df058
+  #0  0x400df058 in spiDetachBus_SCK at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:223
+
+[   869][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_MISO (38) successfully set to 0x400df140
+  #0  0x400df140 in spiDetachBus_MISO at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:233
+
+[   882][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_MOSI (39) successfully set to 0x400df230
+  #0  0x400df230 in spiDetachBus_MOSI at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:243
+
+[   894][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type SPI_MASTER_SS (40) successfully set to 0x400df320
+  #0  0x400df320 in spiDetachBus_SS at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-spi.c:253
+
+[   906][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40100ff0
+  #0  0x40100ff0 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1319) gpio: GPIO[18]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   918][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 18 successfully set to type GPIO (1) with bus 0x13
+[   936][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 18 successfully set to type SPI_MASTER_SCK (37) with bus 0x4
+[   947][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40100ff0
+  #0  0x40100ff0 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1361) gpio: GPIO[19]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[   959][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 19 successfully set to type GPIO (1) with bus 0x14
+[   978][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 19 successfully set to type SPI_MASTER_MOSI (39) with bus 0x4
+[0;32mI (1391) gpio: GPIO[5]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (1391) gpio: GPIO[16]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[0;32mI (1399) gpio: GPIO[23]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[  1566][E][esp32-hal-gpio.c:176] __digitalWrite(): IO 4 is not set as GPIO.
+[  1573][V][esp32-hal-periman.c:235] perimanSetBusDeinit(): Deinit function for type GPIO (1) successfully set to 0x40100ff0
+  #0  0x40100ff0 in gpioDetachBus at C:/Users/user/.platformio/packages/framework-arduinoespressif32-src-36b172f5f4482da14324b9ce108a8e04/cores/esp32/esp32-hal-gpio.c:100
+
+[0;32mI (1986) gpio: GPIO[4]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+[  1585][V][esp32-hal-periman.c:160] perimanSetPinBus(): Pin 4 successfully set to type GPIO (1) with bus 0x5
+[0;32mI (2006) gpio: GPIO[4]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 [0m
+=========== After Setup Start ============
+INTERNAL Memory Info:
+------------------------------------------
+  Total Size        :   372328 B ( 363.6 KB)
+  Free Bytes        :   318624 B ( 311.2 KB)
+  Allocated Bytes   :    49792 B (  48.6 KB)
+  Minimum Free Bytes:   318492 B ( 311.0 KB)
+  Largest Free Block:   122880 B ( 120.0 KB)
+------------------------------------------
+GPIO Info:
+------------------------------------------
+  GPIO : BUS_TYPE[bus/unit][chan]
+  --------------------------------------  
+     1 : UART_TX[0]
+     3 : UART_RX[0]
+     4 : GPIO
+     5 : GPIO
+    16 : GPIO
+    18 : SPI_MASTER_SCK[3]
+    19 : SPI_MASTER_MOSI[3]
+    23 : GPIO
+============ After Setup End =============

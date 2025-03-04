@@ -17,32 +17,31 @@
 #include <WiFiManager.h>
 #include <WifiClient.h>
 
-gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
-gpio_num_t pinB = GPIO_NUM_38;
-gpio_num_t btn = GPIO_NUM_32;
 gpio_num_t sda = GPIO_NUM_25;
 gpio_num_t scl = GPIO_NUM_33;
 gpio_num_t reset = GPIO_NUM_13;
 TaskHandle_t runTaskhandle = nullptr;
-void action1() { Serial.println("Action 1 selected"); }
-void action2() { Serial.println("Action 2 selected"); }
-void action3() { Serial.println("Action 3 selected"); }
 
-const MenuItem menuItems[] = {{"Item 1", action1},
-                              {"Item 2", action2},
-                              {"Item 3", action3},
-                              {"Item 4", action3},
-                              {"Item 5", action3}};
-constexpr size_t MENU_ITEM_COUNT = sizeof(menuItems) / sizeof(menuItems[0]);
-MenuSelector menu(menuItems, MENU_ITEM_COUNT, 4, pinA, pinB, btn);
-void onSelectionChanged(size_t index) {
-  // Serial.println(menu.get_selected_item()->label);
-  Serial.print("Selected: ");
-  Serial.println(menuItems[index].label);
-}
-void onItemSelected(size_t index) { Serial.println("Item confirmed"); }
-TFT_eSPI tft = TFT_eSPI();
-TFT_eSprite img = TFT_eSprite(&tft);
+Service::Display &display = Service::Display::getInstance();
+// void action1() { Serial.println("Action 1 selected"); }
+// void action2() { Serial.println("Action 2 selected"); }
+// void action3() { Serial.println("Action 3 selected"); }
+
+// const MenuItem menuItems[] = {{"Item 1", action1},
+//                               {"Item 2", action2},
+//                               {"Item 3", action3},
+//                               {"Item 4", action3},
+//                               {"Item 5", action3}};
+// constexpr size_t MENU_ITEM_COUNT = sizeof(menuItems) / sizeof(menuItems[0]);
+// MenuSelector menu(menuItems, MENU_ITEM_COUNT, 4, pinA, pinB, btn);
+// void onSelectionChanged(size_t index) {
+//   // Serial.println(menu.get_selected_item()->label);
+//   Serial.print("Selected: ");
+//   Serial.println(menuItems[index].label);
+// }
+// void onItemSelected(size_t index) { Serial.println("Item confirmed"); }
+// TFT_eSPI tft = TFT_eSPI();
+// TFT_eSprite img = TFT_eSprite(&tft);
 
 const int pwmFreq = 5000;
 const int pwmResolution = 8;
@@ -103,7 +102,8 @@ void cb4(int *data) { Serial.println(" Higher limit reached"); }
 void setup() {
 
   Serial.begin(115200);
-  tft.init();
+  // tft.init();
+  display.init();
   delay(1000);
   // auto &controller = GPSU_CORE::IO_Controller::getInstance(
   //     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
@@ -152,16 +152,16 @@ void setup() {
   // ledcAttachPin(5, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);
 
-  menu.set_selection_changed_Cb(onSelectionChanged);
-  menu.set_item_selected_cb(onItemSelected);
-  menu.init();
+  // menu.set_selection_changed_Cb(onSelectionChanged);
+  // menu.set_item_selected_cb(onItemSelected);
+  // menu.init();
 
-  tft.fillScreen(TFT_WHITE);
-  img.createSprite(135, 240);
-  img.setTextDatum(4);
-  img.setSwapBytes(true);
+  // tft.fillScreen(TFT_WHITE);
+  // img.createSprite(135, 240);
+  // img.setTextDatum(4);
+  // img.setSwapBytes(true);
 
-  img.setFreeFont(&FreeSansBold9pt7b);
+  // img.setFreeFont(&FreeSansBold9pt7b);
 
   int i = 0;
   int a = 136;
@@ -194,76 +194,77 @@ void setup() {
   // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
   // ledcWrite(pwmLedChannelTFT, 100);
 }
-// void loop() {
-
-//   Serial.println("....");
-//   delay(2000);
-// }
 void loop() {
-  int angle, angle2, angle3 = 0;
 
-  // rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
-  // fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
-  // tempA = map(analogRead(temperature_pin), 0, 3867, 0, 80);
-  angle++;
-  if (angle == 266)
+  Serial.println("....");
 
-    angle2 = angle2 + 2;
-
-  if (angle2 == 266)
-
-    angle3++;
-  if (angle3 == 266)
-
-    angle = 0;
-  angle2 = 0;
-  angle3 = 27;
-
-  img.fillSprite(TFT_WHITE);
-  img.fillCircle(sx + 52, sy - 32, 4, 0x9062);
-  img.fillCircle(sx + 52, sy - 18, 4, 0x9062);
-
-  img.drawCircle(sx, sy, r, gray);
-  img.drawCircle(sx, sy, r - 1, gray);
-  img.drawCircle(sx2, sy2, r2, gray);
-  img.fillRect(sx - r, sy + r - 12, 100, 20, TFT_WHITE);
-
-  img.fillRect(0, 0, 140, 22, green);
-  img.fillRect(0, 122, 68, 16, green);
-  img.fillRect(68, 160, 68, 16, green);
-  img.setTextColor(TFT_WHITE, green);
-  img.drawString("DASHBOARD", 40, 10, 2);
-  img.drawString("FUEL", 36, 130, 2);
-
-  img.drawString("TEMP", 36 + 68, 168, 2);
-
-  img.setTextColor(TFT_PURPLE, TFT_WHITE);
-  img.drawString("mph", sx, sy + 30, 2);
-  img.drawString("IDEA3D", 105, 136, 2);
-  img.drawString("bangladesh", 104, 150, 2);
-
-  img.drawString("check engine", 44, 230, 2);
-  img.setTextColor(TFT_BLACK, TFT_WHITE);
-
-  img.drawCircle(sx3, sy3, r3, gray);
-
-  for (int i = 0; i < angle; i++)
-    img.fillCircle(x[i], y[i], 3, green);
-
-  for (int i = 0; i < angle2; i++)
-    img.fillCircle(x2[i], y2[i], 2, green);
-
-  for (int i = 0; i < angle3; i++)
-    img.fillCircle(x3[i], y3[i], 2, green);
-
-  img.drawString(String(angle), sx, sy, 4);
-  img.setTextColor(TFT_PURPLE, TFT_WHITE);
-  img.drawString(String((int)angle2 / 10), sx2, sy2);
-  img.drawString(String((int)angle3 / 10), sx3, sy3);
-  img.pushImage(12, 198, 44, 17, oil);
-
-  img.pushSprite(0, 0);
+  delay(1000);
 }
+// void loop() {
+//   int angle, angle2, angle3 = 0;
+
+//   // rpmA = map(analogRead(rpm_pin), 0, 4002, 0, 150);
+//   // fuelA = map(analogRead(fuelgauge_pin), 0, 3890, 0, 100);
+//   // tempA = map(analogRead(temperature_pin), 0, 3867, 0, 80);
+//   angle++;
+//   if (angle == 266)
+
+//     angle2 = angle2 + 2;
+
+//   if (angle2 == 266)
+
+//     angle3++;
+//   if (angle3 == 266)
+
+//     angle = 0;
+//   angle2 = 0;
+//   angle3 = 27;
+
+//   img.fillSprite(TFT_WHITE);
+//   img.fillCircle(sx + 52, sy - 32, 4, 0x9062);
+//   img.fillCircle(sx + 52, sy - 18, 4, 0x9062);
+
+//   img.drawCircle(sx, sy, r, gray);
+//   img.drawCircle(sx, sy, r - 1, gray);
+//   img.drawCircle(sx2, sy2, r2, gray);
+//   img.fillRect(sx - r, sy + r - 12, 100, 20, TFT_WHITE);
+
+//   img.fillRect(0, 0, 140, 22, green);
+//   img.fillRect(0, 122, 68, 16, green);
+//   img.fillRect(68, 160, 68, 16, green);
+//   img.setTextColor(TFT_WHITE, green);
+//   img.drawString("DASHBOARD", 40, 10, 2);
+//   img.drawString("FUEL", 36, 130, 2);
+
+//   img.drawString("TEMP", 36 + 68, 168, 2);
+
+//   img.setTextColor(TFT_PURPLE, TFT_WHITE);
+//   img.drawString("mph", sx, sy + 30, 2);
+//   img.drawString("IDEA3D", 105, 136, 2);
+//   img.drawString("bangladesh", 104, 150, 2);
+
+//   img.drawString("check engine", 44, 230, 2);
+//   img.setTextColor(TFT_BLACK, TFT_WHITE);
+
+//   img.drawCircle(sx3, sy3, r3, gray);
+
+//   for (int i = 0; i < angle; i++)
+//     img.fillCircle(x[i], y[i], 3, green);
+
+//   for (int i = 0; i < angle2; i++)
+//     img.fillCircle(x2[i], y2[i], 2, green);
+
+//   for (int i = 0; i < angle3; i++)
+//     img.fillCircle(x3[i], y3[i], 2, green);
+
+//   img.drawString(String(angle), sx, sy, 4);
+//   img.setTextColor(TFT_PURPLE, TFT_WHITE);
+//   img.drawString(String((int)angle2 / 10), sx2, sy2);
+//   img.drawString(String((int)angle3 / 10), sx3, sy3);
+//   img.pushImage(12, 198, 44, 17, oil);
+
+//   img.pushSprite(0, 0);
+// }
 
 void RunTask(void *param) {
   MCP::MCPDevice *expander = static_cast<MCP::MCPDevice *>(param);
