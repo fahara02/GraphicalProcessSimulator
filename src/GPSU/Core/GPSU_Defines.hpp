@@ -1,10 +1,12 @@
 #ifndef GPSU_DEFINES_HPP
 #define GPSU_DEFINES_HPP
+#include "RotaryDefines.hpp"
 #include "stdint.h"
 #include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
+
 
 namespace GPSU_CORE {
 #define POOL_POLLER_NAME "PZP_Poll"
@@ -19,13 +21,7 @@ constexpr size_t MAX_INPUTS = 4;
 constexpr size_t MAX_AI_CHANNEL = 2;
 constexpr uint16_t DEFAULT_I2C_ADDRESS = 0x48;
 
-static const uint32_t EncoderTaskStack = 4096;
-static const UBaseType_t EncoderTask_Priority = 3;
-static const BaseType_t EncoderTask_CORE = tskNO_AFFINITY;
 
-static const uint32_t BtnTaskStack = 4096;
-static const UBaseType_t BtnTask_Priority = 3;
-static const BaseType_t BtnTask_CORE = tskNO_AFFINITY;
 
 static const uint32_t PCNTaskStack = 4096;
 static const UBaseType_t PCNTask_Priority = 3;
@@ -56,21 +52,6 @@ struct GPIO {
   };
 };
 enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
-
-enum class ButtonState {
-  DOWN = 0,
-  PUSHED = 1,
-  UP = 2,
-  RELEASED = 3,
-  BTN_DISABLED = 99,
-};
-enum class PullType {
-  INTERNAL_PULLUP,
-  INTERNAL_PULLDOWN,
-  EXTERNAL_PULLUP,
-  EXTERNAL_PULLDOWN,
-  NONE
-};
 
 enum class EncoderType { SINGLE, HALF, FULL };
 enum class Process {

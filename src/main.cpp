@@ -1,3 +1,4 @@
+#include "FS.h"
 #include "IO_Controller.hpp"
 #include "MCP23017.hpp"
 #include "PulseCounter.hpp"
@@ -6,7 +7,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
-#include "i2cBus.hpp"
 #include "oil.h"
 #include <Arduino.h>
 #include <ModbusClientTCP.h>
@@ -56,21 +56,25 @@ int rpmA = 0;
 int percent = 0;
 
 static int send_req = 0;
-
 gpio_num_t pinA = GPIO_NUM_37; // GPIO pin for Channel A
 gpio_num_t pinB = GPIO_NUM_38;
+gpio_num_t btn = GPIO_NUM_32;
+gpio_num_t sda = GPIO_NUM_25;
+gpio_num_t scl = GPIO_NUM_33;
+gpio_num_t reset = GPIO_NUM_13;
+COMPONENT::MCP23017 expander(sda, scl, reset);
 
-// COMPONENT::Encoder encoder = COMPONENT::Encoder(4, pinA, pinB);
-COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
-COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
+Rotary::Encoder encoder = Rotary::Encoder(4, pinA, pinB);
+// COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
+// COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
 
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 void RunTask(void *param);
 // MCP::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
-COMPONENT::MCP23017 expander;
+
 // void cb1(void *param);
 // void cb2(void *param);
-
+void readEncoderISRcb() { Serial.println(" encoder button isr"); }
 void cb1(void *data) { Serial.println(" lower limit reached"); }
 void cb2(void *data) { Serial.println(" Higher limit reached"); }
 
@@ -85,15 +89,12 @@ void setup() {
   // auto &controller = GPSU_CORE::IO_Controller::getInstance(
   //     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
-  // encoder.begin();
-  //  encoder.setup(readEncoderISR);
-  // bool circleValues = true;
-  // encoder.setBoundaries(0, 10, circleValues);
-  encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
+  encoder.init();
+  encoder.set_callbacks(readEncoderISRcb);
+  bool circleValues = true;
+  encoder.set_range(0, 10, circleValues);
+  // encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
-  // delay(1000);
-  // // expander.cntrlRegA->separateBanks<MCP::REG::IOCON>();
-  // delay(2000);
   expander.init();
   expander.dumpRegisters();
   delay(1000);

@@ -22,6 +22,39 @@ struct GPIO_Config {
 };
 
 class IO_Controller : public Poller<IO_Controller> {
+public:
+  static IO_Controller &
+  getInstance(Process sp = Process::ANY, uint32_t pollrate = 100,
+              uint16_t I2C_ADDRESS = DEFAULT_I2C_ADDRESS) {
+    static IO_Controller instance(sp, pollrate, I2C_ADDRESS);
+    return instance;
+  }
+
+  IO_Controller(const IO_Controller &) = delete;
+  IO_Controller &operator=(const IO_Controller &) = delete;
+  void resetPoll() const override { _lastInitialised = esp_timer_get_time(); };
+
+  void setOutput(gpio_num_t pin, int level) {
+    if (allowed_output_pins.find(pin) == allowed_output_pins.end()) {
+      Serial.printf(
+          "Error: GPIO %d is not an allowed output pin for this process.\n",
+          pin);
+      return;
+    }
+    gpio_set_level(pin, level);
+  }
+  void updateData() {
+    // Serial.println("........");
+    // Serial.printf(" updatting data in:%llu ms \n", esp_timer_get_time() /
+    // 1000); Serial.printf("pollrate is %d ", getPollrate());
+    // Serial.println("........");
+    updateInputs();
+    updateAnalogInputs();
+  }
+
+  Process getSelectedProcess() const { return selected_process; }
+  std::array<int, MAX_INPUTS> getInputs() const { return INPUT_ARRAY; }
+
 private:
   std::unique_ptr<ADS1115_WE> ADC_MANAGER;
   Process selected_process;
@@ -223,39 +256,6 @@ private:
       INPUT_ARRAY[index] = -1;
     }
   }
-
-public:
-  static IO_Controller &
-  getInstance(Process sp = Process::ANY, uint32_t pollrate = 100,
-              uint16_t I2C_ADDRESS = DEFAULT_I2C_ADDRESS) {
-    static IO_Controller instance(sp, pollrate, I2C_ADDRESS);
-    return instance;
-  }
-
-  IO_Controller(const IO_Controller &) = delete;
-  IO_Controller &operator=(const IO_Controller &) = delete;
-  void resetPoll() const override { _lastInitialised = esp_timer_get_time(); };
-
-  void setOutput(gpio_num_t pin, int level) {
-    if (allowed_output_pins.find(pin) == allowed_output_pins.end()) {
-      Serial.printf(
-          "Error: GPIO %d is not an allowed output pin for this process.\n",
-          pin);
-      return;
-    }
-    gpio_set_level(pin, level);
-  }
-  void updateData() {
-    // Serial.println("........");
-    // Serial.printf(" updatting data in:%llu ms \n", esp_timer_get_time() /
-    // 1000); Serial.printf("pollrate is %d ", getPollrate());
-    // Serial.println("........");
-    updateInputs();
-    updateAnalogInputs();
-  }
-
-  Process getSelectedProcess() const { return selected_process; }
-  std::array<int, MAX_INPUTS> getInputs() const { return INPUT_ARRAY; }
 };
 
 } // namespace GPSU_CORE
