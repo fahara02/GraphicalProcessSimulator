@@ -35,9 +35,7 @@ TFT_eSprite &Display::Sprite() { return *sprite_; }
 
 void Display::show_menu() {
   canvas_->fillScreen(TFT_BLACK);
-  //   canvas_->drawString(GPSU::Util::ToString::Process(current_process_), 10,
-  //   120,
-  //                       4);
+  Serial.printf("text width of Hello is %d \n", canvas_->textWidth("hello", 2));
   drawAlignText(AlignMent::TOP_MIDDLE,
                 GPSU::Util::ToString::Process(current_process_), 2);
 }
@@ -49,31 +47,8 @@ void Display::drawAlignText(AlignMent align, const char *text, uint8_t font) {
   }
 
   // Manual text width calculation
-  int16_t textWidth = 0;
-  int16_t textHeight = 0;
-
-  // Approximate character width and height based on font size
-  // These are rough estimates - adjust based on your specific font metrics
-  switch (font) {
-  case 1:                         // Smallest font
-    textWidth = strlen(text) * 6; // ~6 pixels per char
-    textHeight = 8;               // ~8 pixels height
-    break;
-  case 2:
-    textWidth = strlen(text) * 8; // ~8 pixels per char
-    textHeight = 16;              // ~16 pixels height
-    break;
-  case 4:
-    textWidth = strlen(text) * 12; // ~12 pixels per char
-    textHeight = 24;               // ~24 pixels height
-    break;
-  default:
-    textWidth = strlen(text) * 10; // Default approximation
-    textHeight = font * 6;         // Rough guess based on font size
-    break;
-  }
-
-  Serial.printf("Calculated width is %d for text '%s'\n", textWidth, text);
+  int16_t textWidth = canvas_->textWidth(text, font);
+  int16_t textHeight = canvas_->fontHeight(font);
 
   int16_t x = 0;
   int16_t y = 0;
