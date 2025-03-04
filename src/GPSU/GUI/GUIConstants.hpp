@@ -8,7 +8,10 @@ static constexpr uint8_t TOP_MARGIN_PX = 5;
 static constexpr uint8_t BOTTOM_MARGIN_PX = 5;
 static constexpr uint8_t LEFT_MARGIN_PX = 5;
 static constexpr uint8_t RIGHT_MARGIN_PX = 5;
-static constexpr uint8_t PADDING_PX = 2;
+static constexpr uint8_t PADDING_PX = 5;
+
+static constexpr uint8_t MENU_FONT = 2;
+static constexpr uint8_t MENU_VERTICAL_PADDING = 10;
 enum class Colors : uint16_t {
 
   main = 0xE6FD,
