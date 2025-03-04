@@ -51,7 +51,7 @@ private:
 
   // helpers
   void drawAlignText(AlignMent align, const char *text, uint8_t font,
-                     Colors txt = Colors::main, Colors bg = Colors::none);
+                     Colors txt = Colors::main, Colors bg = Colors::black);
   std::tuple<int16_t, int16_t>
   calculateAlignment(AlignMent align, int16_t Width, int16_t Height);
 };

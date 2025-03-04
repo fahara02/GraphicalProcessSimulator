@@ -33,12 +33,86 @@ TFT_eSprite &Display::Sprite() { return *sprite_; }
 // show_menu (//https://barth-dev.de/online/rgb565-color-picker/)
 //------------------------------------------------------------------------------
 
+// void Display::show_menu() {
+//   canvas_->fillScreen(TFT_BLACK);
+//   drawAlignText(AlignMent::TOP_MIDDLE,
+//                 GPSU::Util::ToString::Process(current_process_), 2,
+//                 Colors::main, Colors::logo);
+// }
+
 void Display::show_menu() {
+  // Clear the screen with a black background
   canvas_->fillScreen(TFT_BLACK);
-  drawAlignText(AlignMent::TOP_MIDDLE,
-                GPSU::Util::ToString::Process(current_process_), 2,
-                Colors::main, Colors::logo);
+
+  // Get the index of the selected menu item
+  size_t selected_index = menu_->get_selected_index();
+
+  // Define constants for layout
+  const int16_t padding = 5;  // Top padding
+  const int16_t fontSize = 2; // Font size for text
+  const int16_t itemHeight =
+      canvas_->fontHeight(fontSize) +
+      10; // Height per item, based on font height plus spacing
+
+  // Loop through all menu items
+  for (size_t i = 0; i < sizeof(menuItems) / sizeof(menuItems[0]); i++) {
+    // Calculate the vertical position for this item
+    int16_t yPos = padding + (i * itemHeight);
+
+    // Draw a background rectangle for the selected item
+    if (i == selected_index) {
+      canvas_->fillRect(0,                // x-start (left edge)
+                        yPos,             // y-start
+                        canvas_->width(), // width (full screen width)
+                        itemHeight,       // height of the item
+                        static_cast<uint16_t>(Colors::logo) // Highlight color
+      );
+    }
+
+    // Calculate text dimensions
+    int16_t textWidth = canvas_->textWidth(menuItems[i].label, fontSize);
+    int16_t textHeight = canvas_->fontHeight(fontSize);
+
+    // Calculate x-position to center the text horizontally
+    int16_t xPos = (canvas_->width() - textWidth) / 2;
+
+    // Adjust y-position to center the text vertically within the item height
+    int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
+
+    // Set text and background colors
+    Colors textColor = Colors::main; // Foreground color for text
+    Colors bgColor = (i == selected_index) ? Colors::logo
+                                           : Colors::black; // Background color
+    canvas_->setTextColor(static_cast<uint16_t>(textColor),
+                          static_cast<uint16_t>(bgColor));
+
+    // Draw the menu item's text at the calculated position
+    canvas_->drawString(menuItems[i].label, xPos, adjustedYPos, fontSize);
+  }
 }
+// void Display::show_menu() {
+//   canvas_->fillScreen(TFT_BLACK);
+//   size_t selected_index = menu_->get_selected_index();
+//   const int16_t itemHeight = 25;
+//   const int16_t padding = 5;
+
+//   for (size_t i = 0; i < sizeof(menuItems) / sizeof(menuItems[0]); i++) {
+//     int16_t yPos = padding + (i * itemHeight);
+
+//     // If this is the selected item, draw a background rectangle
+//     if (i == selected_index) {
+//       canvas_->fillRect(0, yPos - padding, canvas_->width(), itemHeight,
+//                         static_cast<uint16_t>(Colors::logo));
+//     }
+
+//     // Draw the text (centered horizontally)
+//     drawAlignText(AlignMent::CENTER_MIDDLE, menuItems[i].label, 2,
+//     Colors::main,
+//                   (i == selected_index) ? Colors::logo
+//                                         : Colors::black); // center
+//                                         vertically
+//   }
+// }
 
 std::tuple<int16_t, int16_t>
 Display::calculateAlignment(AlignMent align, int16_t Width, int16_t Height) {
@@ -51,7 +125,7 @@ Display::calculateAlignment(AlignMent align, int16_t Width, int16_t Height) {
     y = TOP_MARGIN_PX;
     break;
 
-  case AlignMent::MIDDLE:
+  case AlignMent::CENTER_MIDDLE:
     x = (MAX_WIDTH - Width) / 2;
     y = (MAX_HEIGHT - Height) / 2;
     break;
@@ -140,7 +214,7 @@ void Display::init() {
 //------------------------------------------------------------------------------
 void Display::run_process(GPSU::ProcessType type) {
   current_process_ = type;
-  show_menu();
+  // show_menu();
   switch (type) {
   case GPSU::ProcessType::TRAFFIC_LIGHT:
     Serial.println("Running traffic light process");
@@ -172,10 +246,14 @@ void Display::run_process(GPSU::ProcessType type) {
 void Display::onSelectionChanged(size_t index) {
   Serial.print("Selected: ");
   Serial.println(menuItems[index].label);
+  getInstance().show_menu();
 }
 
 //------------------------------------------------------------------------------
 // Static callback for when a menu item is confirmed.
 //------------------------------------------------------------------------------
-void Display::onItemSelected(size_t index) { Serial.println("Item confirmed"); }
+void Display::onItemSelected(size_t index) {
+  Serial.println("Item confirmed");
+  menuItems[index].action();
+}
 } // namespace GUI
