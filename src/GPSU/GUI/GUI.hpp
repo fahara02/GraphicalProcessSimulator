@@ -20,7 +20,8 @@ public:
   TFT_eSPI &Canvas();
   TFT_eSprite &Sprite();
 
-  void show_menu();
+  void showMenu();
+  void showSubMenu();
 
   static void processTrafficLight();
   static void processWaterLevel();

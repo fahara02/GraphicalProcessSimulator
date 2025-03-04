@@ -104,7 +104,7 @@ void setup() {
   Serial.begin(115200);
   // tft.init();
   display.init();
-  display.show_menu();
+  display.showMenu();
   delay(1000);
   // auto &controller = GPSU_CORE::IO_Controller::getInstance(
   //     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);

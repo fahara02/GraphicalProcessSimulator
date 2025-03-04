@@ -33,7 +33,7 @@ TFT_eSprite &Display::Sprite() { return *sprite_; }
 // show_menu (//https://barth-dev.de/online/rgb565-color-picker/)
 //------------------------------------------------------------------------------
 
-void Display::show_menu() {
+void Display::showMenu() {
   // Clear the screen with a black background
   canvas_->fillScreen(TFT_BLACK);
   // Get the index of the selected menu item
@@ -80,6 +80,19 @@ void Display::show_menu() {
     // Draw the menu item's text at the calculated position
     canvas_->drawString(menuItems[i].label, xPos, adjustedYPos, fontSize);
   }
+}
+
+void Display::showSubMenu() {
+  const int16_t fontSize = MENU_FONT;
+  canvas_->fillScreen(TFT_CYAN);
+  canvas_->fillRect(LEFT_MARGIN_PX,   // x-start (left edge)
+                    TOP_MARGIN_PX,    // y-start
+                    canvas_->width(), // width (full screen width)
+                    200,              // height of the item
+                    static_cast<uint16_t>(Colors::main) // Highlight color
+  );
+  size_t selected_index = menu_->get_selected_index();
+  canvas_->drawString(menuItems[selected_index].label, 10, 120, fontSize);
 }
 
 std::tuple<int16_t, int16_t>
@@ -214,7 +227,7 @@ void Display::run_process(GPSU::ProcessType type) {
 void Display::onSelectionChanged(size_t index) {
   Serial.print("Selected: ");
   Serial.println(menuItems[index].label);
-  getInstance().show_menu();
+  getInstance().showMenu();
 }
 
 //------------------------------------------------------------------------------
@@ -222,6 +235,7 @@ void Display::onSelectionChanged(size_t index) {
 //------------------------------------------------------------------------------
 void Display::onItemSelected(size_t index) {
   Serial.println("Item confirmed");
+  getInstance().showSubMenu();
   menuItems[index].action();
 }
 } // namespace GUI
