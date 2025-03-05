@@ -65,39 +65,6 @@ void Display::init() {
   }
 }
 
-// void Display::setUpSprites(GPSU::ProcessType type) {
-
-//   switch (type) {
-//   case GPSU::ProcessType::TRAFFIC_LIGHT:
-//     label_->setTextColor(static_cast<uint16_t>(Colors::white),
-//                          static_cast<uint16_t>(Colors::black));
-//     label_->pushToSprite(bg_.get(), 10, 5,
-//                          static_cast<uint16_t>(Colors::black));
-//     img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-//                        static_cast<uint16_t>(Colors::black));
-//     frame_->pushToSprite(bg_.get(), 0, 0,
-//     static_cast<uint16_t>(Colors::black)); break;
-//   case GPSU::ProcessType::WATER_LEVEL:
-//     label_->setTextColor(static_cast<uint16_t>(Colors::main),
-//                          static_cast<uint16_t>(Colors::black));
-//     label_->pushToSprite(bg_.get(), 10, 5,
-//                          static_cast<uint16_t>(Colors::black));
-//     img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-//                        static_cast<uint16_t>(Colors::black));
-//     frame_->pushToSprite(bg_.get(), 0, 0,
-//     static_cast<uint16_t>(Colors::black)); break;
-//   default:
-//     label_->setTextColor(static_cast<uint16_t>(Colors::main),
-//                          static_cast<uint16_t>(Colors::black));
-//     label_->pushToSprite(bg_.get(), 10, 5,
-//                          static_cast<uint16_t>(Colors::black));
-//     img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-//                        static_cast<uint16_t>(Colors::black));
-//     frame_->pushToSprite(bg_.get(), 0, 0,
-//     static_cast<uint16_t>(Colors::black));
-//   }
-// }
-
 void Display::sendDisplayCommand(const DisplayCommand &cmd) {
   xQueueSend(displayQueue, &cmd, portMAX_DELAY);
 }
@@ -128,40 +95,34 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   const int16_t fontSize = MENU_FONT;
   const char *label = "";
-
+  label_->setTextColor(static_cast<uint16_t>(Colors::main),
+                       static_cast<uint16_t>(Colors::black));
   // Determine the label and set up the label_ sprite
   for (size_t i = 0; i < MENU_ITEM_COUNT; ++i) {
     if (menuItems[i].action == processTrafficLight &&
         type == GPSU::ProcessType::TRAFFIC_LIGHT) {
-      label = menuItems[i].label; // "TRAFFIC_LIGHT"
+      label = menuItems[i].label;
       // Set text color for TRAFFIC_LIGHT
-      label_->setTextColor(static_cast<uint16_t>(Colors::white),
-                           static_cast<uint16_t>(Colors::black));
+
     } else if (menuItems[i].action == processWaterLevel &&
                type == GPSU::ProcessType::WATER_LEVEL) {
       label = menuItems[i].label;
-      label_->setTextColor(static_cast<uint16_t>(Colors::main),
-                           static_cast<uint16_t>(Colors::black));
+
     } else if (menuItems[i].action == processStepperMotorControl &&
                type == GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
       label = menuItems[i].label;
-      label_->setTextColor(static_cast<uint16_t>(Colors::main),
-                           static_cast<uint16_t>(Colors::black));
+
     } else if (menuItems[i].action == processStateMachine &&
                type == GPSU::ProcessType::STATE_MACHINE) {
       label = menuItems[i].label;
-      label_->setTextColor(static_cast<uint16_t>(Colors::main),
-                           static_cast<uint16_t>(Colors::black));
+
     } else if (menuItems[i].action == processObjectCounter &&
                type == GPSU::ProcessType::OBJECT_COUNTER) {
       label = menuItems[i].label;
-      label_->setTextColor(static_cast<uint16_t>(Colors::main),
-                           static_cast<uint16_t>(Colors::black));
+
     } else if (menuItems[i].action == processMotorControl &&
                type == GPSU::ProcessType::MOTOR_CONTROl) {
       label = menuItems[i].label;
-      label_->setTextColor(static_cast<uint16_t>(Colors::main),
-                           static_cast<uint16_t>(Colors::black));
     }
   }
 
@@ -185,57 +146,7 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
   }
   // Add similar task creation for other processes as needed
 }
-// void Display::showProcessScreen(GPSU::ProcessType type) {
-//   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-//   const int16_t fontSize = MENU_FONT;
-//   const char *label = "";
-//   for (size_t i = 0; i < MENU_ITEM_COUNT; ++i) {
-//     if (menuItems[i].action == processTrafficLight &&
-//         type == GPSU::ProcessType::TRAFFIC_LIGHT) {
-//       label = menuItems[i].label;
-//       getInstance().setUpSprites(GPSU::ProcessType::TRAFFIC_LIGHT);
-//     }
 
-//     else if (menuItems[i].action == processWaterLevel &&
-//              type == GPSU::ProcessType::WATER_LEVEL) {
-//       label = menuItems[i].label;
-//       getInstance().setUpSprites(GPSU::ProcessType::WATER_LEVEL);
-//     }
-
-//     else if (menuItems[i].action == processStepperMotorControl &&
-//              type == GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
-//       getInstance().setUpSprites(GPSU::ProcessType::STEPPER_MOTOR_CONTROL);
-//       label = menuItems[i].label;
-//     }
-
-//     else if (menuItems[i].action == processStateMachine &&
-//              type == GPSU::ProcessType::STATE_MACHINE) {
-//       getInstance().setUpSprites(GPSU::ProcessType::STATE_MACHINE);
-//       label = menuItems[i].label;
-//     }
-
-//     else if (menuItems[i].action == processObjectCounter &&
-//              type == GPSU::ProcessType::OBJECT_COUNTER) {
-//       getInstance().setUpSprites(GPSU::ProcessType::OBJECT_COUNTER);
-//       label = menuItems[i].label;
-//     }
-
-//     else if (menuItems[i].action == processMotorControl &&
-//              type == GPSU::ProcessType::MOTOR_CONTROl) {
-//       getInstance().setUpSprites(GPSU::ProcessType::MOTOR_CONTROl);
-//       label = menuItems[i].label;
-//     }
-//   }
-//   // bg_->setTextColor(static_cast<uint16_t>(Colors::main));
-//   label_->drawString(label, 5, 5, fontSize);
-//   bg_->pushSprite(0, 0);
-
-//   // Start process task here if not already running (example for traffic
-//   light) if (type == GPSU::ProcessType::TRAFFIC_LIGHT) {
-//     xTaskCreate(traffic_light_task, "traffic_task", 2048, NULL, 1, NULL);
-//   }
-//   // Add similar task creation for other processes as needed
-// }
 void Display::traffic_light_task(void *param) {
   int state = 0;
   while (true) {
@@ -249,7 +160,6 @@ void Display::traffic_light_task(void *param) {
 }
 void Display::updateTrafficLightDisplay(int state) {
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-  // bg_->setTextColor(static_cast<uint16_t>(Colors::main));
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
@@ -266,7 +176,6 @@ void Display::updateTrafficLightDisplay(int state) {
     break;
   }
 
-  // getInstance().setUpSprites(GPSU::ProcessType::TRAFFIC_LIGHT);
   label_->pushToSprite(bg_.get(), 10, 5, static_cast<uint16_t>(Colors::black));
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
