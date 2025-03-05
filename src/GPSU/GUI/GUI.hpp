@@ -49,8 +49,11 @@ private:
   // Private constructor.
   explicit Display();
   bool initialised;
+  bool setup_traffic = false;
+  bool setup_waterlevel = false;
   std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> bg_;
+  std::unique_ptr<TFT_eSprite> label_;
   std::unique_ptr<TFT_eSprite> img_;
   std::unique_ptr<TFT_eSprite> frame_;
   std::unique_ptr<MenuSelector> menu_;
@@ -83,6 +86,8 @@ private:
                      Colors txt = Colors::main, Colors bg = Colors::black);
   std::tuple<int16_t, int16_t>
   calculateAlignment(AlignMent align, int16_t Width, int16_t Height);
+
+  // void setUpSprites(GPSU::ProcessType type);
 };
 
 } // namespace GUI
