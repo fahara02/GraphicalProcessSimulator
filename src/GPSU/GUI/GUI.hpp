@@ -1,12 +1,14 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
+#include "Assets/AssetTrafficLight.hpp"
 #include "GUIConstants.hpp"
 #include "MenuSelector.hpp"
 #include "Process/ProcessDefines.hpp"
 #include <TFT_eSPI.h>
 #include <memory>
 #include <tuple>
+
 
 namespace GUI {
 
@@ -43,7 +45,9 @@ private:
 
   bool initialised;
   std::unique_ptr<TFT_eSPI> canvas_;
-  std::unique_ptr<TFT_eSprite> sprite_;
+  std::unique_ptr<TFT_eSprite> bg_;
+  std::unique_ptr<TFT_eSprite> img_;
+  std::unique_ptr<TFT_eSprite> frame_;
   std::unique_ptr<MenuSelector> menu_;
   GPSU::ProcessType current_process_;
 

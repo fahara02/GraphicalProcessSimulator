@@ -19,7 +19,9 @@ Display &Display::getInstance() {
 }
 Display::Display()
     : initialised(false), canvas_(std::make_unique<TFT_eSPI>()),
-      sprite_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      bg_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      img_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      frame_(std::make_unique<TFT_eSprite>(canvas_.get())),
       menu_(std::make_unique<MenuSelector>(menuItems, MENU_ITEM_COUNT, 4, pinA,
                                            pinB, btn)),
       current_process_(GPSU::ProcessType::ANY) {}
@@ -28,9 +30,12 @@ Display::Display()
 //------------------------------------------------------------------------------
 TFT_eSPI &Display::Canvas() { return *canvas_; }
 
-TFT_eSprite &Display::Sprite() { return *sprite_; }
+TFT_eSprite &Display::Sprite() { return *img_; }
 //------------------------------------------------------------------------------
 // show_menu (//https://barth-dev.de/online/rgb565-color-picker/)
+// https://www.iconarchive.com/show/farm-fresh-icons-by-fatcow/traffic-lights-green-icon.html
+// http: // www.rinkydinkelectronics.com/
+// https://oleddisplay.squix.ch/#/home
 //------------------------------------------------------------------------------
 
 void Display::showMenu() {
@@ -84,15 +89,15 @@ void Display::showMenu() {
 
 void Display::showSubMenu() {
   const int16_t fontSize = MENU_FONT;
-  canvas_->fillScreen(TFT_CYAN);
+  canvas_->fillScreen(TFT_BLACK);
   canvas_->fillRect(LEFT_MARGIN_PX,   // x-start (left edge)
                     TOP_MARGIN_PX,    // y-start
                     canvas_->width(), // width (full screen width)
-                    200,              // height of the item
+                    140,              // height of the item
                     static_cast<uint16_t>(Colors::main) // Highlight color
   );
   size_t selected_index = menu_->get_selected_index();
-  canvas_->drawString(menuItems[selected_index].label, 10, 120, fontSize);
+  canvas_->drawString(menuItems[selected_index].label, 10, 70, fontSize);
 }
 
 std::tuple<int16_t, int16_t>
