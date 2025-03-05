@@ -14,15 +14,23 @@ enum class DisplayCommandType {
   SHOW_MENU,            // Display the main menu
   SHOW_PROCESS_SCREEN,  // Show the initial screen for a selected process
   UPDATE_TRAFFIC_LIGHT, // Update traffic light display with a state
-
+  UPDATE_WATER_LEVEL,
+  UPDATE_STEPPER,
+  UPDATE_COUNTER,
+  UPDATE_STATE_MACHINE,
+  UPDATE_MOTOR
 };
 
 struct DisplayCommand {
   DisplayCommandType type;
   union {
     GPSU::ProcessType process_type; // For SHOW_PROCESS_SCREEN
-    int traffic_light_state; // For UPDATE_TRAFFIC_LIGHT (e.g., 0=red, 1=yellow,
-                             // 2=green)
+    int traffic_light_state;        //  (e.g., 0=red, 1=yellow,  2=green)
+    int water_level_state; //  (e.g., 0=drained, 1=filling,  2=full,3=overflow)
+    int stteper_motor_state;  //  (e.g., 0=cw, 1=ccw, 2=limit ,3=jitter)
+    int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
+    int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
+    int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)
   };
 };
 class Display {

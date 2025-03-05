@@ -174,6 +174,7 @@ TFT_eSprite &Display::Sprite() { return *img_; }
 //------------------------------------------------------------------------------
 // show_menu (//https://barth-dev.de/online/rgb565-color-picker/)
 // https://www.iconarchive.com/show/farm-fresh-icons-by-fatcow/traffic-lights-green-icon.html
+// https://www.cleanpng.com/png-traffic-light-indicating-different-types-of-traffi-7915271/download-png.html
 // http: // www.rinkydinkelectronics.com/
 // https://oleddisplay.squix.ch/#/home
 //------------------------------------------------------------------------------
@@ -252,29 +253,7 @@ void Display::showMenu() {
   bg_->pushSprite(0, 0);
 }
 
-void Display::showSubMenu() {
-  const int16_t fontSize = MENU_FONT;
-  canvas_->fillScreen(TFT_BLACK);
-  size_t selected_index = menu_->get_selected_index();
-  canvas_->setTextColor(static_cast<uint16_t>(Colors::main));
-  canvas_->drawString(menuItems[selected_index].label, 5, 5, fontSize);
-  canvas_->setSwapBytes(true);
-  canvas_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, (Asset::traffic_all));
-  vTaskDelay(1000);
-  canvas_->fillScreen(TFT_BLACK);
-  canvas_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, (Asset::traffic_green));
-  vTaskDelay(1000);
-
-  canvas_->fillScreen(TFT_BLACK);
-  canvas_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, (Asset::traffic_red));
-  vTaskDelay(1000);
-
-  canvas_->fillScreen(TFT_BLACK);
-  canvas_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, (Asset::traffic_yellow));
-  vTaskDelay(1000);
-
-  // bg_->pushSprite(0, 0);
-}
+void Display::showSubMenu() { Serial.println("not implemented yet"); }
 
 std::tuple<int16_t, int16_t>
 Display::calculateAlignment(AlignMent align, int16_t Width, int16_t Height) {
@@ -389,21 +368,4 @@ void Display::run_process(GPSU::ProcessType type) {
   }
 }
 
-//------------------------------------------------------------------------------
-// Static callback for when the menu selection changes.
-//------------------------------------------------------------------------------
-// void Display::onSelectionChanged(size_t index) {
-//   Serial.print("Selected: ");
-//   Serial.println(menuItems[index].label);
-//   getInstance().showMenu();
-// }
-
-// //------------------------------------------------------------------------------
-// // Static callback for when a menu item is confirmed.
-// //------------------------------------------------------------------------------
-// void Display::onItemSelected(size_t index) {
-//   Serial.println("Item confirmed");
-//   getInstance().showSubMenu();
-//   menuItems[index].action();
-// }
 } // namespace GUI
