@@ -9,7 +9,7 @@ gpio_num_t btn = GPIO_NUM_32;
 const MenuItem Display::menuItems[] = {
     {"TRAFFIC_LIGHT", Display::processTrafficLight},
     {"WATER_LEVEL", Display::processWaterLevel},
-    {"STEPPER_MOTOR_CONTROL", Display::processStepperMotorControl},
+    {"STEPPER_MOTOR", Display::processStepperMotorControl},
     {"STATE_MACHINE", Display::processStateMachine},
     {"OBJECT_COUNTER", Display::processObjectCounter},
     {"MOTOR_CONTROl", Display::processMotorControl}};
@@ -37,59 +37,134 @@ TFT_eSprite &Display::Sprite() { return *img_; }
 // http: // www.rinkydinkelectronics.com/
 // https://oleddisplay.squix.ch/#/home
 //------------------------------------------------------------------------------
-
 void Display::showMenu() {
   // Clear the screen with a black background
-  canvas_->fillScreen(TFT_BLACK);
+  bg_->fillScreen(TFT_BLACK);
+
   // Get the index of the selected menu item
   size_t selected_index = menu_->get_selected_index();
 
   // Define constants for layout
   const int16_t padding = PADDING_PX;
   const int16_t fontSize = MENU_FONT;
-  const int16_t itemHeight =
-      canvas_->fontHeight(fontSize) + MENU_VERTICAL_PADDING;
+  const int16_t textHeight = bg_->fontHeight(fontSize);
+  const int16_t itemHeight = textHeight + MENU_VERTICAL_PADDING;
 
-  // Loop through all menu items
-  for (size_t i = 0; i < sizeof(menuItems) / sizeof(menuItems[0]); i++) {
+  // Calculate number of menu items
+  size_t num_items = sizeof(menuItems) / sizeof(menuItems[0]);
 
-    int16_t yPos = padding + (i * itemHeight);
+  // Define frame padding
+  const int16_t frame_padding = 10; // Adjustable padding around the frame
+
+  // Calculate frame top and bottom positions
+  int16_t y_frame_top = padding - frame_padding;
+  if (y_frame_top < 0)
+    y_frame_top = 0; // Ensure it doesn’t go off-screen
+  int16_t y_frame_bottom =
+      padding + (num_items + 1) * itemHeight + frame_padding;
+  if (y_frame_bottom > bg_->height())
+    y_frame_bottom = bg_->height(); // Cap at screen height
+
+  // Draw the frame around the menu
+  bg_->drawRect(0, y_frame_top, bg_->width(), y_frame_bottom - y_frame_top,
+                static_cast<uint16_t>(Colors::white));
+
+  // Draw the title "Main Menu"
+  const char *title = "Main Menu";
+  int16_t title_width = bg_->textWidth(title, fontSize);
+  int16_t x_title = (bg_->width() - title_width) / 2; // Center horizontally
+  int16_t y_title =
+      padding + (itemHeight - textHeight) / 2; // Center vertically in slot
+  bg_->setTextColor(static_cast<uint16_t>(Colors::main),
+                    static_cast<uint16_t>(Colors::black));
+  bg_->drawString(title, x_title, y_title, fontSize);
+
+  // Loop through all menu items, shifted down by one itemHeight
+  for (size_t i = 0; i < num_items; i++) {
+    int16_t yPos = padding + (i + 1) * itemHeight; // Shifted position
 
     // Draw a background rectangle for the selected item
     if (i == selected_index) {
-      canvas_->fillRect(0,                // x-start (left edge)
-                        yPos,             // y-start
-                        canvas_->width(), // width (full screen width)
-                        itemHeight,       // height of the item
-                        static_cast<uint16_t>(Colors::logo) // Highlight color
-      );
+      bg_->fillRect(0, yPos, bg_->width(), itemHeight,
+                    static_cast<uint16_t>(Colors::logo));
     }
 
     // Calculate text dimensions
-    int16_t textWidth = canvas_->textWidth(menuItems[i].label, fontSize);
-    int16_t textHeight = canvas_->fontHeight(fontSize);
+    int16_t textWidth = bg_->textWidth(menuItems[i].label, fontSize);
 
     // Calculate x-position to center the text horizontally
-    int16_t xPos = (canvas_->width() - textWidth) / 2;
+    int16_t xPos = (bg_->width() - textWidth) / 2;
 
     // Adjust y-position to center the text vertically within the item height
     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
 
     // Set text and background colors
-    Colors textColor = Colors::main; // Foreground color for text
-    Colors bgColor = (i == selected_index) ? Colors::logo
-                                           : Colors::black; // Background color
-    canvas_->setTextColor(static_cast<uint16_t>(textColor),
-                          static_cast<uint16_t>(bgColor));
+    Colors textColor = Colors::main;
+    Colors bgColor = (i == selected_index) ? Colors::logo : Colors::black;
+    bg_->setTextColor(static_cast<uint16_t>(textColor),
+                      static_cast<uint16_t>(bgColor));
 
-    // Draw the menu item's text at the calculated position
-    canvas_->drawString(menuItems[i].label, xPos, adjustedYPos, fontSize);
+    // Draw the menu item's text
+    bg_->drawString(menuItems[i].label, xPos, adjustedYPos, fontSize);
   }
+
+  // Push the sprite to the display
+  bg_->pushSprite(0, 0);
 }
+// void Display::showMenu() {
+//   // Clear the screen with a black background
+//   bg_->fillScreen(TFT_BLACK);
+//   // Get the index of the selected menu item
+//   size_t selected_index = menu_->get_selected_index();
+
+//   // Define constants for layout
+//   const int16_t padding = PADDING_PX;
+//   const int16_t fontSize = MENU_FONT;
+//   const int16_t itemHeight = bg_->fontHeight(fontSize) +
+//   MENU_VERTICAL_PADDING;
+
+//   // Loop through all menu items
+//   for (size_t i = 0; i < sizeof(menuItems) / sizeof(menuItems[0]); i++) {
+
+//     int16_t yPos = padding + (i * itemHeight);
+
+//     // Draw a background rectangle for the selected item
+//     if (i == selected_index) {
+//       bg_->fillRect(0,                // x-start (left edge)
+//                     yPos,             // y-start
+//                     canvas_->width(), // width (full screen width)
+//                     itemHeight,       // height of the item
+//                     static_cast<uint16_t>(Colors::logo) // Highlight color
+//       );
+//     }
+
+//     // Calculate text dimensions
+//     int16_t textWidth = bg_->textWidth(menuItems[i].label, fontSize);
+//     int16_t textHeight = bg_->fontHeight(fontSize);
+
+//     // Calculate x-position to center the text horizontally
+//     int16_t xPos = (bg_->width() - textWidth) / 2;
+
+//     // Adjust y-position to center the text vertically within the item height
+//     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
+
+//     // Set text and background colors
+//     Colors textColor = Colors::main; // Foreground color for text
+//     Colors bgColor = (i == selected_index) ? Colors::logo
+//                                            : Colors::black; // Background
+//                                            color
+//     bg_->setTextColor(static_cast<uint16_t>(textColor),
+//                       static_cast<uint16_t>(bgColor));
+
+//     // Draw the menu item's text at the calculated position
+//     bg_->drawString(menuItems[i].label, xPos, adjustedYPos, fontSize);
+//   }
+//   bg_->pushSprite(0, 0);
+// }
 
 void Display::showSubMenu() {
   const int16_t fontSize = MENU_FONT;
-  canvas_->fillScreen(TFT_BLACK);
+  bg_->fillScreen(TFT_BLACK);
   canvas_->fillRect(LEFT_MARGIN_PX,   // x-start (left edge)
                     TOP_MARGIN_PX,    // y-start
                     canvas_->width(), // width (full screen width)
@@ -191,6 +266,9 @@ void Display::init() {
     menu_->set_item_selected_cb(onItemSelected);
     menu_->init();
     canvas_->init();
+    bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
+    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
+    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
     initialised = true;
   }
 }
