@@ -25,6 +25,146 @@ Display::Display()
       menu_(std::make_unique<MenuSelector>(menuItems, MENU_ITEM_COUNT, 4, pinA,
                                            pinB, btn)),
       current_process_(GPSU::ProcessType::ANY) {}
+
+//------------------------------------------------------------------------------
+// Initialisation function.
+//------------------------------------------------------------------------------
+// void Display::init() {
+//   if (!initialised) {
+//     menu_->set_selection_changed_Cb(onSelectionChanged);
+//     menu_->set_item_selected_cb(onItemSelected);
+//     menu_->init();
+//     canvas_->init();
+//     bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
+//     img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
+//     frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
+//     initialised = true;
+//   }
+// }
+
+void Display::init() {
+  if (!initialised) {
+    menu_->set_selection_changed_Cb([](size_t index) {
+      DisplayCommand cmd;
+      cmd.type = DisplayCommandType::SHOW_MENU;
+      getInstance().sendDisplayCommand(cmd);
+    });
+    menu_->set_item_selected_cb([](size_t index) {
+      menuItems[index].action(); // Sets current_process_
+      DisplayCommand cmd;
+      cmd.type = DisplayCommandType::SHOW_PROCESS_SCREEN;
+      cmd.process_type = getInstance().current_process_;
+      getInstance().sendDisplayCommand(cmd);
+    });
+    menu_->init();
+    canvas_->init();
+    bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
+    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
+    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
+
+    // Initialize display queue and task
+    displayQueue = xQueueCreate(10, sizeof(DisplayCommand));
+    xTaskCreate(&Display::display_loop, "display_loop", 2048, this, 1, NULL);
+
+    // Show initial menu
+    DisplayCommand cmd;
+    cmd.type = DisplayCommandType::SHOW_MENU;
+    sendDisplayCommand(cmd);
+
+    initialised = true;
+  }
+}
+
+void Display::sendDisplayCommand(const DisplayCommand &cmd) {
+  xQueueSend(displayQueue, &cmd, portMAX_DELAY);
+}
+void Display::display_loop(void *param) {
+  Display *self = static_cast<Display *>(param);
+  DisplayCommand cmd;
+  while (true) {
+    if (xQueueReceive(self->displayQueue, &cmd, portMAX_DELAY) == pdPASS) {
+      switch (cmd.type) {
+      case DisplayCommandType::SHOW_MENU:
+        self->showMenu();
+        break;
+      case DisplayCommandType::SHOW_PROCESS_SCREEN:
+        self->current_process_ = cmd.process_type;
+        self->showProcessScreen(cmd.process_type);
+        break;
+      case DisplayCommandType::UPDATE_TRAFFIC_LIGHT:
+        if (self->current_process_ == GPSU::ProcessType::TRAFFIC_LIGHT) {
+          self->updateTrafficLightDisplay(cmd.traffic_light_state);
+        }
+        break;
+        // Add cases for other update commands as needed
+      }
+    }
+  }
+}
+
+void Display::showProcessScreen(GPSU::ProcessType type) {
+  bg_->fillScreen(TFT_BLACK);
+  const int16_t fontSize = MENU_FONT;
+  const char *label = "";
+  for (size_t i = 0; i < MENU_ITEM_COUNT; ++i) {
+    if (menuItems[i].action == processTrafficLight &&
+        type == GPSU::ProcessType::TRAFFIC_LIGHT)
+      label = menuItems[i].label;
+    else if (menuItems[i].action == processWaterLevel &&
+             type == GPSU::ProcessType::WATER_LEVEL)
+      label = menuItems[i].label;
+    else if (menuItems[i].action == processStepperMotorControl &&
+             type == GPSU::ProcessType::STEPPER_MOTOR_CONTROL)
+      label = menuItems[i].label;
+    else if (menuItems[i].action == processStateMachine &&
+             type == GPSU::ProcessType::STATE_MACHINE)
+      label = menuItems[i].label;
+    else if (menuItems[i].action == processObjectCounter &&
+             type == GPSU::ProcessType::OBJECT_COUNTER)
+      label = menuItems[i].label;
+    else if (menuItems[i].action == processMotorControl &&
+             type == GPSU::ProcessType::MOTOR_CONTROl)
+      label = menuItems[i].label;
+  }
+  bg_->setTextColor(static_cast<uint16_t>(Colors::main));
+  bg_->drawString(label, 5, 5, fontSize);
+  bg_->pushSprite(0, 0);
+
+  // Start process task here if not already running (example for traffic light)
+  if (type == GPSU::ProcessType::TRAFFIC_LIGHT) {
+    xTaskCreate(traffic_light_task, "traffic_task", 2048, NULL, 1, NULL);
+  }
+  // Add similar task creation for other processes as needed
+}
+void Display::traffic_light_task(void *param) {
+  int state = 0;
+  while (true) {
+    DisplayCommand cmd;
+    cmd.type = DisplayCommandType::UPDATE_TRAFFIC_LIGHT;
+    cmd.traffic_light_state = state;
+    Display::getInstance().sendDisplayCommand(cmd);
+    state = (state + 1) % 3;         // Cycle through 0, 1, 2
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
+  }
+}
+void Display::updateTrafficLightDisplay(int state) {
+  bg_->fillScreen(TFT_BLACK);
+  bg_->setTextColor(static_cast<uint16_t>(Colors::main));
+  bg_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
+  bg_->setSwapBytes(true);
+  switch (state) {
+  case 0: // Red
+    bg_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
+    break;
+  case 1: // Yellow
+    bg_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
+    break;
+  case 2: // Green
+    bg_->pushImage(0, 50, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
+    break;
+  }
+  bg_->pushSprite(0, 0);
+}
 //------------------------------------------------------------------------------
 // Accessor functions
 //------------------------------------------------------------------------------
@@ -219,22 +359,6 @@ void Display::processMotorControl() {
 }
 
 //------------------------------------------------------------------------------
-// Initialisation function.
-//------------------------------------------------------------------------------
-void Display::init() {
-  if (!initialised) {
-    menu_->set_selection_changed_Cb(onSelectionChanged);
-    menu_->set_item_selected_cb(onItemSelected);
-    menu_->init();
-    canvas_->init();
-    bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
-    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
-    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
-    initialised = true;
-  }
-}
-
-//------------------------------------------------------------------------------
 // Runs a process based on the ProcessType.
 //------------------------------------------------------------------------------
 void Display::run_process(GPSU::ProcessType type) {
@@ -268,18 +392,18 @@ void Display::run_process(GPSU::ProcessType type) {
 //------------------------------------------------------------------------------
 // Static callback for when the menu selection changes.
 //------------------------------------------------------------------------------
-void Display::onSelectionChanged(size_t index) {
-  Serial.print("Selected: ");
-  Serial.println(menuItems[index].label);
-  getInstance().showMenu();
-}
+// void Display::onSelectionChanged(size_t index) {
+//   Serial.print("Selected: ");
+//   Serial.println(menuItems[index].label);
+//   getInstance().showMenu();
+// }
 
-//------------------------------------------------------------------------------
-// Static callback for when a menu item is confirmed.
-//------------------------------------------------------------------------------
-void Display::onItemSelected(size_t index) {
-  Serial.println("Item confirmed");
-  getInstance().showSubMenu();
-  menuItems[index].action();
-}
+// //------------------------------------------------------------------------------
+// // Static callback for when a menu item is confirmed.
+// //------------------------------------------------------------------------------
+// void Display::onItemSelected(size_t index) {
+//   Serial.println("Item confirmed");
+//   getInstance().showSubMenu();
+//   menuItems[index].action();
+// }
 } // namespace GUI
