@@ -1,11 +1,15 @@
 #include "GUI/GUI.hpp"
 
 #include "Utility/gpsuUtility.hpp"
-
+namespace GUI {
+StackType_t Display::sharedStack[2048]; // Define the stack array
+StaticTask_t Display::sharedTCB;        // Define the TCB
+} // namespace GUI
 namespace GUI {
 gpio_num_t pinA = GPIO_NUM_37;
 gpio_num_t pinB = GPIO_NUM_38;
 gpio_num_t btn = GPIO_NUM_32;
+
 const MenuItem Display::menuItems[] = {
     {"TRAFFIC_LIGHT", Display::processTrafficLight},
     {"WATER_LEVEL", Display::processWaterLevel},
@@ -141,13 +145,41 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
   frame_->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
   // Start process task
-  if (type == GPSU::ProcessType::TRAFFIC_LIGHT) {
-    xTaskCreate(traffic_light_task, "traffic_task", 2048, NULL, 1,
-                &processTaskHandle);
+  // if (type == GPSU::ProcessType::TRAFFIC_LIGHT) {
+  //   xTaskCreate(traffic_light_task, "traffic_task", 2048, NULL, 1,
+  //               &processTaskHandle);
+  // }
+  // if (type == GPSU::ProcessType::WATER_LEVEL) {
+  //   xTaskCreate(water_level_task, "water_level", 2048, NULL, 1,
+  //               &processTaskHandle);
+  // }
+}
+void Display::startProcess(GPSU::ProcessType type) {
+  // Delete the existing task, if any
+  if (processTaskHandle != NULL) {
+    vTaskDelete(processTaskHandle);
+    processTaskHandle = NULL; // Clear the handle
   }
-  if (type == GPSU::ProcessType::WATER_LEVEL) {
-    xTaskCreate(water_level_task, "water_level", 2048, NULL, 1,
-                &processTaskHandle);
+
+  // Create the new task using the shared static memory
+  if (type == GPSU::ProcessType::TRAFFIC_LIGHT) {
+    processTaskHandle = xTaskCreateStatic(traffic_light_task, // Task function
+                                          "traffic_task",     // Task name
+                                          2048,               // Stack depth
+                                          NULL,               // Parameters
+                                          1,                  // Priority
+                                          sharedStack,        // Shared stack
+                                          &sharedTCB          // Shared TCB
+    );
+  } else if (type == GPSU::ProcessType::WATER_LEVEL) {
+    processTaskHandle = xTaskCreateStatic(water_level_task, // Task function
+                                          "water_level",    // Task name
+                                          2048,             // Stack depth
+                                          NULL,             // Parameters
+                                          1,                // Priority
+                                          sharedStack,      // Shared stack
+                                          &sharedTCB        // Shared TCB
+    );
   }
 }
 
@@ -373,9 +405,11 @@ void Display::run_process(GPSU::ProcessType type) {
   // show_menu();
   switch (type) {
   case GPSU::ProcessType::TRAFFIC_LIGHT:
+    startProcess(type);
     Serial.println("Running traffic light process");
     break;
   case GPSU::ProcessType::WATER_LEVEL:
+    startProcess(type);
     Serial.println("Running water level process");
     break;
   case GPSU::ProcessType::STEPPER_MOTOR_CONTROL:

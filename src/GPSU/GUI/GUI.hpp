@@ -59,6 +59,9 @@ private:
   std::unique_ptr<TFT_eSprite> frame_;
   std::unique_ptr<MenuSelector> menu_;
   GPSU::ProcessType current_process_;
+  static StackType_t sharedStack[2048];
+  static StaticTask_t sharedTCB;
+
   TaskHandle_t processTaskHandle = NULL;
   QueueHandle_t displayQueue;
 
@@ -67,6 +70,8 @@ private:
   void updateTrafficLightDisplay(int state);
   void sendDisplayCommand(const DisplayCommand &cmd);
   void run_process(GPSU::ProcessType type);
+  void startProcess(GPSU::ProcessType type);
+
   void showSubMenu();
   static void processTrafficLight();
   static void processWaterLevel();
