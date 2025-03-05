@@ -11,6 +11,7 @@
 
 namespace GUI {
 enum class DisplayCommandType {
+  SHOW_STARTUP,
   SHOW_MENU,            // Display the main menu
   SHOW_PROCESS_SCREEN,  // Show the initial screen for a selected process
   UPDATE_TRAFFIC_LIGHT, // Update traffic light display with a state
@@ -58,6 +59,7 @@ private:
   std::unique_ptr<TFT_eSprite> frame_;
   std::unique_ptr<MenuSelector> menu_;
   GPSU::ProcessType current_process_;
+  TaskHandle_t processTaskHandle = NULL;
   QueueHandle_t displayQueue;
 
   void showMenu();
@@ -77,6 +79,7 @@ private:
   static void onItemSelected(size_t index);
   static void display_loop(void *param);
   static void traffic_light_task(void *param);
+  static void water_level_task(void *param);
 
   static const MenuItem menuItems[];
   static constexpr size_t MENU_ITEM_COUNT = 6;

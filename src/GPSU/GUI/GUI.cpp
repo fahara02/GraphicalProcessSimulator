@@ -37,6 +37,13 @@ void Display::init() {
       DisplayCommand cmd;
       cmd.type = DisplayCommandType::SHOW_MENU;
       getInstance().sendDisplayCommand(cmd);
+      if (getInstance().current_process_ == GPSU::ProcessType::ANY) {
+        Display &display = getInstance();
+        if (display.processTaskHandle != NULL) {
+          vTaskDelete(display.processTaskHandle);
+          display.processTaskHandle = NULL;
+        }
+      }
     });
     menu_->set_item_selected_cb([](size_t index) {
       menuItems[index].action(); // Sets current_process_
@@ -126,25 +133,22 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
     }
   }
 
-  // Prepare label_ sprite: clear it and draw the text
-  label_->fillSprite(
-      static_cast<uint16_t>(Colors::black)); // Clear with black background
+  label_->fillSprite(static_cast<uint16_t>(Colors::black));
   label_->drawString(label, 5, 5, fontSize);
-
-  // Now push all sprites to bg_
   label_->pushToSprite(bg_.get(), 10, 5, static_cast<uint16_t>(Colors::black));
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
   frame_->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
-
-  // Push bg_ to the display
   bg_->pushSprite(0, 0);
-
   // Start process task
   if (type == GPSU::ProcessType::TRAFFIC_LIGHT) {
-    xTaskCreate(traffic_light_task, "traffic_task", 2048, NULL, 1, NULL);
+    xTaskCreate(traffic_light_task, "traffic_task", 2048, NULL, 1,
+                &processTaskHandle);
   }
-  // Add similar task creation for other processes as needed
+  if (type == GPSU::ProcessType::WATER_LEVEL) {
+    xTaskCreate(water_level_task, "water_level", 2048, NULL, 1,
+                &processTaskHandle);
+  }
 }
 
 void Display::traffic_light_task(void *param) {
@@ -153,6 +157,17 @@ void Display::traffic_light_task(void *param) {
     DisplayCommand cmd;
     cmd.type = DisplayCommandType::UPDATE_TRAFFIC_LIGHT;
     cmd.traffic_light_state = state;
+    Display::getInstance().sendDisplayCommand(cmd);
+    state = (state + 1) % 3;         // Cycle through 0, 1, 2
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
+  }
+}
+void Display::water_level_task(void *param) {
+  int state = 0;
+  while (true) {
+    DisplayCommand cmd;
+    cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+    cmd.water_level_state = state;
     Display::getInstance().sendDisplayCommand(cmd);
     state = (state + 1) % 3;         // Cycle through 0, 1, 2
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
@@ -198,6 +213,7 @@ TFT_eSprite &Display::Sprite() { return *img_; }
 //------------------------------------------------------------------------------
 void Display::showMenu() {
   // Clear the screen with a black background
+  current_process_ = GPSU::ProcessType::ANY;
   bg_->fillScreen(TFT_BLACK);
 
   // Get the index of the selected menu item
@@ -211,10 +227,8 @@ void Display::showMenu() {
 
   // Calculate number of menu items
   size_t num_items = sizeof(menuItems) / sizeof(menuItems[0]);
-
   // Define frame padding
   const int16_t frame_padding = 10; // Adjustable padding around the frame
-
   // Calculate frame top and bottom positions
   int16_t y_frame_top = padding - frame_padding;
   if (y_frame_top < 0)
@@ -237,7 +251,6 @@ void Display::showMenu() {
   bg_->setTextColor(static_cast<uint16_t>(Colors::main),
                     static_cast<uint16_t>(Colors::black));
   bg_->drawString(title, x_title, y_title, fontSize);
-
   // Loop through all menu items, shifted down by one itemHeight
   for (size_t i = 0; i < num_items; i++) {
     int16_t yPos = padding + (i + 1) * itemHeight; // Shifted position
@@ -250,13 +263,10 @@ void Display::showMenu() {
 
     // Calculate text dimensions
     int16_t textWidth = bg_->textWidth(menuItems[i].label, fontSize);
-
     // Calculate x-position to center the text horizontally
     int16_t xPos = (bg_->width() - textWidth) / 2;
-
     // Adjust y-position to center the text vertically within the item height
     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
-
     // Set text and background colors
     Colors textColor = Colors::main;
     Colors bgColor = (i == selected_index) ? Colors::logo : Colors::black;
