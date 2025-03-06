@@ -191,48 +191,76 @@ void Display::traffic_light_task(void *param) {
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
   }
 }
+// void Display::water_level_task(void *param) {
+
+//   int level = 0; // Initial level
+//   int state = Display::getInstance().water_level_state;
+//   while (true) {
+//     if (state == 1) { // Filling state
+//       DisplayCommand cmd;
+//       cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+//       cmd.water_level_state = state;
+//       cmd.water_level = level;
+//       Display::getInstance().sendDisplayCommand(cmd);
+
+//       level += 1; // Increment level
+//       if (level >= 99) {
+//         level = 0;
+//       }
+//       vTaskDelay(pdMS_TO_TICKS(1000)); // Update every 100ms for slow
+//       increase
+//     } else if (state == 2) {           // Full state (optional extension)
+//       DisplayCommand cmd;
+//       cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+//       cmd.water_level_state = state;
+//       cmd.water_level = level;
+//       Display::getInstance().sendDisplayCommand(cmd);
+//       vTaskDelay(pdMS_TO_TICKS(2000)); // Stay full for 2 seconds
+//       //  state = 0;                       // Switch to drain (optional)
+//     } else if (state == 0) { // Draining
+//       DisplayCommand cmd;
+//       cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+//       cmd.water_level_state = state;
+//       cmd.water_level = level;
+//       Display::getInstance().sendDisplayCommand(cmd);
+//       level -= 1;
+//       if (level <= 0) {
+//         level = 0;
+//         Display::getInstance().water_level_state = 1;
+//       }
+//       vTaskDelay(pdMS_TO_TICKS(1000)); // Decrease every 100ms
+//     }
+//   }
+// }
 void Display::water_level_task(void *param) {
-  int state = 1; // Start with filling state
-  int level = 0; // Initial level
-
+  int level = 0;
   while (true) {
-    if (state == 1) { // Filling state
-      DisplayCommand cmd;
-      cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
-      cmd.water_level_state = state;
-      cmd.water_level = level;
-      Display::getInstance().sendDisplayCommand(cmd);
+    int state =
+        Display::getInstance().water_level_state; // Update state each iteration
 
-      level += 1; // Increment level
-      if (level >= 99) {
-        level = 99; // Cap at 99
-                    // state = 2;  // Switch to full state
-      }
-      vTaskDelay(pdMS_TO_TICKS(100)); // Update every 100ms for slow increase
-    } else if (state == 2) {          // Full state (optional extension)
-      DisplayCommand cmd;
-      cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
-      cmd.water_level_state = state;
-      cmd.water_level = level;
-      Display::getInstance().sendDisplayCommand(cmd);
-      vTaskDelay(pdMS_TO_TICKS(2000)); // Stay full for 2 seconds
-      //  state = 0;                       // Switch to drain (optional)
-    } else if (state == 0) { // Draining (optional extension)
-      DisplayCommand cmd;
-      cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
-      cmd.water_level_state = state;
-      cmd.water_level = level;
-      Display::getInstance().sendDisplayCommand(cmd);
-      level -= 1;
-      if (level <= 0) {
-        level = 0;
-        //   state = 1; // Switch back to filling
-      }
-      vTaskDelay(pdMS_TO_TICKS(100)); // Decrease every 100ms
+    if (state == 1) { // Filling
+      level = (level >= 100) ? 100 : level + 1;
+      if (level == 100)
+        Display::getInstance().water_level_state = 2;
+      vTaskDelay(pdMS_TO_TICKS(100));
+    } else if (state == 2) { // Full
+      vTaskDelay(pdMS_TO_TICKS(2000));
+      Display::getInstance().water_level_state = 0; // Transition to drain
+    } else if (state == 0) {                        // Draining
+      level = (level <= 0) ? 0 : level - 1;
+      if (level == 0)
+        Display::getInstance().water_level_state = 1; // Auto-refill
+      vTaskDelay(pdMS_TO_TICKS(100));
     }
+
+    // Send update command
+    DisplayCommand cmd;
+    cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+    cmd.water_level_state = state;
+    cmd.water_level = level;
+    Display::getInstance().sendDisplayCommand(cmd);
   }
 }
-
 void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK);
   if (setup_waterlevel) {
@@ -242,19 +270,23 @@ void Display::processScreenSetup() {
   label_->fillSprite(TFT_BLACK);
   img_->fillSprite(TFT_BLACK);
   frame_->fillSprite(TFT_BLACK);
-  bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  if (setup_waterlevel) {
+    bg_->fillSprite(static_cast<uint16_t>(Colors::main));
+  } else {
+    bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  }
+
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
   img_->setSwapBytes(true);
 }
 void Display::processScreenExecute() {
-  // if (setup_waterlevel) {
-  //   analog_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-  //                         static_cast<uint16_t>(Colors::black));
-  // }
+
   label_->pushToSprite(bg_.get(), 10, 5, static_cast<uint16_t>(Colors::black));
+
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
+
   frame_->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
 }
@@ -276,56 +308,86 @@ void Display::updateTrafficLightDisplay(int state) {
   }
   getInstance().processScreenExecute();
 }
-
 void Display::updateWaterLevelDisplay(int state, int level) {
   getInstance().processScreenSetup();
-  label_->drawString("Water-Level", 10, 5, MENU_FONT);
 
-  // Initialize analog_ sprite once
-  if (!setup_waterlevel) {
-    analog_->createSprite(IMG_WIDTH - 10, IMG_HEIGHT - 10); // 118x118
-    analog_->setColorDepth(16); // Set to 16-bit color for transparency support
-    setup_waterlevel = true;
-  }
+  // Draw labels
+  label_->drawString("Water-Level", 0, 0, MENU_FONT);
 
-  // Load the blank tank image into img_
-  img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::watertank_blank);
+  const char *stateText = "";
+  uint16_t waterColor = TFT_BLUE;
+  // ... (state handling remains the same)
 
-  switch (state) {
-  case 0: // Drain (optional, minimal implementation)
-    // No water level drawing for now
-    break;
-  case 1: // Filling
-  {
-    // Map level (0-99) to water height (0-118)
-    int water_height = (level * 118) / 99;
-    if (water_height > 118)
-      water_height = 118; // Cap at sprite height
+  // Draw state text
+  label_->drawString(stateText, 10, 20, MENU_FONT); // Adjusted position
 
-    // Clear analog_ with a transparent color (e.g., black)
-    analog_->fillSprite(TFT_BLACK);
+  const int tankX = 0; // Centered within IMG_WIDTH
+  const int tankY = 0;
 
-    // Draw water from bottom (y=117) up to calculated height
-    if (water_height > 0) {
-      int y_start = 117 - water_height; // Top of water (since y=0 is top)
-      analog_->fillRect(0, y_start, 118, water_height, TFT_BLUE);
-    }
+  // Calculate water height
+  int waterPixelHeight = (level * TANK_HEIGHT) / 100;
+  int waterY = tankY + TANK_BORDER_THK + (TANK_HEIGHT - waterPixelHeight);
 
-    // Push analog_ to img_ with black as transparent
-    analog_->pushToSprite(img_.get(), 5, 5, TFT_BLACK);
-  } break;
-  case 2: // Full (optional extension)
-    analog_->fillSprite(TFT_BLUE);
-    analog_->pushToSprite(img_.get(), 5, 5, TFT_BLACK);
-    break;
-  case 3: // Overflow (optional, same as full for now)
-    analog_->fillSprite(TFT_RED);
-    analog_->pushToSprite(img_.get(), 5, 5, TFT_BLACK);
-    break;
-  }
+  // Draw thick tank border
+  img_->fillRect(tankX, tankY, IMG_WIDTH, IMG_HEIGHT, TFT_WHITE);
+  img_->fillRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK, TANK_WIDTH,
+                 TANK_HEIGHT, TFT_BLACK);
 
-  getInstance().processScreenExecute();
+  // Draw water
+  img_->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH, waterPixelHeight,
+                 waterColor);
+
+  processScreenExecute();
 }
+// void Display::updateWaterLevelDisplay(int state, int level) {
+//   // Prepare the screen and background
+//   getInstance().processScreenSetup();
+
+//   // Draw the main label and state text
+//   label_->drawString("Water-Level", 0, 0,
+//                      MENU_FONT); // Top-left of label sprite
+
+//   // Determine state text and water color
+//   const char *stateText = "";
+//   uint16_t waterColor = TFT_BLUE;
+//   switch (state) {
+//   case 0:
+//     stateText = "Drained";
+//     waterColor = TFT_BLUE;
+//     break;
+//   case 1:
+//     stateText = "Filling...";
+//     waterColor = TFT_CYAN;
+//     break;
+//   case 2:
+//     stateText = "Full";
+//     waterColor = TFT_GREEN;
+//     break;
+//   case 3:
+//     stateText = "OVERFLOW!";
+//     waterColor = TFT_RED;
+//     break;
+//   }
+
+//   // Draw state text 20 pixels below main label
+//   label_->drawString(stateText, 10, 20, MENU_FONT);
+
+//   const int tankX = (MAX_WIDTH - TANK_WIDTH) / 2; // Center horizontally
+//   const int tankY = 0;                            // 0px from top of img_
+
+//   // Calculate water height based on level (0-100)
+//   int waterPixelHeight = (level * TANK_HEIGHT) / 100;
+//   int waterY = tankY + TANK_HEIGHT - waterPixelHeight;
+
+//   // Draw tank outline (white border)
+//   img_->drawRect(tankX, tankY, TANK_WIDTH, TANK_HEIGHT, TFT_WHITE);
+//   // Draw water level
+//   img_->fillRect(tankX, waterY, TANK_WIDTH - 2, waterPixelHeight,
+//   waterColor);
+
+//   // Update the display with all elements
+//   processScreenExecute();
+// }
 
 //------------------------------------------------------------------------------
 // Accessor functions

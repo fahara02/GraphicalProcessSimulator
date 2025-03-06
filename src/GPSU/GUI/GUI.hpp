@@ -55,6 +55,8 @@ private:
   bool initialised;
   bool setup_traffic = false;
   bool setup_waterlevel = false;
+  int water_level_state = 1;
+  int tank_capacity_litre = 2000;
   std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> bg_;
   std::unique_ptr<TFT_eSprite> label_;
