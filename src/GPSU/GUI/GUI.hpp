@@ -1,7 +1,7 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include "Assets/AssetTrafficLight.hpp"
+#include "Assets/AssetImages.hpp"
 #include "GUIConstants.hpp"
 #include "MenuSelector.hpp"
 #include "Process/ProcessDefines.hpp"
@@ -32,7 +32,10 @@ struct DisplayCommand {
     int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
     int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
     int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)
+    int water_level;
   };
+  uint16_t analog_ch0;
+  uint16_t analog_ch1;
 };
 class Display {
 public:
@@ -55,6 +58,7 @@ private:
   std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> bg_;
   std::unique_ptr<TFT_eSprite> label_;
+  std::unique_ptr<TFT_eSprite> analog_;
   std::unique_ptr<TFT_eSprite> img_;
   std::unique_ptr<TFT_eSprite> frame_;
   std::unique_ptr<MenuSelector> menu_;
@@ -68,6 +72,7 @@ private:
   void showMenu();
   void showProcessScreen(GPSU::ProcessType type);
   void updateTrafficLightDisplay(int state);
+  void updateWaterLevelDisplay(int state, int level);
   void sendDisplayCommand(const DisplayCommand &cmd);
   void run_process(GPSU::ProcessType type);
   void startProcess(GPSU::ProcessType type);
@@ -96,6 +101,8 @@ private:
   calculateAlignment(AlignMent align, int16_t Width, int16_t Height);
 
   // void setUpSprites(GPSU::ProcessType type);
+  void processScreenSetup();
+  void processScreenExecute();
 };
 
 } // namespace GUI
