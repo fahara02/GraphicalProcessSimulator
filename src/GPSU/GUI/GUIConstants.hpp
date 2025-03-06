@@ -12,6 +12,9 @@ static constexpr uint8_t PADDING_PX = 5;
 static constexpr uint8_t IMAGE_TOP_PX = 50;
 static constexpr uint8_t FRAME_TOP_PX = 50;
 
+static constexpr uint8_t LABEL_LEFT_PX = 10;
+static constexpr uint8_t LABEL_TOP_PX = 5;
+
 static constexpr uint8_t IMG_WIDTH = 130;
 static constexpr uint8_t IMG_HEIGHT = 144;
 
