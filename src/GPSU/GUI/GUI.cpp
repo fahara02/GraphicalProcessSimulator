@@ -60,7 +60,8 @@ void Display::init() {
     menu_->init();
     canvas_->init();
     bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
-    label_->createSprite(100, 20);
+    label_->createSprite(MAX_WIDTH - TOP_MARGIN_PX,
+                         MAX_HEIGHT - BOTTOM_MARGIN_PX);
     img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
     frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
 
@@ -287,7 +288,8 @@ void Display::processScreenExecute() {
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
 
-  frame_->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
+  frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
+                       static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
 }
 
@@ -312,15 +314,30 @@ void Display::updateWaterLevelDisplay(int state, int level) {
   getInstance().processScreenSetup();
 
   // Draw labels
-  label_->drawString("Water-Level", 0, 0, MENU_FONT);
+  label_->drawString("Water-Level", 10, 0, MENU_FONT);
   const char *stateText = "";
   uint16_t waterColor = TFT_BLUE;
-  // ... (state handling remains the same)
-
-  // Draw state text
+  switch (state) {
+  case 0:
+    stateText = "Drained";
+    waterColor = TFT_BLUE;
+    break;
+  case 1:
+    stateText = "Filling...";
+    waterColor = TFT_CYAN;
+    break;
+  case 2:
+    stateText = "Full";
+    waterColor = TFT_GREEN;
+    break;
+  case 3:
+    stateText = "OVERFLOW!";
+    waterColor = TFT_RED;
+    break;
+  }
   label_->drawString(stateText, 10, 20, MENU_FONT); // Adjusted position
 
-  const int tankX = 0; // Centered within IMG_WIDTH
+  const int tankX = 0; // Centered within FRAME_WIDTH
   const int tankY = 0;
 
   // Calculate water height
@@ -328,66 +345,17 @@ void Display::updateWaterLevelDisplay(int state, int level) {
   int waterY = tankY + TANK_BORDER_THK + (TANK_HEIGHT - waterPixelHeight);
 
   // Draw thick tank border
-  img_->fillRoundRect(tankX, tankY, IMG_WIDTH, IMG_HEIGHT, TANK_RADIUS,
-                      TFT_WHITE);
-  img_->fillRoundRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK,
-                      TANK_WIDTH, TANK_HEIGHT, TANK_RADIUS, TFT_BLACK);
+  frame_->fillRoundRect(tankX, tankY, FRMAE_WIDTH, FRAME_HEIGHT, TANK_RADIUS,
+                        TFT_WHITE);
+  frame_->fillRoundRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK,
+                        TANK_WIDTH, TANK_HEIGHT, TANK_RADIUS, TFT_BLACK);
 
   // Draw water
-  img_->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH, waterPixelHeight,
-                 waterColor);
+  frame_->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH,
+                   waterPixelHeight, waterColor);
 
   processScreenExecute();
 }
-// void Display::updateWaterLevelDisplay(int state, int level) {
-//   // Prepare the screen and background
-//   getInstance().processScreenSetup();
-
-//   // Draw the main label and state text
-//   label_->drawString("Water-Level", 0, 0,
-//                      MENU_FONT); // Top-left of label sprite
-
-//   // Determine state text and water color
-//   const char *stateText = "";
-//   uint16_t waterColor = TFT_BLUE;
-//   switch (state) {
-//   case 0:
-//     stateText = "Drained";
-//     waterColor = TFT_BLUE;
-//     break;
-//   case 1:
-//     stateText = "Filling...";
-//     waterColor = TFT_CYAN;
-//     break;
-//   case 2:
-//     stateText = "Full";
-//     waterColor = TFT_GREEN;
-//     break;
-//   case 3:
-//     stateText = "OVERFLOW!";
-//     waterColor = TFT_RED;
-//     break;
-//   }
-
-//   // Draw state text 20 pixels below main label
-//   label_->drawString(stateText, 10, 20, MENU_FONT);
-
-//   const int tankX = (MAX_WIDTH - TANK_WIDTH) / 2; // Center horizontally
-//   const int tankY = 0;                            // 0px from top of img_
-
-//   // Calculate water height based on level (0-100)
-//   int waterPixelHeight = (level * TANK_HEIGHT) / 100;
-//   int waterY = tankY + TANK_HEIGHT - waterPixelHeight;
-
-//   // Draw tank outline (white border)
-//   img_->drawRect(tankX, tankY, TANK_WIDTH, TANK_HEIGHT, TFT_WHITE);
-//   // Draw water level
-//   img_->fillRect(tankX, waterY, TANK_WIDTH - 2, waterPixelHeight,
-//   waterColor);
-
-//   // Update the display with all elements
-//   processScreenExecute();
-// }
 
 //------------------------------------------------------------------------------
 // Accessor functions
