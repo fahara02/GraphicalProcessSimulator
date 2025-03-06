@@ -313,7 +313,6 @@ void Display::updateWaterLevelDisplay(int state, int level) {
 
   // Draw labels
   label_->drawString("Water-Level", 0, 0, MENU_FONT);
-
   const char *stateText = "";
   uint16_t waterColor = TFT_BLUE;
   // ... (state handling remains the same)
@@ -329,9 +328,10 @@ void Display::updateWaterLevelDisplay(int state, int level) {
   int waterY = tankY + TANK_BORDER_THK + (TANK_HEIGHT - waterPixelHeight);
 
   // Draw thick tank border
-  img_->fillRect(tankX, tankY, IMG_WIDTH, IMG_HEIGHT, TFT_WHITE);
-  img_->fillRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK, TANK_WIDTH,
-                 TANK_HEIGHT, TFT_BLACK);
+  img_->fillRoundRect(tankX, tankY, IMG_WIDTH, IMG_HEIGHT, TANK_RADIUS,
+                      TFT_WHITE);
+  img_->fillRoundRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK,
+                      TANK_WIDTH, TANK_HEIGHT, TANK_RADIUS, TFT_BLACK);
 
   // Draw water
   img_->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH, waterPixelHeight,

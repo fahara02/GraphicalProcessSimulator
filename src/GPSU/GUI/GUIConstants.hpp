@@ -10,15 +10,18 @@ static constexpr uint8_t LEFT_MARGIN_PX = 5;
 static constexpr uint8_t RIGHT_MARGIN_PX = 5;
 static constexpr uint8_t PADDING_PX = 5;
 static constexpr uint8_t IMAGE_TOP_PX = 50;
+static constexpr uint8_t FRAME_TOP_PX = 30;
 
 static constexpr uint8_t IMG_WIDTH = 130;
 static constexpr uint8_t IMG_HEIGHT = 144;
-static constexpr uint8_t TANK_WIDTH = 110;
-static constexpr uint8_t TANK_HEIGHT = 124;
-static constexpr uint8_t TANK_BORDER_THK = 10;
 
 static constexpr uint8_t FRMAE_WIDTH = 133;
-static constexpr uint8_t FRAME_HEIGHT = 147;
+static constexpr uint8_t FRAME_HEIGHT = 164;
+
+static constexpr uint8_t TANK_RADIUS = 5;
+static constexpr uint8_t TANK_BORDER_THK = 5;
+static constexpr uint8_t TANK_WIDTH = IMG_WIDTH - 2 * TANK_BORDER_THK;
+static constexpr uint8_t TANK_HEIGHT = IMG_HEIGHT - 2 * TANK_BORDER_THK;
 
 static constexpr uint8_t MENU_FONT = 2;
 static constexpr uint8_t MENU_VERTICAL_PADDING = 10;
