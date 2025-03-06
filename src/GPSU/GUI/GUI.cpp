@@ -1,6 +1,7 @@
 #include "GUI/GUI.hpp"
 
 #include "Utility/gpsuUtility.hpp"
+#include "esp_log.h"
 namespace GUI {
 StackType_t Display::sharedStack[2048]; // Define the stack array
 StaticTask_t Display::sharedTCB;        // Define the TCB
@@ -201,30 +202,40 @@ void Display::traffic_light_task(void *param) {
 void Display::water_level_task(void *param) {
   int level = 0;
   while (true) {
-    int state =
-        Display::getInstance().water_level_state; // Update state each iteration
+    int state = 0;
+    state =
+        Display::getInstance().tank_state.load(); // Update state each iteration
 
     if (state == 1) { // Filling
+
       level = (level >= 100) ? 100 : level + 1;
       if (level == 100)
         state = 2;
       vTaskDelay(pdMS_TO_TICKS(100));
     } else if (state == 2) { // Full
+
       vTaskDelay(pdMS_TO_TICKS(1000));
       state = 0;             // Transition to drain
     } else if (state == 0) { // Draining
+
       level = (level <= 0) ? 0 : level - 1;
-      if (level == 0)
-        state = 1; // Auto-refill
+      if (level == 0) {
+        state = 1;
+      }
+
       vTaskDelay(pdMS_TO_TICKS(100));
     }
-    Display::getInstance().water_level_state = state;
-    DisplayCommand cmd;
-    cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
-    cmd.water_level_state = state;
-    cmd.water_level = level;
-    Display::getInstance().sendDisplayCommand(cmd);
-    vTaskDelay(pdMS_TO_TICKS(100));
+
+    if (state >= 0 || state <= 3) {
+
+      Display::getInstance().tank_state.store(state);
+      DisplayCommand cmd;
+      cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+      cmd.water_level_state = state;
+      cmd.water_level = level;
+      Display::getInstance().sendDisplayCommand(cmd);
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
   }
 }
 void Display::processScreenSetup() {
@@ -245,7 +256,6 @@ void Display::processScreenExecute() {
 
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
-
   frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
@@ -256,7 +266,6 @@ void Display::processScreenExecute() {
 void Display::updateTrafficLightDisplay(int state) {
   getInstance().processScreenSetup();
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
-
   switch (state) {
   case 0: // Red
     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
@@ -270,40 +279,37 @@ void Display::updateTrafficLightDisplay(int state) {
   }
   getInstance().processScreenExecute();
 }
-void Display::updateWaterLevelDisplay(int state, int level) {
+void Display::updateWaterLevelDisplay(const int state, int level) {
   getInstance().processScreenSetup();
-
   // Draw labels
   label_->drawString("Water-Level", 0, 0, MENU_FONT);
-  const char *stateText = "";
+
   uint16_t waterColor = TFT_BLUE;
   const int tankX = 0; // Centered within FRAME_WIDTH
   const int tankY = 0;
-
   // Calculate water height
   int waterPixelHeight = (level * TANK_HEIGHT) / 100;
   int waterY = tankY + TANK_BORDER_THK + (TANK_HEIGHT - waterPixelHeight);
 
   switch (state) {
   case 0:
-    stateText = "Drained";
     waterColor = TFT_BLUE;
     break;
   case 1:
-    stateText = "Filling...";
     waterColor = TFT_CYAN;
     break;
   case 2:
-    stateText = "Full";
     waterColor = TFT_GREEN;
     break;
   case 3:
-    stateText = "OVERFLOW!";
     waterColor = TFT_RED;
+    break;
+  default:
+    waterColor = TFT_YELLOW;
     break;
   }
 
-  label_->drawString(stateText, 0, 20, MENU_FONT); // Adjusted position
+  label_->drawString(GPSU::Util::ToString::TankState(state), 0, 20, MENU_FONT);
 
   // Draw thick tank border
   frame_->fillRoundRect(tankX, tankY, FRMAE_WIDTH, FRAME_HEIGHT, TANK_RADIUS,

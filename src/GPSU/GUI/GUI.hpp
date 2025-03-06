@@ -5,6 +5,7 @@
 #include "GUIConstants.hpp"
 #include "MenuSelector.hpp"
 #include "Process/ProcessDefines.hpp"
+#include "atomic"
 #include <TFT_eSPI.h>
 #include <memory>
 #include <tuple>
@@ -32,8 +33,8 @@ struct DisplayCommand {
     int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
     int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
     int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)
-    int water_level;
   };
+  int water_level;
   uint16_t analog_ch0;
   uint16_t analog_ch1;
 };
@@ -55,7 +56,7 @@ private:
   bool initialised;
   bool setup_traffic = false;
   bool setup_waterlevel = false;
-  int water_level_state = 1;
+  std::atomic<int> tank_state{1};
   int tank_capacity_litre = 2000;
   std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> bg_;
@@ -74,7 +75,7 @@ private:
   void showMenu();
   void showProcessScreen(GPSU::ProcessType type);
   void updateTrafficLightDisplay(int state);
-  void updateWaterLevelDisplay(int state, int level);
+  void updateWaterLevelDisplay(const int state, int level);
   void sendDisplayCommand(const DisplayCommand &cmd);
   void run_process(GPSU::ProcessType type);
   void startProcess(GPSU::ProcessType type);

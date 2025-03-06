@@ -36,6 +36,28 @@ public:
         break;
       }
     }
+    static const char *TankState(int state) {
+
+      switch (state) {
+
+      case 0:
+        return "Draining";
+        break;
+      case 1:
+        return "Filling";
+        break;
+      case 2:
+        return "Full";
+        break;
+      case 3:
+        return "OverFlow";
+        break;
+
+      default:
+        return "Unknown";
+        break;
+      }
+    }
   };
 };
 
