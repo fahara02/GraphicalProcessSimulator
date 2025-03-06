@@ -106,7 +106,7 @@ void Display::display_loop(void *param) {
       case DisplayCommandType::UPDATE_WATER_LEVEL:
         if (self->current_process_ == GPSU::ProcessType::WATER_LEVEL) {
 
-          self->updateWaterLevelDisplay(cmd.water_level_state, cmd.water_level);
+          self->updateWaterLevelDisplay(cmd.water_level_state, cmd.analog_ch0);
         }
         break;
         // Add cases for other update commands as needed
@@ -232,7 +232,7 @@ void Display::water_level_task(void *param) {
       DisplayCommand cmd;
       cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
       cmd.water_level_state = state;
-      cmd.water_level = level;
+      cmd.analog_ch0 = level;
       Display::getInstance().sendDisplayCommand(cmd);
       vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -310,6 +310,9 @@ void Display::updateWaterLevelDisplay(const int state, int level) {
   }
 
   label_->drawString(GPSU::Util::ToString::TankState(state), 0, 20, MENU_FONT);
+  uint16_t litre = (tank_capacity_litre * level) / 100;
+  label_->setTextColor(TFT_WHITE);
+  label_->drawString(String(litre), 0, 120, 7);
 
   // Draw thick tank border
   frame_->fillRoundRect(tankX, tankY, FRMAE_WIDTH, FRAME_HEIGHT, TANK_RADIUS,
