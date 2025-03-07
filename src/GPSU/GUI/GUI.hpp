@@ -78,6 +78,7 @@ private:
   void showProcessScreen(GPSU::ProcessType type);
   void updateTrafficLightDisplay(int state);
   void updateWaterLevelDisplay(const int state, int level);
+  void updateStepperDisplay(const int dir, int step);
   void sendDisplayCommand(const DisplayCommand &cmd);
   void run_process(GPSU::ProcessType type);
   void startProcess(GPSU::ProcessType type);
@@ -85,7 +86,7 @@ private:
   void showSubMenu();
   static void processTrafficLight();
   static void processWaterLevel();
-  static void processStepperMotorControl();
+  static void processStepperMotor();
   static void processStateMachine();
   static void processObjectCounter();
   static void processMotorControl();
@@ -95,6 +96,7 @@ private:
   static void display_loop(void *param);
   static void traffic_light_task(void *param);
   static void water_level_task(void *param);
+  static void stepper_task(void *param);
 
   static const MenuItem menuItems[];
   static constexpr size_t MENU_ITEM_COUNT = 6;

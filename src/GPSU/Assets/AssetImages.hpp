@@ -6,6 +6,7 @@
 
 namespace Asset {
 
+#include "stepper.hpp"
 #include "traffic_green.hpp"
 #include "traffic_red.hpp"
 #include "traffic_yellow.hpp"

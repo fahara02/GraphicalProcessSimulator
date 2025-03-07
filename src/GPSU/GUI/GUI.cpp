@@ -14,7 +14,7 @@ gpio_num_t btn = GPIO_NUM_32;
 const MenuItem Display::menuItems[] = {
     {"TRAFFIC_LIGHT", Display::processTrafficLight},
     {"WATER_LEVEL", Display::processWaterLevel},
-    {"STEPPER_MOTOR", Display::processStepperMotorControl},
+    {"STEPPER_MOTOR", Display::processStepperMotor},
     {"STATE_MACHINE", Display::processStateMachine},
     {"OBJECT_COUNTER", Display::processObjectCounter},
     {"MOTOR_CONTROl", Display::processMotorControl}};
@@ -109,7 +109,13 @@ void Display::display_loop(void *param) {
           self->updateWaterLevelDisplay(cmd.water_level_state, cmd.analog_ch0);
         }
         break;
-        // Add cases for other update commands as needed
+      case DisplayCommandType::UPDATE_STEPPER:
+        if (self->current_process_ ==
+            GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
+
+          self->updateStepperDisplay(cmd.stteper_motor_state, cmd.analog_ch0);
+        }
+        break;
       }
     }
   }
@@ -131,7 +137,7 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
                type == GPSU::ProcessType::WATER_LEVEL) {
       label = menuItems[i].label;
 
-    } else if (menuItems[i].action == processStepperMotorControl &&
+    } else if (menuItems[i].action == processStepperMotor &&
                type == GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
       label = menuItems[i].label;
 
@@ -148,7 +154,7 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
       label = menuItems[i].label;
     }
   }
-
+  processScreenSetup();
   label_->fillSprite(static_cast<uint16_t>(Colors::black));
   label_->drawString(label, 0, 0, fontSize);
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
@@ -183,6 +189,15 @@ void Display::startProcess(GPSU::ProcessType type) {
                                           1,                // Priority
                                           sharedStack,      // Shared stack
                                           &sharedTCB        // Shared TCB
+    );
+  } else if (type == GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
+    processTaskHandle = xTaskCreateStatic(stepper_task,    // Task function
+                                          "stepper_motor", // Task name
+                                          2048,            // Stack depth
+                                          NULL,            // Parameters
+                                          1,               // Priority
+                                          sharedStack,     // Shared stack
+                                          &sharedTCB       // Shared TCB
     );
   }
 }
@@ -238,6 +253,18 @@ void Display::water_level_task(void *param) {
     }
   }
 }
+void Display::stepper_task(void *param) {
+  while (true) {
+
+    DisplayCommand cmd;
+    cmd.type = DisplayCommandType::UPDATE_STEPPER;
+    cmd.stteper_motor_state = 1;
+    cmd.analog_ch0 = 1;
+    Display::getInstance().sendDisplayCommand(cmd);
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+}
+
 void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK);
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
@@ -323,6 +350,12 @@ void Display::updateWaterLevelDisplay(const int state, int level) {
   frame_->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH,
                    waterPixelHeight, waterColor);
 
+  processScreenExecute();
+}
+void Display::updateStepperDisplay(const int dir, int step) {
+  processScreenSetup();
+  label_->drawString("Stepper-Motor", 0, 0, MENU_FONT);
+  img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::stepper);
   processScreenExecute();
 }
 
@@ -478,7 +511,7 @@ void Display::processWaterLevel() {
   getInstance().run_process(GPSU::ProcessType::WATER_LEVEL);
 }
 
-void Display::processStepperMotorControl() {
+void Display::processStepperMotor() {
   getInstance().run_process(GPSU::ProcessType::STEPPER_MOTOR_CONTROL);
 }
 
@@ -510,6 +543,7 @@ void Display::run_process(GPSU::ProcessType type) {
     Serial.println("Running water level process");
     break;
   case GPSU::ProcessType::STEPPER_MOTOR_CONTROL:
+    startProcess(type);
     Serial.println("Running stepper motor process");
     break;
   case GPSU::ProcessType::STATE_MACHINE:
