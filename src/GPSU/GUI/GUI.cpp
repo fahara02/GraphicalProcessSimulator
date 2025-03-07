@@ -28,6 +28,8 @@ Display::Display()
       label_(std::make_unique<TFT_eSprite>(canvas_.get())),
       analog_(std::make_unique<TFT_eSprite>(canvas_.get())),
       img_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      imgRotor_(std::make_unique<TFT_eSprite>(canvas_.get())),
+
       frame_(std::make_unique<TFT_eSprite>(canvas_.get())),
       menu_(std::make_unique<MenuSelector>(menuItems, MENU_ITEM_COUNT, 4, pinA,
                                            pinB, btn)),
@@ -63,9 +65,13 @@ void Display::init() {
     bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
     label_->createSprite(MAX_WIDTH - TOP_MARGIN_PX,
                          MAX_HEIGHT - BOTTOM_MARGIN_PX);
-    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
-    img_->setSwapBytes(true);
-    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
+    // img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
+    // imgRotor_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+
+    // img_->setSwapBytes(true);
+    // imgRotor_->setSwapBytes(true);
+
+    // frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
 
     // Initialize display queue and task
     displayQueue = xQueueCreate(10, sizeof(DisplayCommand));
@@ -79,7 +85,38 @@ void Display::init() {
     initialised = true;
   }
 }
-
+void Display::deinitProcessFlags() {
+  setup_traffic = false;
+  setup_waterlevel = false;
+  setup_stepper = false;
+}
+void Display::deleteSprites() {
+  // except bg and label_
+  if (img_->created()) {
+    img_->deleteSprite();
+  }
+  if (imgRotor_->created()) {
+    imgRotor_->deleteSprite();
+  }
+  if (frame_->created()) {
+    frame_->deleteSprite();
+  }
+}
+void Display::createSprites() {
+  if (setup_traffic) {
+    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
+    img_->setSwapBytes(true);
+  }
+  if (setup_waterlevel) {
+    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
+  }
+  if (setup_stepper) {
+    img_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    img_->setSwapBytes(true);
+    imgRotor_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    imgRotor_->setSwapBytes(true);
+  }
+}
 void Display::sendDisplayCommand(const DisplayCommand &cmd) {
   xQueueSend(displayQueue, &cmd, portMAX_DELAY);
 }
@@ -113,7 +150,7 @@ void Display::display_loop(void *param) {
         if (self->current_process_ ==
             GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
 
-          self->updateStepperDisplay(cmd.stteper_motor_state, cmd.analog_ch0);
+          self->updateStepperDisplay(cmd.analog_ch0, cmd.analog_ch1);
         }
         break;
       }
@@ -255,11 +292,21 @@ void Display::water_level_task(void *param) {
 }
 void Display::stepper_task(void *param) {
   while (true) {
+    int dir = 1;
+    int step = 0;
+    step = Display::getInstance().stepper_step;
+    step += 1;
+    if (step > 360) {
+      step = 1;
+      dir = dir * (-1);
+    }
 
     DisplayCommand cmd;
     cmd.type = DisplayCommandType::UPDATE_STEPPER;
-    cmd.stteper_motor_state = 1;
-    cmd.analog_ch0 = 1;
+    Display::getInstance().stepper_step = step;
+    cmd.stteper_motor_state = 1; // running
+    cmd.analog_ch0 = dir;
+    cmd.analog_ch1 = step;
     Display::getInstance().sendDisplayCommand(cmd);
     vTaskDelay(pdMS_TO_TICKS(100));
   }
@@ -268,21 +315,25 @@ void Display::stepper_task(void *param) {
 void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK);
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-  if (setup_waterlevel) {
-    analog_->fillSprite(TFT_BLACK);
-  }
-
   img_->fillSprite(TFT_BLACK);
-  frame_->fillSprite(TFT_BLACK);
+  imgRotor_->fillSprite(TFT_BLACK);
 
+  frame_->fillSprite(TFT_BLACK);
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
 }
-void Display::processScreenExecute() {
+void Display::processScreenExecute(int angle) {
 
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
+  canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
+  // imgStator_->pushRotated(bg_.get(), angle,
+  //                         static_cast<uint16_t>(Colors::black));
+
+  imgRotor_->pushRotated(bg_.get(), angle,
+                         static_cast<uint16_t>(Colors::black));
+
   frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
@@ -291,7 +342,7 @@ void Display::processScreenExecute() {
 }
 
 void Display::updateTrafficLightDisplay(int state) {
-  getInstance().processScreenSetup();
+  processScreenSetup();
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
   switch (state) {
   case 0: // Red
@@ -304,10 +355,10 @@ void Display::updateTrafficLightDisplay(int state) {
     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
     break;
   }
-  getInstance().processScreenExecute();
+  processScreenExecute();
 }
 void Display::updateWaterLevelDisplay(const int state, int level) {
-  getInstance().processScreenSetup();
+  processScreenSetup();
   // Draw labels
   label_->drawString("Water-Level", 0, 0, MENU_FONT);
 
@@ -354,9 +405,33 @@ void Display::updateWaterLevelDisplay(const int state, int level) {
 }
 void Display::updateStepperDisplay(const int dir, int step) {
   processScreenSetup();
+
   label_->drawString("Stepper-Motor", 0, 0, MENU_FONT);
-  img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::stepper);
-  processScreenExecute();
+  img_->pushImage(0, 0, IMG2_WIDTH, IMG2_HEIGHT,
+                  Asset::stepper); // 130X130
+  int pivot_x = IMG2_WIDTH / 2;
+  int pivot_y = IMG2_HEIGHT / 2;
+  int stator_length = 100;
+  int stator_width = 25;
+  int stator_x = (IMG2_WIDTH - stator_length) / 2;
+  int stator_y = IMG2_HEIGHT / 2;
+
+  imgRotor_->fillRect(stator_x, IMG2_HEIGHT / 2, stator_length, stator_width,
+                      TFT_BLUE);
+
+  // label_->drawString(String(step), 0, 20, 7);
+  int angle = 0;
+  if (dir == 1) {
+    angle = 45 + step * 1;
+
+  } else if (dir == -1) {
+    angle = 45 - step * 1;
+  }
+  if (angle > 360) {
+    angle = 0;
+  }
+  label_->drawString(String(angle), 0, 20, 4);
+  processScreenExecute(angle);
 }
 
 //------------------------------------------------------------------------------
@@ -445,61 +520,7 @@ void Display::showMenu() {
 
 void Display::showSubMenu() { Serial.println("not implemented yet"); }
 
-std::tuple<int16_t, int16_t>
-Display::calculateAlignment(AlignMent align, int16_t Width, int16_t Height) {
-  int16_t x = 0;
-  int16_t y = 0;
-
-  switch (align) {
-  case AlignMent::TOP_MIDDLE:
-    x = (MAX_WIDTH - Width) / 2;
-    y = TOP_MARGIN_PX;
-    break;
-
-  case AlignMent::CENTER_MIDDLE:
-    x = (MAX_WIDTH - Width) / 2;
-    y = (MAX_HEIGHT - Height) / 2;
-    break;
-
-  case AlignMent::LEFT_X:
-    x = LEFT_MARGIN_PX;
-    y = (MAX_HEIGHT - Height) / 2;
-    break;
-
-  case AlignMent::RIGHT_X:
-    x = MAX_WIDTH - Width - RIGHT_MARGIN_PX;
-    y = (MAX_HEIGHT - Height) / 2;
-    break;
-
-  case AlignMent::BOTTOM_MIDDLE:
-    x = (MAX_WIDTH - Width) / 2;
-    y = MAX_HEIGHT - Height - BOTTOM_MARGIN_PX;
-    break;
-
-  default:
-    ESP_LOGW("GUI", "Unknown alignment, defaulting to TOP_MIDDLE");
-    x = (MAX_WIDTH - Width) / 2;
-    y = TOP_MARGIN_PX;
-    break;
-  }
-
-  return std::make_tuple(x, y);
-}
-void Display::drawAlignText(AlignMent align, const char *text, uint8_t font,
-                            Colors txt, Colors bg) {
-  if (!text) {
-    ESP_LOGE("GUI", "Null pointer passed!");
-    return;
-  }
-
-  int16_t textWidth = canvas_->textWidth(text, font);
-  int16_t textHeight = canvas_->fontHeight(font);
-
-  auto [x, y] = calculateAlignment(align, textWidth, textHeight);
-  canvas_->setTextColor(static_cast<uint16_t>(txt), static_cast<uint16_t>(bg));
-  canvas_->drawString(text, x, y, font);
-}
-
+//
 //------------------------------------------------------------------------------
 // Static callback functions for each menu item.
 //------------------------------------------------------------------------------
@@ -535,14 +556,26 @@ void Display::run_process(GPSU::ProcessType type) {
   // show_menu();
   switch (type) {
   case GPSU::ProcessType::TRAFFIC_LIGHT:
+    deinitProcessFlags();
+    setup_traffic = true;
+    deleteSprites();
+    createSprites();
     startProcess(type);
     Serial.println("Running traffic light process");
     break;
   case GPSU::ProcessType::WATER_LEVEL:
+    deinitProcessFlags();
+    setup_waterlevel = true;
+    deleteSprites();
+    createSprites();
     startProcess(type);
     Serial.println("Running water level process");
     break;
   case GPSU::ProcessType::STEPPER_MOTOR_CONTROL:
+    deinitProcessFlags();
+    setup_stepper = true;
+    deleteSprites();
+    createSprites();
     startProcess(type);
     Serial.println("Running stepper motor process");
     break;
@@ -562,3 +595,60 @@ void Display::run_process(GPSU::ProcessType type) {
 }
 
 } // namespace GUI
+
+// std::tuple<int16_t, int16_t>
+//  Display::calculateAlignment(AlignMent align, int16_t Width, int16_t
+//  Height) {
+//    int16_t x = 0;
+//    int16_t y = 0;
+
+//   switch (align) {
+//   case AlignMent::TOP_MIDDLE:
+//     x = (MAX_WIDTH - Width) / 2;
+//     y = TOP_MARGIN_PX;
+//     break;
+
+//   case AlignMent::CENTER_MIDDLE:
+//     x = (MAX_WIDTH - Width) / 2;
+//     y = (MAX_HEIGHT - Height) / 2;
+//     break;
+
+//   case AlignMent::LEFT_X:
+//     x = LEFT_MARGIN_PX;
+//     y = (MAX_HEIGHT - Height) / 2;
+//     break;
+
+//   case AlignMent::RIGHT_X:
+//     x = MAX_WIDTH - Width - RIGHT_MARGIN_PX;
+//     y = (MAX_HEIGHT - Height) / 2;
+//     break;
+
+//   case AlignMent::BOTTOM_MIDDLE:
+//     x = (MAX_WIDTH - Width) / 2;
+//     y = MAX_HEIGHT - Height - BOTTOM_MARGIN_PX;
+//     break;
+
+//   default:
+//     ESP_LOGW("GUI", "Unknown alignment, defaulting to TOP_MIDDLE");
+//     x = (MAX_WIDTH - Width) / 2;
+//     y = TOP_MARGIN_PX;
+//     break;
+//   }
+
+//   return std::make_tuple(x, y);
+// }
+// void Display::drawAlignText(AlignMent align, const char *text, uint8_t
+// font,
+//                             Colors txt, Colors bg) {
+//   if (!text) {
+//     ESP_LOGE("GUI", "Null pointer passed!");
+//     return;
+//   }
+
+//   int16_t textWidth = canvas_->textWidth(text, font);
+//   int16_t textHeight = canvas_->fontHeight(font);
+
+//   auto [x, y] = calculateAlignment(align, textWidth, textHeight);
+//   canvas_->setTextColor(static_cast<uint16_t>(txt),
+//   static_cast<uint16_t>(bg)); canvas_->drawString(text, x, y, font);
+// }

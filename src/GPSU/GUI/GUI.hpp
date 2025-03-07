@@ -58,6 +58,8 @@ private:
   bool initialised;
   bool setup_traffic = false;
   bool setup_waterlevel = false;
+  bool setup_stepper = false;
+  int stepper_step = 1;
   std::atomic<int> tank_state{1};
   size_t tank_capacity_litre = 2000;
   std::unique_ptr<TFT_eSPI> canvas_;
@@ -65,6 +67,7 @@ private:
   std::unique_ptr<TFT_eSprite> label_;
   std::unique_ptr<TFT_eSprite> analog_;
   std::unique_ptr<TFT_eSprite> img_;
+  std::unique_ptr<TFT_eSprite> imgRotor_;
   std::unique_ptr<TFT_eSprite> frame_;
   std::unique_ptr<MenuSelector> menu_;
   GPSU::ProcessType current_process_;
@@ -98,6 +101,10 @@ private:
   static void water_level_task(void *param);
   static void stepper_task(void *param);
 
+  void deleteSprites();
+  void createSprites();
+  void deinitProcessFlags();
+
   static const MenuItem menuItems[];
   static constexpr size_t MENU_ITEM_COUNT = 6;
 
@@ -109,7 +116,7 @@ private:
 
   // void setUpSprites(GPSU::ProcessType type);
   void processScreenSetup();
-  void processScreenExecute();
+  void processScreenExecute(int angle = 0);
 };
 
 } // namespace GUI
