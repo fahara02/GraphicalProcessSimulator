@@ -316,9 +316,13 @@ void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK);
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   img_->fillSprite(TFT_BLACK);
-  imgRotor_->fillSprite(TFT_BLACK);
+  if (setup_stepper) {
+    imgRotor_->fillSprite(TFT_BLACK);
+  }
+  if (setup_waterlevel) {
+    frame_->fillSprite(TFT_BLACK);
+  }
 
-  frame_->fillSprite(TFT_BLACK);
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
@@ -327,15 +331,17 @@ void Display::processScreenExecute(int angle) {
 
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
-  canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
-  // imgStator_->pushRotated(bg_.get(), angle,
-  //                         static_cast<uint16_t>(Colors::black));
 
-  imgRotor_->pushRotated(bg_.get(), angle,
+  if (setup_stepper) {
+    canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
+    imgRotor_->pushRotated(bg_.get(), angle,
+                           static_cast<uint16_t>(Colors::black));
+  }
+  if (setup_waterlevel) {
+    frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
                          static_cast<uint16_t>(Colors::black));
+  }
 
-  frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
-                       static_cast<uint16_t>(Colors::black));
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
@@ -409,17 +415,15 @@ void Display::updateStepperDisplay(const int dir, int step) {
   label_->drawString("Stepper-Motor", 0, 0, MENU_FONT);
   img_->pushImage(0, 0, IMG2_WIDTH, IMG2_HEIGHT,
                   Asset::stepper); // 130X130
-  int pivot_x = IMG2_WIDTH / 2;
-  int pivot_y = IMG2_HEIGHT / 2;
-  int stator_length = 100;
+
+  int stator_length = 80;
   int stator_width = 25;
   int stator_x = (IMG2_WIDTH - stator_length) / 2;
-  int stator_y = IMG2_HEIGHT / 2;
+  int stator_y = (IMG2_HEIGHT - stator_width) / 2;
 
-  imgRotor_->fillRect(stator_x, IMG2_HEIGHT / 2, stator_length, stator_width,
-                      TFT_BLUE);
+  imgRotor_->fillRoundRect(stator_x, stator_y, stator_length, stator_width, 20,
+                           TFT_BLUE);
 
-  // label_->drawString(String(step), 0, 20, 7);
   int angle = 0;
   if (dir == 1) {
     angle = 45 + step * 1;
