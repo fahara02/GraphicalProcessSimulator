@@ -294,10 +294,12 @@ void Display::stepper_task(void *param) {
   while (true) {
     int dir = 1;
     int step = 0;
+    int angle = 45;
     step = Display::getInstance().stepper_step;
     step += 1;
-    if (step > 360) {
+    if (angle > 360) {
       step = 1;
+      angle = angle + step;
       dir = dir * (-1);
     }
 

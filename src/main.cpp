@@ -6,6 +6,7 @@
 #include "Process/Process.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
+#include "StateMachines/TrafficLightSM.hpp"
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -22,10 +23,10 @@ gpio_num_t scl = GPIO_NUM_33;
 gpio_num_t reset = GPIO_NUM_13;
 TaskHandle_t runTaskhandle = nullptr;
 
-GUI::Display &display = GUI::Display::getInstance();
-// void action1() { Serial.println("Action 1 selected"); }
-// void action2() { Serial.println("Action 2 selected"); }
-// void action3() { Serial.println("Action 3 selected"); }
+// GUI::Display &display = GUI::Display::getInstance();
+//  void action1() { Serial.println("Action 1 selected"); }
+//  void action2() { Serial.println("Action 2 selected"); }
+//  void action3() { Serial.println("Action 3 selected"); }
 
 // const MenuItem menuItems[] = {{"Item 1", action1},
 //                               {"Item 2", action2},
@@ -88,6 +89,7 @@ static int send_req = 0;
 
 // MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 void RunTask(void *param);
+void TestTask(void *param);
 // MCP::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
 
 // void cb1(void *param);
@@ -99,11 +101,29 @@ void cb2(void *data) { Serial.println(" Higher limit reached"); }
 void cb3(int *data) { Serial.println(" lower limit reached"); }
 void cb4(int *data) { Serial.println(" Higher limit reached"); }
 
+SM::TrafficLightData initData{5000, 3000, 2000, 0, false};
+SM::TrafficLightSM trafficLight(initData); // Global object
+unsigned long lastMillis;        // Global variable to track last update time
+SM::StateTrafficLight prevState; // Global variable to track previous state
+
 void setup() {
 
   Serial.begin(115200);
+
+  // Initialize traffic light with timeouts: 5s red, 3s green, 2s yellow
+
+  // Perform initial update to transition from INIT to RED_STATE
+  trafficLight.update();
+
+  // Print initial state
+  Serial.print("Initial state: ");
+  Serial.println(trafficLight.getStateString());
+
+  // Record initial time and state
+  lastMillis = millis();
+  prevState = trafficLight.getState();
   // tft.init();
-  display.init();
+  // display.init();
   // display.showMenu();
   delay(1000);
   // auto &controller = GPSU_CORE::IO_Controller::getInstance(
@@ -143,8 +163,8 @@ void setup() {
   //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   // expander.dumpRegisters();
 
-  // xTaskCreatePinnedToCore(RunTask, "RunTask", 4196, &expander, 2,
-  //                         &runTaskhandle, 0);
+  xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2, &runTaskhandle,
+                          0);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -196,10 +216,33 @@ void setup() {
   // ledcWrite(pwmLedChannelTFT, 100);
 }
 void loop() {
+  Serial.println("....main loop.......");
+  vTaskDelay(500);
+}
+void TestTask(void *param) {
+  while (true) {
+    vTaskDelay(50);
+    unsigned long currentMillis = millis();
+    int delta = currentMillis - lastMillis;
 
-  Serial.println("....");
+    // Increment the state machine's timer
+    trafficLight.incrementTimer(delta);
+    lastMillis = currentMillis;
 
-  delay(1000);
+    // Update the state machine to check transitions
+    trafficLight.update();
+
+    // Check if the state has changed
+    SM::StateTrafficLight currentState = trafficLight.getState();
+    if (currentState != prevState) {
+      Serial.print("State changed to: ");
+      Serial.print(trafficLight.getStateString());
+      Serial.print(" at time: ");
+      Serial.println(currentMillis);
+      prevState = currentState;
+    }
+  }
+  vTaskDelete(NULL);
 }
 // void loop() {
 //   int angle, angle2, angle3 = 0;
