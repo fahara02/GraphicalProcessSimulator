@@ -225,13 +225,13 @@ void TestTask(void *param) {
     vTaskDelay(50);
     unsigned long currentMillis = millis();
     int delta = currentMillis - lastMillis;
-
-    // Serial.printf("time passed %d\n", delta);
-    trafficLight.incrementTimer(delta);
+    SM::TrafficLightInput input;
+    input.delta_time_ms = delta;
+    trafficLight.updateData(input);
     lastMillis = currentMillis;
 
     // Update the state machine to check transitions
-    trafficLight.update();
+    // trafficLight.update();
 
     // Check if the state has changed
     SM::StateTrafficLight currentState = trafficLight.getState();

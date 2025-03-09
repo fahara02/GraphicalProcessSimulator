@@ -12,44 +12,49 @@ class TrafficLightSM; // Forward declaration
 namespace TL_SM {
 
 inline bool alwaysTrue(const SM::StateTrafficLight oldState,
-                       const SM::TrafficLightInput &data,
+                       const SM::TrafficLightData &data,
+                       const SM::TrafficLightInput &input,
                        const SM::TrafficLightConfig &config) {
   return true;
 }
 inline bool timeoutRed(const SM::StateTrafficLight oldState,
-                       const SM::TrafficLightInput &data,
+                       const SM::TrafficLightData &data,
+                       const SM::TrafficLightInput &input,
                        const SM::TrafficLightConfig &config) {
   return data.current_time_ms >= config.redTimeout_ms;
 }
 inline bool timeoutGreen(const SM::StateTrafficLight oldState,
-                         const SM::TrafficLightInput &data,
+                         const SM::TrafficLightData &data,
+                         const SM::TrafficLightInput &input,
                          const SM::TrafficLightConfig &config) {
   return data.current_time_ms >= config.greenTimeout_ms;
 }
 inline bool timeoutYellowToRed(const SM::StateTrafficLight oldState,
-                               const SM::TrafficLightInput &data,
+                               const SM::TrafficLightData &data,
+                               const SM::TrafficLightInput &input,
                                const SM::TrafficLightConfig &config) {
   return (data.current_time_ms >= config.yellowTimeout_ms) &&
          (oldState == SM::StateTrafficLight::GREEN_STATE);
 }
 inline bool timeoutYellowToGreen(const SM::StateTrafficLight oldState,
-                                 const SM::TrafficLightInput &data,
+                                 const SM::TrafficLightData &data,
+                                 const SM::TrafficLightInput &input,
                                  const SM::TrafficLightConfig &config) {
   return (data.current_time_ms >= config.yellowTimeout_ms) &&
          (oldState == SM::StateTrafficLight::RED_STATE);
 }
 inline bool buttonPress(const SM::StateTrafficLight oldState,
-                        const SM::TrafficLightInput &data,
+                        const SM::TrafficLightData &data,
+                        const SM::TrafficLightInput &input,
                         const SM::TrafficLightConfig &config) {
-  return data.button_pressed;
+  return input.button_pressed;
 }
 
 inline SM::TLCommand initToRed(const SM::TrafficLightInput &data,
                                const SM::TrafficLightConfig &config) {
   SM::TLCommand cmd;
   cmd.command = SM::CommandsTL::TURN_ON_RED;
-
-  cmd.data.timer_ms = 0;
+  cmd.data.timeout_ms = 0;
   cmd.data.immediate_transition = false;
   return cmd;
 }
@@ -58,8 +63,7 @@ inline SM::TLCommand redToYellow(const SM::TrafficLightInput &data,
 
   SM::TLCommand cmd;
   cmd.command = SM::CommandsTL::TURN_ON_YELLOW;
-
-  cmd.data.timer_ms = config.redTimeout_ms;
+  cmd.data.timeout_ms = config.redTimeout_ms;
   return cmd;
 }
 inline SM::TLCommand redToGreen(const SM::TrafficLightInput &data,
@@ -74,16 +78,14 @@ inline SM::TLCommand yellowToGreen(const SM::TrafficLightInput &data,
                                    const SM::TrafficLightConfig &config) {
   SM::TLCommand cmd;
   cmd.command = SM::CommandsTL::TURN_ON_GREEN;
-
-  cmd.data.timer_ms = config.yellowTimeout_ms;
+  cmd.data.timeout_ms = config.yellowTimeout_ms;
   return cmd;
 }
 inline SM::TLCommand greenToYellow(const SM::TrafficLightInput &data,
                                    const SM::TrafficLightConfig &config) {
   SM::TLCommand cmd;
   cmd.command = SM::CommandsTL::TURN_ON_YELLOW;
-
-  cmd.data.timer_ms = config.greenTimeout_ms;
+  cmd.data.timeout_ms = config.greenTimeout_ms;
   return cmd;
 }
 inline SM::TLCommand yellowToRed(const SM::TrafficLightInput &data,
@@ -91,12 +93,13 @@ inline SM::TLCommand yellowToRed(const SM::TrafficLightInput &data,
   SM::TLCommand cmd;
   cmd.command = SM::CommandsTL::TURN_ON_RED;
 
-  cmd.data.timer_ms = config.yellowTimeout_ms;
+  cmd.data.timeout_ms = config.yellowTimeout_ms;
   return cmd;
 }
 
 constexpr SM::Transition<SM::StateTrafficLight, SM::TrafficLightConfig,
-                         SM::TrafficLightInput, SM::TLCommand>
+                         SM::TrafficLightData, SM::TrafficLightInput,
+                         SM::TLCommand>
     TrafficTransitions[] = {
         {TL_STATE(INIT), TL_STATE(RED_STATE), alwaysTrue, initToRed},
         {TL_STATE(RED_STATE), TL_STATE(YELLOW_STATE), timeoutRed, redToYellow},
@@ -114,8 +117,8 @@ namespace SM {
 
 class TrafficLightSM
     : public StateMachine<TrafficLightSM, StateTrafficLight, TrafficLightConfig,
-                          TrafficLightInput, TLCommand, CommandsTL,
-                          TL_SM::TrafficTransitions,
+                          TrafficLightData, TrafficLightInput, TLCommand,
+                          CommandsTL, TL_SM::TrafficTransitions,
                           sizeof(TL_SM::TrafficTransitions) /
                               sizeof(TL_SM::TrafficTransitions[0])> {
 public:
@@ -131,8 +134,12 @@ public:
   constexpr TrafficLightSM()
       : StateMachine(StateTrafficLight::INIT, TrafficLightConfig{},
                      TrafficLightInput{}) {}
-
-  void incrementTimer(int delta_ms) { inputData_.current_time_ms += delta_ms; }
+  void updateInternalState(const TrafficLightInput &data) override {
+    data_.current_time_ms += data.delta_time_ms;
+  }
+  void resetInternalState() override { data_.current_time_ms = 0; }
+  //   void incrementTimer(int delta_ms) { inputData_.current_time_ms +=
+  //   delta_ms; }
 
   // Add method to get state as a string
   String getStateString() const {

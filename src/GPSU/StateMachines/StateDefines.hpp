@@ -20,17 +20,19 @@ enum class CommandsTL {
   TURN_ON_GREEN,
 };
 struct TrafficLightInput {
-
-  int current_time_ms;
+  int delta_time_ms;
   bool button_pressed;
 };
 struct TrafficLightOutPut {
-  int timer_ms;
+  int timeout_ms;
   bool immediate_transition;
 };
 struct TLCommand {
   CommandsTL command;
   TrafficLightOutPut data;
+};
+struct TrafficLightData {
+  uint32_t current_time_ms;
 };
 
 enum class StateWaterLevel : uint8_t {
