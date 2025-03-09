@@ -101,8 +101,9 @@ void cb2(void *data) { Serial.println(" Higher limit reached"); }
 void cb3(int *data) { Serial.println(" lower limit reached"); }
 void cb4(int *data) { Serial.println(" Higher limit reached"); }
 
-SM::TrafficLightData initData{5000, 3000, 2000, 0, false};
-SM::TrafficLightSM trafficLight(initData); // Global object
+SM::TrafficLightConfig config{5000, 3000, 2000, false};
+
+SM::TrafficLightSM trafficLight(config); // Global object
 unsigned long lastMillis;        // Global variable to track last update time
 SM::StateTrafficLight prevState; // Global variable to track previous state
 
@@ -225,7 +226,7 @@ void TestTask(void *param) {
     unsigned long currentMillis = millis();
     int delta = currentMillis - lastMillis;
 
-    // Increment the state machine's timer
+    // Serial.printf("time passed %d\n", delta);
     trafficLight.incrementTimer(delta);
     lastMillis = currentMillis;
 

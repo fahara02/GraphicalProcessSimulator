@@ -1,226 +1,263 @@
-#ifndef WATER_LEVEL_SM_HPP
-#define WATER_LEVEL_SM_HPP
+// #ifndef WATER_LEVEL_SM_HPP
+// #define WATER_LEVEL_SM_HPP
 
-#include "Arduino.h"
-#include "StateMachines/StateMachine.hpp"
+// #include "Arduino.h"
+// #include "StateMachines/StateMachine.hpp"
 
-#define WL_STATE(state) static_cast<uint8_t>(SM::StateWaterLevel::state)
+// #define WL_STATE(state) static_cast<uint8_t>(SM::StateWaterLevel::state)
 
-namespace SM {
-class WaterLevelSM; // Forward declaration
-} // namespace SM
+// namespace SM {
+// class WaterLevelSM; // Forward declaration
+// } // namespace SM
 
-namespace WL_SM {
-// Event emitter (placeholder, can be extended by application)
-static void emitEvent(SM::StateWaterLevel state) {}
+// namespace WL_SM {
 
-// **Condition Functions**
-// Overflow is detected if the current water level exceeds the tank capacity
-bool detectedOverflow(const SM::WaterLevelData &data,
-                      const SM::WaterLevelConfig &config) {
-  return data.currentLevel > config.tankMaxCapacityLitre;
-}
-// Once overflow conditions subside (e.g., water level falls back to safe
-// limits)
-bool overflowResolved(const SM::WaterLevelData &data,
-                      const SM::WaterLevelConfig &config) {
-  return data.currentLevel <= config.tankMaxCapacityLitre;
-}
-// Check if the start filling command is issued
-bool waterDetected(const SM::WaterLevelData &data,
-                   const SM::WaterLevelConfig &config) {
-  // water is detected and filling should start.
-  return data.sensorADC > config.sensorMinSensivityLitre;
-}
-bool startFillingCondition(const SM::WaterLevelData &data,
-                           const SM::WaterLevelConfig &config) {
-  return data.start_filling_flag & waterDetected();
-}
+// // **Condition Functions**
+// // Overflow is detected if the current water level exceeds the tank capacity
+// inline bool detectedOverflow(const SM::WaterLevelInputs &data,
+//                              const SM::WaterLevelConfig &config) {
+//   return data.currentLevel > config.tankMaxCapacityLitre;
+// }
+// // Once overflow conditions subside (e.g., water level falls back to safe
+// // limits)
+// inline bool overflowResolved(const SM::WaterLevelInputs &data,
+//                              const SM::WaterLevelConfig &config) {
+//   return data.currentLevel <= config.tankMaxCapacityLitre;
+// }
+// // Check if the start filling command is issued
+// inline bool waterDetected(const SM::WaterLevelInputs &data,
+//                           const SM::WaterLevelConfig &config) {
+//   // water is detected and filling should start.
+//   return data.sensorADC > config.sensorMinSensivityLitre;
+// }
+// inline bool startFillingCondition(const SM::WaterLevelInputs &data,
+//                                   const SM::WaterLevelConfig &config) {
+//   return data.start_filling_flag;
+// }
 
-bool reachedPartial(const SM::WaterLevelData &data,
-                    const SM::WaterLevelConfig &config) {
-  // Transition when the water level is moderately high (e.g., > 500 units)
-  return data.currentLevel >= config.partialLevelLow &&
-         data.currentLevel < config.partialLevelHigh;
-}
+// inline bool reachedPartial(const SM::WaterLevelInputs &data,
+//                            const SM::WaterLevelConfig &config) {
+//   // Transition when the water level is moderately high (e.g., > 500 units)
+//   return data.currentLevel >= config.partialLevelLow &&
+//          data.currentLevel < config.partialLevelHigh;
+// }
 
-bool reachedFull(const SM::WaterLevelData &data,
-                 const SM::WaterLevelConfig &config) {
-  // Transition when water level nears the tank capacity (e.g., between 1900 and
-  // 2000 units)
-  return data.currentLevel >= config.partialLevelHigh &&
-         data.currentLevel <= config.tankCapacityLitre;
-}
-bool droppedBelowFull(const SM::WaterLevelData &data,
-                      const SM::WaterLevelConfig &config) {
-  // Transition from FULL to draining when the level falls below a threshold
-  return data.currentLevel < config.drainingMark;
-}
-bool nearlyEmpty(const SM::WaterLevelData &data,
-                 const SM::WaterLevelConfig &config) {
-  // Consider the tank empty if current level is almost zero
-  return data.currentLevel <= config.sensorMinSensivityLitre;
-}
+// inline bool reachedFull(const SM::WaterLevelInputs &data,
+//                         const SM::WaterLevelConfig &config) {
+//   // Transition when water level nears the tank capacity (e.g., between 1900
+//   and
+//   // 2000 units)
+//   return data.currentLevel >= config.partialLevelHigh &&
+//          data.currentLevel <= config.tankCapacityLitre;
+// }
+// inline bool droppedBelowFull(const SM::WaterLevelInputs &data,
+//                              const SM::WaterLevelConfig &config) {
+//   // Transition from FULL to draining when the level falls below a threshold
+//   return data.currentLevel < config.drainingMark;
+// }
+// inline bool nearlyEmpty(const SM::WaterLevelInputs &data,
+//                         const SM::WaterLevelConfig &config) {
+//   // Consider the tank empty if current level is almost zero
+//   return data.currentLevel <= config.sensorMinSensivityLitre;
+// }
 
-// Activate draining (could mean reversing the pump or opening a drain valve)
-void actionStartDraining(const SM::WaterLevelData &data,
-                         const SM::WaterLevelConfig &config) {
+// // Check if the start draining command is issued
+// inline bool startDrainingCondition(const SM::WaterLevelInputs &data,
+//                                    const SM::WaterLevelConfig &config) {
+//   return data.start_draining_flag;
+// }
 
-  data.pumpSpeed = config_.pumpDrainFlowRate;
-  data.open_drain_valve = true;
-}
-void actionDrained(const SM::WaterLevelData &data,
-                   const SM::WaterLevelConfig &config) {
-  // When drained, turn off the pump.
-  data.pumpSpeed = 0;
-  data.open_drain_valve = false;
-}
-void actionHandleOverflow(const SM::WaterLevelData &data,
-                          const SM::WaterLevelConfig &config) {
-  // Stop filling or trigger an alarm in case of overflow.
-  stopAction();
-  data.alarm = true;
-}
+// // Check if the stop command is issued
+// inline bool stopCondition(const SM::WaterLevelInputs &data,
+//                           const SM::WaterLevelConfig &config) {
+//   return data.stop_flag;
+// }
 
-// Check if the start draining command is issued
-bool startDrainingCondition(const SM::WaterLevelData &data,
-                            const SM::WaterLevelConfig &config) {
-  return data.start_draining_flag;
-}
+// // Check if the tank is full
+// inline bool levelFullCondition(
+//     const SM::WaterLevelInputs &data.const SM::WaterLevelConfig &config) {
+//   return data.currentLevel >= config.tankCapacityLitre;
+// }
+// // Check if the tank is empty
+// inline bool levelEmptyCondition(const SM::WaterLevelInputs &data,
+//                                 const SM::WaterLevelConfig &config) {
+//   return data.currentLevel <= 0.0f;
+// }
+// inline bool partialLevelCondition(const SM::WaterLevelInputs &data,
+//                                   const SM::WaterLevelConfig &config) {
+//   return data.currentLevel >= data.targetLevel +
+//   config.sensorMinSensivityLitre;
+// }
+// // Activate draining (could mean reversing the pump or opening a drain valve)
+// inline WLCommand actionStartDraining(const SM::WaterLevelInputs &data,
+//                                      const SM::WaterLevelConfig &config) {
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::START_DRAIN;
+//   cmd.data.pumpSpeed = config.pumpDrainFlowRate;
+//   cmd.data.open_drain_valve = true;
+//   return cmd;
+// }
+// inline WLCommand actionDrained(const SM::WaterLevelInputs &data,
+//                                const SM::WaterLevelConfig &config) {
+//   // When drained, turn off the pump.
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::STOP;
+//   cmd.data.pumpSpeed = 0;
+//   cmd.data.open_drain_valve = false;
+//   return cmd;
+// }
+// inline WLCommand actionHandleOverflow(const SM::WaterLevelInputs &data,
+//                                       const SM::WaterLevelConfig &config) {
+//   // Stop filling or trigger an alarm in case of overflow.
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::TRIGGER_ALARM;
+//   cmd.data.pumpSpeed = 0;
+//   cmd.data.alarm = true;
+//   return cmd;
+// }
 
-// Check if the stop command is issued
-bool stopCondition(const SM::WaterLevelData &data,
-                   const SM::WaterLevelConfig &config) {
-  return data.stop_flag;
-}
+// // **Action Functions**
+// inline WLCommand actionEmptyToFilling(const SM::WaterLevelInputs &data,
+//                                       const SM::WaterLevelConfig &config) {
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::START_FILL;
+//   cmd.data.pumpSpeed = config.pumpFillFlowRate; // Start filling
+//   return cmd;
+// }
 
-// Check if the tank is full
-bool levelFullCondition(
-    const SM::WaterLevelData &data.const SM::WaterLevelConfig &config) {
-  return data.currentLevel >= config.tankCapacityLitre;
-}
+// inline WLCommand actionStop(const SM::WaterLevelInputs &data,
+//                             const SM::WaterLevelConfig &config) {
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::STOP;
+//   cmd.data.pumpSpeed = 0;
+//   return cmd;
+// }
 
-// Check if the tank is empty
-bool levelEmptyCondition(const, SM::WaterLevelData &data,
-                         const SM::WaterLevelConfig &config) {
-  return data.currentLevel <= 0.0f;
-}
+// inline WLCommand actionFullToDraining(const SM::WaterLevelInputs &data,
+//                                       const SM::WaterLevelConfig &config) {
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::START_DRAIN;
+//   cmd.data.pumpSpeed = config_.pumpDrainFlowRate;
+//   cmd.data.open_drain_valve = true;
+//   return cmd;
+// }
 
-// **Action Functions**
-void emptyToFillingAction(SM::WaterLevelData &data,
-                          const SM::WaterLevelConfig &config) {
-  data.pumpSpeed = config.pumpFillFlowRate; // Start filling
-  data.start_filling_flag = false;          // Clear the flag
-}
+// inline WLCommand actionPartialToFilling(const SM::WaterLevelInputs &data,
+//                                         const SM::WaterLevelConfig &config) {
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::START_DRAIN;
+//   cmd.data.pumpSpeed = config.pumpFillFlowRate;
+//   cmd.data.targetLevel = data.targetLevel;
+//   return cmd;
+// }
 
-void stopAction(SM::WaterLevelData &data, const SM::WaterLevelConfig &config) {
-  data.pumpSpeed = 0; // Stop the pump
-}
+// inline WLCommand actionPartialToDraining(const SM::WaterLevelInputs &data,
+//                                          const SM::WaterLevelConfig &config)
+//                                          {
+//   WLCommand cmd;
+//   cmd.command = SM::CommandsWL::START_DRAIN;
+//   cmd.data.pumpSpeed = config.pumpDrainFlowRate;
+//   cmd.data.targetLevel = data.targetLevel;
+//   cmd.data.open_drain_valve = true;
+//   return cmd;
+// }
 
-void stopActionClearFlag(SM::WaterLevelData &data,
-                         const SM::WaterLevelConfig &config) {
-  data.pumpSpeed = 0;
-  data.stop_flag = false; // Clear the stop flag
-}
+// // **Transition Table**
+// constexpr SM::Transition<SM::WaterLevelData> WaterLevelTransitions[] = {
 
-void fullToDrainingAction(SM::WaterLevelData &data,
-                          const SM::WaterLevelConfig &config) {
-  data.pumpSpeed = config_.pumpDrainFlowRate; // Start draining
-  data.start_draining_flag = false;           // Clear the flag
-}
+//     {WL_STATE(EMPTY), WL_STATE(OVERFLOW), detectedOverflow,
+//      actionHandleOverflow},
+//     {WL_STATE(FILLING), WL_STATE(OVERFLOW), detectedOverflow,
+//      actionHandleOverflow},
+//     {WL_STATE(PARTIAL_FILLED), WL_STATE(OVERFLOW), detectedOverflow,
+//      actionHandleOverflow},
+//     {WL_STATE(FULL), WL_STATE(OVERFLOW), detectedOverflow,
+//      actionHandleOverflow},
+//     {WL_STATE(OVERFLOW), WL_STATE(DRAINING), overflowResolved,
+//      actionStartDraining},
+//     // From EMPTY to START FILLING when start filling is commanded
+//     {WL_STATE(EMPTY), WL_STATE(START_FILLING), startFillingCondition,
+//      actionEmptyToFilling},
+//     // From START FILLING  to FILLING when water detected
+//     {WL_STATE(START_FILLING), WL_STATE(FILLING), waterDetected,
+//      actionEmptyToFilling},
+//     // From FILLING to PARTIAL_FILLED when stopped before full
+//     {WL_STATE(FILLING), WL_STATE(PARTIAL_FILLED), stopCondition, actionStop},
+//     // From FILLING to PARTIAL_FILLED when stopped before full
+//     {WL_STATE(FILLING), WL_STATE(PARTIAL_FILLED), partialLevelCondition,
+//      actionStop},
+//     // From PARTIAL_FILLED to FULL when the level reaches capacity
+//     {WL_STATE(PARTIAL_FILLED), WL_STATE(FULL), reachedFull, actionStop},
+//     // From FILLING to FULL when the level reaches capacity
+//     {WL_STATE(FILLING), WL_STATE(FULL), levelFullCondition, actionStop},
 
-void partialToFillingAction(SM::WaterLevelData &data,
-                            const SM::WaterLevelConfig &config) {
-  data.pumpSpeed = config.pumpFillFlowRate; // Start filling
-  data.start_filling_flag = false;          // Clear the flag
-}
+//     // From FULL to DRAINING when start draining is commanded
+//     {WL_STATE(FULL), WL_STATE(DRAINING), startDrainingCondition,
+//      actionFullToDraining},
+//     // From DRAINING to EMPTY when the level reaches 0
+//     {WL_STATE(DRAINING), WL_STATE(EMPTY), levelEmptyCondition, actionStop},
+//     // From DRAINING to PARTIAL_FILLED when stopped before empty
+//     {WL_STATE(DRAINING), WL_STATE(PARTIAL_FILLED), stopCondition,
+//     actionStop},
+//     // From DRAINING to PARTIAL_FILLED when target level reached
+//     {WL_STATE(DRAINING), WL_STATE(PARTIAL_FILLED), partialLevelCondition,
+//      actionStop},
+//     // From PARTIAL_FILLED to FILLING when start filling is commanded
+//     {WL_STATE(PARTIAL_FILLED), WL_STATE(FILLING), startFillingCondition,
+//      actionPartialToFilling},
+//     // From PARTIAL_FILLED to DRAINING when start draining is commanded
+//     {WL_STATE(PARTIAL_FILLED), WL_STATE(DRAINING), startDrainingCondition,
+//      actionPartialToDraining},
+// };
 
-inline void partialToDrainingAction(SM::WaterLevelData &data,
-                                    const SM::WaterLevelConfig &config) {
-  data.pumpSpeed = config.pumpDrainFlowRate; // Start draining
-  data.start_draining_flag = false;          // Clear the flag
-}
+// } // namespace WL_SM
 
-// **Transition Table**
-constexpr SM::Transition<SM::WaterLevelData> WaterLevelTransitions[] = {
+// namespace SM {
 
-    {WL_STATE(EMPTY), WL_STATE(OVERFLOW), detectedOverflow,
-     actionHandleOverflow},
-    {WL_STATE(FILLING), WL_STATE(OVERFLOW), detectedOverflow,
-     actionHandleOverflow},
-    {WL_STATE(PARTIAL_FILLED), WL_STATE(OVERFLOW), detectedOverflow,
-     actionHandleOverflow},
-    {WL_STATE(FULL), WL_STATE(OVERFLOW), detectedOverflow,
-     actionHandleOverflow},
-    {WL_STATE(OVERFLOW), WL_STATE(DRAINING), overflowResolved,
-     actionStartDraining},
+// class WaterLevelSM
+//     : public StateMachine<WaterLevelSM, StateWaterLevel, WaterLevelConfig,
+//                           WaterLevelInputs, WLCommand, CommandsWL,
+//                           WL_SM::WaterLevelTransitions,
+//                           sizeof(WL_SM::WaterLevelTransitions) /
+//                               sizeof(WL_SM::WaterLevelTransitions[0])> {
+// public:
+//   // Constructor with initial data
+//   WaterLevelSM(const WaterLevelConfig &config, const WaterLevelInputs
+//   &initData)
+//       : StateMachine(StateWaterLevel::EMPTY, config, initData) {}
+//   WaterLevelSM(const WaterLevelConfig &config)
+//       : StateMachine(StateWaterLevel::EMPTY, config, WaterLevelInputs{}) {}
+//   WaterLevelSM(const WaterLevelInputs &initData)
+//       : StateMachine(StateWaterLevel::EMPTY, WaterLevelConfig{}, initData) {}
 
-    // From EMPTY to FILLING when start filling is commanded
-    {WL_STATE(EMPTY), WL_STATE(FILLING), startFillingCondition,
-     emptyToFillingAction},
-    // From FILLING to PARTIAL_FILLED when stopped before full
-    {WL_STATE(FILLING), WL_STATE(PARTIAL_FILLED), stopCondition,
-     stopActionClearFlag},
-    // From PARTIAL_FILLED to FULL when the level reaches capacity
-    {WL_STATE(PARTIAL_FILLED), WL_STATE(FULL), reachedFull, stopAction},
-    // From FILLING to FULL when the level reaches capacity
-    {WL_STATE(FILLING), WL_STATE(FULL), levelFullCondition, stopAction},
+//   // Default constructor
+//   constexpr WaterLevelSM()
+//       : StateMachine(StateWaterLevel::EMPTY, WaterLevelConfig{},
+//                      WaterLevelInputs) {}
 
-    // From FULL to DRAINING when start draining is commanded
-    {WL_STATE(FULL), WL_STATE(DRAINING), startDrainingCondition,
-     fullToDrainingAction},
-    // From DRAINING to EMPTY when the level reaches 0
-    {WL_STATE(DRAINING), WL_STATE(EMPTY), levelEmptyCondition, stopAction},
-    // From DRAINING to PARTIAL_FILLED when stopped before empty
-    {WL_STATE(DRAINING), WL_STATE(PARTIAL_FILLED), stopCondition,
-     stopActionClearFlag},
-    // From PARTIAL_FILLED to FILLING when start filling is commanded
-    {WL_STATE(PARTIAL_FILLED), WL_STATE(FILLING), startFillingCondition,
-     partialToFillingAction},
-    // From PARTIAL_FILLED to DRAINING when start draining is commanded
-    {WL_STATE(PARTIAL_FILLED), WL_STATE(DRAINING), startDrainingCondition,
-     partialToDrainingAction},
-};
+//   // Get the current state as a string for debugging or display
+//   String getStateString() const {
+//     switch (getState()) {
+//     case StateWaterLevel::EMPTY:
+//       return "EMPTY";
+//     case StateWaterLevel::START_FILLING:
+//       return "START_FILLING";
+//     case StateWaterLevel::FILLING:
+//       return "FILLING";
+//     case StateWaterLevel::DRAINING:
+//       return "DRAINING";
+//     case StateWaterLevel::PARTIAL_FILLED:
+//       return "PARTIAL_FILLED";
+//     case StateWaterLevel::FULL:
+//       return "FULL";
+//     case StateWaterLevel::OVERFLOW:
+//       return "OVERFLOW";
+//     default:
+//       return "UNKNOWN";
+//     }
+//   }
+// };
 
-} // namespace WL_SM
+// } // namespace SM
 
-namespace SM {
-
-class WaterLevelSM
-    : public StateMachine<WaterLevelSM, StateWaterLevel, WaterLevelConfig,
-                          WaterLevelData, WL_SM::WaterLevelTransitions,
-                          sizeof(WL_SM::WaterLevelTransitions) /
-                              sizeof(WL_SM::WaterLevelTransitions[0])> {
-public:
-  // Constructor with initial data
-  WaterLevelSM(const WaterLevelData &initData)
-      : StateMachine(StateWaterLevel::EMPTY, initData) {}
-
-  // Default constructor
-  constexpr WaterLevelSM()
-      : StateMachine(StateWaterLevel::EMPTY, WaterLevelData{}) {}
-
-  // Get the current state as a string for debugging or display
-  String getStateString() const {
-    switch (getState()) {
-    case StateWaterLevel::EMPTY:
-      return "EMPTY";
-    case StateWaterLevel::FILLING:
-      return "FILLING";
-    case StateWaterLevel::DRAINING:
-      return "DRAINING";
-    case StateWaterLevel::PARTIAL_FILLED:
-      return "PARTIAL_FILLED";
-    case StateWaterLevel::FULL:
-      return "FULL";
-    case StateWaterLevel::OVERFLOW:
-      return "OVERFLOW";
-    default:
-      return "UNKNOWN";
-    }
-  }
-};
-
-} // namespace SM
-
-#endif // WATER_LEVEL_SM_HPP
+// #endif // WATER_LEVEL_SM_HPP
