@@ -228,10 +228,11 @@ void TestTask(void *param) {
     SM::TrafficLightInput input;
     input.delta_time_ms = delta;
     trafficLight.updateData(input);
+    // trafficLight.update();
     lastMillis = currentMillis;
 
     // Update the state machine to check transitions
-    // trafficLight.update();
+    trafficLight.update();
 
     // Check if the state has changed
     SM::StateTrafficLight currentState = trafficLight.getState();

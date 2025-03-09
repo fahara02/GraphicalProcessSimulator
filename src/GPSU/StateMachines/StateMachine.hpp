@@ -45,7 +45,6 @@ public:
   void updateData(const Inputs &newData) {
     inputData_ = newData;
     updateInternalState(newData);
-    update();
   }
   Command update() {
 
@@ -58,7 +57,6 @@ public:
           oldState_.store(currentState_.load());
           currentState_.store(static_cast<StateEnum>(t.to));
           inputData_ = Inputs{};
-          resetInternalState();
           notifyTransition(oldState_, static_cast<StateEnum>(t.to));
           break;
         }
@@ -68,7 +66,6 @@ public:
   }
   void setConfig(const StateConfig &config) { config_ = config; }
   virtual void updateInternalState(const Inputs &newData) = 0;
-  virtual void resetInternalState() = 0;
 
 protected:
   std::atomic<StateEnum> oldState_;

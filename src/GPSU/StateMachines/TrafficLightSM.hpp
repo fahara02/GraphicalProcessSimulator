@@ -122,24 +122,27 @@ class TrafficLightSM
                           sizeof(TL_SM::TrafficTransitions) /
                               sizeof(TL_SM::TrafficTransitions[0])> {
 public:
-  TrafficLightSM(const TrafficLightInput &initData)
-      : StateMachine(StateTrafficLight::INIT, TrafficLightConfig{}, initData) {}
-  TrafficLightSM(const TrafficLightConfig config)
-      : StateMachine(StateTrafficLight::INIT, config, TrafficLightInput{}) {}
-  TrafficLightSM(const TrafficLightConfig config,
-                 const TrafficLightInput &initData)
-      : StateMachine(StateTrafficLight::INIT, config, initData) {}
+  explicit TrafficLightSM(const TrafficLightConfig config,
+                          const TrafficLightInput &initData)
+      : StateMachine(StateTrafficLight::INIT, config, initData) {
 
+    registerTransitionCallback(
+        [this](StateTrafficLight from, StateTrafficLight to,
+               const TrafficLightInput &, const TrafficLightConfig &) {
+          this->data_.current_time_ms = 0; // Reset timer when state changes
+          this->command_.data.immediate_transition = false;
+        });
+  }
+  TrafficLightSM(const TrafficLightInput &initData)
+      : TrafficLightSM(TrafficLightConfig{}, initData) {}
+  TrafficLightSM(const TrafficLightConfig config)
+      : TrafficLightSM(config, TrafficLightInput{}) {}
   // Default constructor remains if needed
   constexpr TrafficLightSM()
-      : StateMachine(StateTrafficLight::INIT, TrafficLightConfig{},
-                     TrafficLightInput{}) {}
+      : TrafficLightSM(TrafficLightConfig{}, TrafficLightInput{}) {}
   void updateInternalState(const TrafficLightInput &data) override {
     data_.current_time_ms += data.delta_time_ms;
   }
-  void resetInternalState() override { data_.current_time_ms = 0; }
-  //   void incrementTimer(int delta_ms) { inputData_.current_time_ms +=
-  //   delta_ms; }
 
   // Add method to get state as a string
   String getStateString() const {

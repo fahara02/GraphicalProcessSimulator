@@ -21,11 +21,11 @@ enum class CommandsTL {
 };
 struct TrafficLightInput {
   int delta_time_ms;
-  bool button_pressed;
+  bool button_pressed = false;
 };
 struct TrafficLightOutPut {
   int timeout_ms;
-  bool immediate_transition;
+  bool immediate_transition = false;
 };
 struct TLCommand {
   CommandsTL command;
