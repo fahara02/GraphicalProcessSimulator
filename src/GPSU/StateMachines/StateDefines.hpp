@@ -27,14 +27,28 @@ enum class StateWaterLevel : uint8_t {
 
 };
 struct WaterLevelConfig {
-  const uint16_t tankCapacity = 2000;
-  const uint16_t pumpFlowRate = 100;
-  const float sensor_volt_per_litre_mv = 2.3;
+  uint16_t tankMaxCapacityLitre = 2100;
+  uint16_t tankCapacityLitre = 2000;
+  uint16_t partialLevelLow = 500;
+  uint16_t partialLevelHigh = 1900;
+  uint16_t drainingMark = 1800;
+  int pumpFillFlowRate = 100;
+  int pumpDrainFlowRate = -50;
+  float sensorVoltperLitre = 2.3;
+  float sensorMinSensivityLitre = 10;
 };
 struct WaterLevelData {
-  int sensorADC;
-  int pumpSpeed;
-  float currentLevel;
+  int sensorADC;      // Raw sensor reading
+  int pumpSpeed;      // Desired pump speed (positive for filling, negative for
+                      // draining, 0 for off)
+  float currentLevel; // Current water level in the tank in litre
+  float fullLevel;    // Tank capacity, set from config.tankCapacity
+  int pumpFlowRate;   // Pump flow rate, set from config.pumpFlowRate
+  bool start_filling_flag;  // Flag to start filling
+  bool start_draining_flag; // Flag to start draining
+  bool stop_flag;           // Flag to stop the pump
+  bool open_drain_valve;
+  bool alarm;
 };
 struct StapperConfig {
   const float degreePerStep = 1.9;
