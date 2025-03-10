@@ -11,10 +11,12 @@ struct Context {
   using Config = TrafficLight::Config;
   using Data = TrafficLight::Data;
   using Inputs = TrafficLight::Inputs;
+  using Event = TrafficLight::Event;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
+  Event event;
 };
 
 struct Traits {
@@ -22,6 +24,7 @@ struct Traits {
   using Config = TrafficLight::Config;
   using Data = TrafficLight::Data;
   using Inputs = TrafficLight::Inputs;
+  using Event = TrafficLight::Event;
   using State = TrafficLight::State;
   using Command = TrafficLight::Command;
   using Guard = bool (*)(const Context &);
@@ -30,8 +33,8 @@ struct Traits {
 
   static constexpr bool has_exit_actions = true;
   static constexpr bool has_entry_actions = true;
-  static constexpr uint16_t state_count = 4;
-  static constexpr uint16_t transition_count = 6;
+  static constexpr uint16_t state_count = 5;
+  static constexpr uint16_t transition_count = 10;
 
   struct Transition {
     State from;
@@ -42,6 +45,12 @@ struct Traits {
   };
 
   static bool alwaysTrue(const Context &ctx) { return true; }
+  static bool systemFault(const Context &ctx) {
+    return ctx.event == Event::LED_FAULT || ctx.event == Event::TIMER_FAULT;
+  }
+  static bool systemFaultCleared(const Context &ctx) {
+    return ctx.event == Event::OK;
+  }
 
   static bool timeoutRed(const Context &ctx) {
     return ctx.data.current_time_ms >= ctx.config.redTimeout_ms;
@@ -157,19 +166,27 @@ struct Traits {
     }
   };
 
-  static constexpr std::array<Transition, transition_count> transitions = {
-      {{State::INIT, State::RED_STATE, alwaysTrue, entryActions::initToRed,
-        nullptr},
-       {State::RED_STATE, State::YELLOW_STATE, timeoutRed,
-        entryActions::redToYellow, exitActions::redToYellow},
-       {State::YELLOW_STATE, State::GREEN_STATE, timeoutYellowToGreen,
-        entryActions::yellowToGreen, exitActions::yellowToGreen},
-       {State::GREEN_STATE, State::YELLOW_STATE, timeoutGreen,
-        entryActions::greenToYellow, exitActions::greenToYellow},
-       {State::YELLOW_STATE, State::RED_STATE, timeoutYellowToRed,
-        entryActions::yellowToRed, exitActions::yellowToRed},
-       {State::RED_STATE, State::GREEN_STATE, buttonPress,
-        entryActions::redToGreen, exitActions::redToGreen}}};
+  static constexpr std::array<Transition, transition_count> transitions = {{
+      {State::INIT, State::RED_STATE, alwaysTrue, entryActions::initToRed,
+       nullptr},
+      {State::RED_STATE, State::YELLOW_STATE, timeoutRed,
+       entryActions::redToYellow, exitActions::redToYellow},
+      {State::YELLOW_STATE, State::GREEN_STATE, timeoutYellowToGreen,
+       entryActions::yellowToGreen, exitActions::yellowToGreen},
+      {State::GREEN_STATE, State::YELLOW_STATE, timeoutGreen,
+       entryActions::greenToYellow, exitActions::greenToYellow},
+      {State::YELLOW_STATE, State::RED_STATE, timeoutYellowToRed,
+       entryActions::yellowToRed, exitActions::yellowToRed},
+      {State::RED_STATE, State::GREEN_STATE, buttonPress,
+       entryActions::redToGreen, exitActions::redToGreen},
+      {State::RED_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
+      {State::YELLOW_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
+      {State::GREEN_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
+      {State::SYSTEM_FAULT, State::INIT, systemFaultCleared, nullptr, nullptr},
+
+  }
+
+  };
 
   static constexpr auto transitions_by_state =
       SM::group_transitions_by_state<Transition, transition_count, state_count>(
@@ -187,6 +204,7 @@ public:
   using Context = Traits::Context;
   using State = Traits::State;
   using Inputs = TrafficLight::Inputs;
+  using Event = TrafficLight::Event;
   explicit TrafficLightSM(const Context &context, State state)
       : StateMachine(context, state) {
 
@@ -200,6 +218,7 @@ public:
     ctx_.data.current_time_ms += input.external_timer.delta_time_ms;
     ctx_.inputs = input;
   }
+  void updateInternalState(const Event ev) { ctx_.event = ev; }
   static void resetTimerCallback(State from, State to, Context &ctx) {
     ctx.data.current_time_ms = 0;
   }

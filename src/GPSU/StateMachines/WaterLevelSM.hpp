@@ -10,10 +10,12 @@ struct Context {
   using Config = WaterLevel::Config;
   using Data = WaterLevel::Data;
   using Inputs = WaterLevel::Inputs;
+  using Event = WaterLevel::Event;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
+  Event event;
 };
 
 struct Traits {
@@ -21,6 +23,7 @@ struct Traits {
   using Config = WaterLevel::Config;
   using Data = WaterLevel::Data;
   using Inputs = WaterLevel::Inputs;
+  using Event = WaterLevel::Event;
   using State = WaterLevel::State;
   using Command = WaterLevel::Command;
   using Guard = bool (*)(const Context &);
@@ -29,7 +32,7 @@ struct Traits {
 
   static constexpr bool has_exit_actions = true;
   static constexpr bool has_entry_actions = true;
-  static constexpr uint16_t state_count = 7;
+  static constexpr uint16_t state_count = 8;
   static constexpr uint16_t transition_count = 18;
 
   struct Transition {
@@ -39,7 +42,14 @@ struct Traits {
     EntryAction entry_action;
     ExitAction exit_action;
   };
-
+  static bool systemFault(const Context &ctx) {
+    return ctx.event == Event::DRAIN_VALVE_FAULT ||
+           ctx.event == Event::FILL_VALVE_FAULT ||
+           ctx.event == Event::PUMP_FAULT || ctx.event == Event::SENSOR_FAULT;
+  }
+  static bool systemFaultCleared(const Context &ctx) {
+    return ctx.event == Event::OK;
+  }
   static inline bool detectedOverflow(const Context &ctx) {
     return ctx.data.current_level > ctx.config.max_capacity;
   }
@@ -233,6 +243,7 @@ public:
   using Context = Traits::Context;
   using State = Traits::State;
   using Inputs = WaterLevel::Inputs;
+  using Event = WaterLevel::Event;
 
   WaterLevelSM(const Context &context = Context{})
       : StateMachine(context, State::EMPTY) {}
@@ -242,6 +253,7 @@ public:
     ctx_.data.current_target_level = input.user_command.new_target_level;
     ctx_.inputs = input;
   }
+  void updateInternalState(const Event ev) { ctx_.event = ev; }
   // Get the current state as a string for debugging or display
   String getStateString() const {
     return GPSU::Util::ToString::WLState(current());

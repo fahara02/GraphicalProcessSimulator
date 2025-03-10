@@ -48,6 +48,8 @@ public:
         return "GREEN";
       case State::YELLOW_STATE:
         return "YELLOW";
+      case State::SYSTEM_FAULT:
+        return "SYSTEM_FAULT";
       default:
         return "UNKNOWN";
       }
@@ -71,6 +73,7 @@ public:
         return "TURN_OFF_GREEN";
       case Command::RESET:
         return "RESET";
+
       default:
         return "UNKNOWN";
       }
@@ -92,6 +95,8 @@ public:
         return "FULL";
       case State::OVERFLOW:
         return "OVERFLOW";
+      case State::SYSTEM_FAULT:
+        return "SYSTEM_FAULT";
       default:
         return "UNKNOWN";
       }

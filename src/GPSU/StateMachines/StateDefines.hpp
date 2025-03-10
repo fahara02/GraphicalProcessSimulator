@@ -2,7 +2,18 @@
 #define STATE_DEFINES_HPP
 #include "stdint.h"
 namespace TrafficLight {
-enum class State : uint8_t { INIT = 0, RED_STATE, GREEN_STATE, YELLOW_STATE };
+enum class State : uint8_t {
+  INIT = 0,
+  RED_STATE,
+  GREEN_STATE,
+  YELLOW_STATE,
+  SYSTEM_FAULT
+};
+enum class Event : uint8_t {
+  OK = 0,
+  TIMER_FAULT,
+  LED_FAULT,
+};
 enum class CommandType : uint8_t {
   NONE = 0,
   RESET,
@@ -55,6 +66,7 @@ enum class State : uint8_t {
   PARTIAL_FILLED,
   FULL,
   OVERFLOW,
+  SYSTEM_FAULT
 };
 enum class CommandType : uint8_t {
   NONE = 0,
@@ -65,6 +77,7 @@ enum class CommandType : uint8_t {
   START_DRAIN,
   TRIGGER_ALARM,
   CLEAR_ALARM,
+
 };
 struct CommandData {
   int pump_speed = 0;
@@ -105,6 +118,13 @@ struct Inputs {
     bool drain_request = false;
     bool stop = false;
   } user_command;
+};
+enum class Event : uint8_t {
+  OK = 0,
+  SENSOR_FAULT,
+  PUMP_FAULT,
+  DRAIN_VALVE_FAULT,
+  FILL_VALVE_FAULT,
 };
 struct Data {
   unsigned long filling_start_time = 0;
