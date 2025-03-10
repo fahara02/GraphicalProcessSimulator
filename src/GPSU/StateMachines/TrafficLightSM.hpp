@@ -193,6 +193,7 @@ public:
 
   void updateInternalState(const Inputs &input) {
     ctx_.data.current_time_ms += input.external_timer.delta_time_ms;
+    ctx_.inputs = input;
   }
   static void resetTimerCallback(State from, State to, Context &ctx) {
     ctx.data.current_time_ms = 0;

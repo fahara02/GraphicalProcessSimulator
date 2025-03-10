@@ -111,24 +111,13 @@ struct Data {
   float current_target_level = 0;
 };
 } // namespace WaterLevel
-namespace SM {
+namespace StepperMotor {
 
-enum class StateWaterLevel : uint8_t {
-  EMPTY = 0,
-  START_FILLING,
-  FILLING,
-  DRAINING,
-  PARTIAL_FILLED,
-  FULL,
-  OVERFLOW,
-
-};
-
-struct StepperConfig {
+struct Config {
   const float degreePerStep = 1.9;
   const uint16_t step_per_mm = 120;
 };
-struct StepperData {
+struct Data {
   uint16_t currentDirection = 1; //+1 or -1
   uint16_t currentStep;
 };
@@ -140,6 +129,6 @@ enum class StateStepperMotor : uint8_t {
 
 };
 
-} // namespace SM
+} // namespace StepperMotor
 
 #endif

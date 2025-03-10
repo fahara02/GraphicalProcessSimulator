@@ -75,6 +75,27 @@ public:
         return "UNKNOWN";
       }
     }
+    static const char *WLState(WaterLevel::State state) {
+      using State = WaterLevel::State;
+      switch (state) {
+      case State::EMPTY:
+        return "EMPTY";
+      case State::START_FILLING:
+        return "START_FILLING";
+      case State::FILLING:
+        return "FILLING";
+      case State::DRAINING:
+        return "DRAINING";
+      case State::PARTIAL_FILLED:
+        return "PARTIAL_FILLED";
+      case State::FULL:
+        return "FULL";
+      case State::OVERFLOW:
+        return "OVERFLOW";
+      default:
+        return "UNKNOWN";
+      }
+    }
 
     static const char *TankState(int state) {
 

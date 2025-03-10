@@ -2,6 +2,7 @@
 #pragma once
 #include "StateMachines/StateDefines.hpp"
 #include "StateMachines/StateMachine.hpp"
+#include "Utility/gpsuUtility.hpp"
 
 namespace WaterLevel {
 
@@ -234,27 +235,11 @@ public:
   void updateInternalState(const Inputs &input) {
     ctx_.data.current_level = input.sensors.measured_level;
     ctx_.data.current_target_level = input.user_command.new_target_level;
+    ctx_.inputs = input;
   }
   // Get the current state as a string for debugging or display
   String getStateString() const {
-    switch (current()) {
-    case State::EMPTY:
-      return "EMPTY";
-    case State::START_FILLING:
-      return "START_FILLING";
-    case State::FILLING:
-      return "FILLING";
-    case State::DRAINING:
-      return "DRAINING";
-    case State::PARTIAL_FILLED:
-      return "PARTIAL_FILLED";
-    case State::FULL:
-      return "FULL";
-    case State::OVERFLOW:
-      return "OVERFLOW";
-    default:
-      return "UNKNOWN";
-    }
+    return GPSU::Util::ToString::WLState(current());
   }
 };
 

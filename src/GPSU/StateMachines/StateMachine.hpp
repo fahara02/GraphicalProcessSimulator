@@ -20,52 +20,22 @@ public:
   }
 
   Command update() {
+    Command cmd = Command{};
     if (!dataUpdated_)
-      return Command{};
+      return cmd;
     dataUpdated_ = false;
-    Command cmd;
-    bool transitionFound = false;
+
     for (const auto &t : transitions_) {
       if (t.from == current() && t.condition && t.condition(ctx_)) {
-        Command exitCmd, entryCmd;
-        // Execute exit action from the current state
-        if constexpr (Traits::has_exit_actions) {
-          if (t.exit_action) {
-            exitCmd = t.exit_action(ctx_);
-          }
-        }
-        // Update to the new state
-        previous_.store(current_);
-        const State newState = t.to;
-        current_.store(newState);
+        Command cmd = executeTransition(t);
+        previous_.store(current());
+        current_.store(t.to);
         ctx_.previous_state = previous_.load();
-        // Execute entry action for the new state
-        if constexpr (Traits::has_entry_actions) {
-          if (t.entry_action) {
-            entryCmd = t.entry_action(ctx_);
-          }
-        }
-
-        // Merge exit and entry commands
-        if (exitCmd.check_exit) {
-          cmd.exit_command = exitCmd.exit_command;
-          cmd.exit_data = exitCmd.exit_data;
-          cmd.check_exit = true;
-        }
-        if (entryCmd.check_entry) {
-          cmd.entry_command = entryCmd.entry_command;
-          cmd.entry_data = entryCmd.entry_data;
-          cmd.check_entry = true;
-        }
-        notify(previous_.load(), newState);
-        transitionFound = true;
-        break;
+        notify(previous_, current_);
+        return cmd;
       }
     }
-    if (!transitionFound) {
-      // Serial.println("No valid transition found for state: " +
-      //                String((int)current()));
-    }
+
     return cmd;
   }
 
@@ -105,6 +75,31 @@ private:
       transitions_[i] = Traits::transitions[i];
     }
     transitionCount_ = Traits::transition_count;
+  }
+  Command executeTransition(const Transition &t) {
+    Command cmd{};
+    if constexpr (Traits::has_exit_actions) {
+      if (t.exit_action)
+        cmd = mergeCommands(cmd, t.exit_action(ctx_));
+    }
+    if constexpr (Traits::has_entry_actions) {
+      if (t.entry_action)
+        cmd = mergeCommands(cmd, t.entry_action(ctx_));
+    }
+    return cmd;
+  }
+  Command mergeCommands(Command base, Command next) {
+    if (next.check_exit) {
+      base.exit_command = next.exit_command;
+      base.exit_data = next.exit_data;
+      base.check_exit = true;
+    }
+    if (next.check_entry) {
+      base.entry_command = next.entry_command;
+      base.entry_data = next.entry_data;
+      base.check_entry = true;
+    }
+    return base;
   }
 };
 } // namespace SM
