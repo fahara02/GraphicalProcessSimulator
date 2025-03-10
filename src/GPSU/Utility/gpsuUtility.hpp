@@ -2,6 +2,7 @@
 #define GPSU_UTILITY_HPP
 
 #include "Process/ProcessDefines.hpp"
+#include "StateMachines/StateDefines.hpp"
 
 namespace GPSU {
 
@@ -36,6 +37,45 @@ public:
         break;
       }
     }
+    static const char *TLState(TrafficLight::State state) {
+      using State = TrafficLight::State;
+      switch (state) {
+      case State::INIT:
+        return "INIT";
+      case State::RED_STATE:
+        return "RED";
+      case State::GREEN_STATE:
+        return "GREEN";
+      case State::YELLOW_STATE:
+        return "YELLOW";
+      default:
+        return "UNKNOWN";
+      }
+    }
+    static const char *TLCommands(TrafficLight::CommandType command) {
+      using Command = TrafficLight::CommandType;
+      switch (command) {
+      case Command::NONE:
+        return "NONE";
+      case Command::TURN_ON_RED:
+        return "TURN_ON_RED";
+      case Command::TURN_OFF_RED:
+        return "TURN_OFF_RED";
+      case Command::TURN_ON_YELLOW:
+        return "TURN_ON_YELLOW";
+      case Command::TURN_OFF_YELLOW:
+        return "TURN_OFF_YELLOW";
+      case Command::TURN_ON_GREEN:
+        return "TURN_ON_GREEN";
+      case Command::TURN_OFF_GREEN:
+        return "TURN_OFF_GREEN";
+      case Command::RESET:
+        return "RESET";
+      default:
+        return "UNKNOWN";
+      }
+    }
+
     static const char *TankState(int state) {
 
       switch (state) {

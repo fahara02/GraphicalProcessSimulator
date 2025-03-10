@@ -1,70 +1,10 @@
 // WaterLevelSM.hpp
 #pragma once
+#include "StateMachines/StateDefines.hpp"
 #include "StateMachines/StateMachine.hpp"
 
 namespace WaterLevel {
 
-enum class State : uint8_t {
-  EMPTY = 0,
-  START_FILLING,
-  FILLING,
-  DRAINING,
-  PARTIAL_FILLED,
-  FULL,
-  OVERFLOW,
-};
-enum class CommandType {
-  NONE,
-  LEVEL_UPDATE,
-  START_FILL,
-  FILL_TO_LEVEL,
-  STOP,
-  START_DRAIN,
-  TRIGGER_ALARM,
-  CLEAR_ALARM,
-};
-struct CommandData {
-  int pump_speed = 0;
-  float target_level = 0.0f;
-  bool open_drain_valve = false;
-  bool open_fill_valve = false;
-  bool alarm = false;
-};
-struct Command {
-  CommandType exit_command;
-  CommandType entry_command;
-  CommandData exit_data;
-  CommandData entry_data;
-};
-struct Config {
-  float alarm_level = 2100;
-  float max_capacity = 2000;
-  float partial_mark = 500;
-  float draining_mark = 1800;
-  int fill_rate = 100;
-  int drain_rate = -50;
-  float sensor_min_sensitivity = 10;
-  float hysteresis = 15;
-};
-
-struct Inputs {
-  struct Sensors {
-    float raw_adc_value;
-    float measured_level;
-    bool drain_valve_state = false;
-    bool fill_valve_state = false;
-  } sensors;
-  struct UserCommand {
-    float new_target_level;
-    bool fill_request;
-    bool drain_request;
-    bool stop;
-  } user_command;
-};
-struct Data {
-  float current_level;
-  float current_target_level;
-};
 struct Context {
   using Config = WaterLevel::Config;
   using Data = WaterLevel::Data;
@@ -150,6 +90,8 @@ struct Traits {
     static Command handleOverflow(const Context &ctx) {
       // Stop filling or trigger an alarm in case of overflow.
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TRIGGER_ALARM;
       cmd.entry_data.pump_speed = 0;
       cmd.entry_data.open_fill_valve = false;
@@ -159,6 +101,8 @@ struct Traits {
 
     static Command emptyToFilling(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::START_FILL;
       cmd.entry_data.pump_speed = ctx.config.fill_rate; // Start filling
       cmd.entry_data.open_fill_valve = true;
@@ -166,6 +110,8 @@ struct Traits {
     }
     static Command startDraining(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::START_DRAIN;
       cmd.entry_data.pump_speed = ctx.config.drain_rate;
       cmd.entry_data.open_drain_valve = true;
@@ -174,6 +120,8 @@ struct Traits {
 
     static Command stop(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::STOP;
       cmd.entry_data.pump_speed = 0;
       cmd.entry_data.open_fill_valve = false;
@@ -182,6 +130,8 @@ struct Traits {
     }
     static Command fullToDraining(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::START_DRAIN;
       cmd.entry_data.pump_speed = ctx.config.drain_rate;
       cmd.entry_data.open_drain_valve = true;
@@ -190,6 +140,8 @@ struct Traits {
 
     static Command partialToFilling(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::START_FILL;
       cmd.entry_data.pump_speed = ctx.config.fill_rate;
       cmd.entry_data.target_level = ctx.inputs.user_command.new_target_level;
@@ -199,6 +151,8 @@ struct Traits {
 
     static Command partialToDraining(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::START_DRAIN;
       cmd.entry_data.pump_speed = ctx.config.drain_rate;
       cmd.entry_data.target_level = ctx.inputs.user_command.new_target_level;
@@ -209,6 +163,8 @@ struct Traits {
   struct exitActions {
     static Command clearAlarm(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = false;
+      cmd.check_exit = true;
       cmd.exit_command = CommandType::CLEAR_ALARM;
       cmd.exit_data.alarm = false; // Turn off the alarm
       return cmd;

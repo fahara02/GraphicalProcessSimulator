@@ -32,8 +32,11 @@ public:
 
         // Execute exit action from the current state
         if constexpr (Traits::has_exit_actions) {
-          if (t.exit_action)
+
+          if (t.exit_action) {
+
             exitCmd = t.exit_action(ctx_);
+          }
         }
 
         // Update to the new state
@@ -44,15 +47,24 @@ public:
 
         // Execute entry action for the new state
         if constexpr (Traits::has_entry_actions) {
-          if (t.entry_action)
+
+          if (t.entry_action) {
+
             entryCmd = t.entry_action(ctx_);
+          }
         }
 
         // Merge exit and entry commands
-        cmd.exit_command = exitCmd.exit_command;
-        cmd.exit_data = exitCmd.exit_data;
-        cmd.entry_command = entryCmd.entry_command;
-        cmd.entry_data = entryCmd.entry_data;
+        if (exitCmd.check_exit) {
+          cmd.exit_command = exitCmd.exit_command;
+          cmd.exit_data = exitCmd.exit_data;
+          cmd.check_exit = true;
+        }
+        if (entryCmd.check_entry) {
+          cmd.entry_command = entryCmd.entry_command;
+          cmd.entry_data = entryCmd.entry_data;
+          cmd.check_entry = true;
+        }
 
         notify(previous_.load(), newState);
         transitionFound = true;
@@ -60,8 +72,8 @@ public:
       }
     }
     if (!transitionFound) {
-      Serial.println("No valid transition found for state: " +
-                     String((int)current()));
+      // Serial.println("No valid transition found for state: " +
+      //                String((int)current()));
     }
     return cmd;
   }

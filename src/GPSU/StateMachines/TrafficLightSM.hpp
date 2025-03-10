@@ -1,49 +1,12 @@
 // TrafficLightSM.hpp
 #pragma once
 #include "Arduino.h"
+#include "StateMachines/StateDefines.hpp"
 #include "StateMachines/StateMachine.hpp"
+#include "Utility/gpsuUtility.hpp"
 
 namespace TrafficLight {
-enum class State { INIT, RED_STATE, GREEN_STATE, YELLOW_STATE };
-enum class CommandType {
-  NONE,
-  RESET,
-  TURN_ON_RED,
-  TURN_ON_YELLOW,
-  TURN_ON_GREEN,
-  TURN_OFF_RED,
-  TURN_OFF_YELLOW,
-  TURN_OFF_GREEN,
-};
-struct CommandData {
-  int timeout_ms;
-  bool immediate_transition = false;
-};
-struct Command {
-  CommandType exit_command;
-  CommandType entry_command;
-  CommandData exit_data;
-  CommandData entry_data;
-};
-struct Config {
-  int redTimeout_ms = 5000;
-  int greenTimeout_ms = 3000;
-  int yellowTimeout_ms = 2000;
-  bool allowImmediateTransition = false;
-  uint16_t error_blink_interval = 500;
-  uint8_t max_errors = 3;
-};
-struct Inputs {
-  struct Timer {
-    int delta_time_ms;
-  } external_timer;
-  struct UserCommand {
-    bool button_pressed = false;
-  } user_command;
-};
-struct Data {
-  uint32_t current_time_ms;
-};
+
 struct Context {
   using Config = TrafficLight::Config;
   using Data = TrafficLight::Data;
@@ -99,6 +62,8 @@ struct Traits {
   struct entryActions {
     static Command initToRed(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TURN_ON_RED;
       cmd.entry_data.timeout_ms = 0;
       cmd.entry_data.immediate_transition = false;
@@ -107,6 +72,8 @@ struct Traits {
     static Command redToYellow(const Context &ctx) {
 
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TURN_ON_YELLOW;
       cmd.entry_data.timeout_ms = ctx.config.yellowTimeout_ms;
       return cmd;
@@ -114,24 +81,34 @@ struct Traits {
     static Command redToGreen(const Context &ctx) {
 
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TURN_ON_GREEN;
       cmd.entry_data.immediate_transition = true;
       return cmd;
     }
     static Command yellowToGreen(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TURN_ON_GREEN;
       cmd.entry_data.timeout_ms = ctx.config.greenTimeout_ms;
+
       return cmd;
     }
     static Command greenToYellow(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TURN_ON_YELLOW;
       cmd.entry_data.timeout_ms = ctx.config.yellowTimeout_ms;
+
       return cmd;
     }
     static Command yellowToRed(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = true;
+      cmd.check_exit = false;
       cmd.entry_command = CommandType::TURN_ON_RED;
       cmd.entry_data.timeout_ms = ctx.config.redTimeout_ms;
       return cmd;
@@ -142,30 +119,39 @@ struct Traits {
     static Command redToYellow(const Context &ctx) {
 
       Command cmd;
+      cmd.check_entry = false;
+      cmd.check_exit = true;
       cmd.exit_command = CommandType::TURN_OFF_RED;
       return cmd;
     }
     static Command redToGreen(const Context &ctx) {
 
       Command cmd;
+      cmd.check_entry = false;
+      cmd.check_exit = true;
       cmd.exit_command = CommandType::TURN_OFF_RED;
       cmd.exit_data.immediate_transition = false;
       return cmd;
     }
     static Command yellowToGreen(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = false;
+      cmd.check_exit = true;
       cmd.exit_command = CommandType::TURN_OFF_YELLOW;
       return cmd;
     }
     static Command greenToYellow(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = false;
+      cmd.check_exit = true;
       cmd.exit_command = CommandType::TURN_OFF_GREEN;
       return cmd;
     }
     static Command yellowToRed(const Context &ctx) {
       Command cmd;
+      cmd.check_entry = false;
+      cmd.check_exit = true;
       cmd.exit_command = CommandType::TURN_OFF_YELLOW;
-
       return cmd;
     }
   };
@@ -212,19 +198,8 @@ public:
     ctx.data.current_time_ms = 0;
   }
   // Add method to get state as a string
-  String getStateString() const {
-    switch (current()) {
-    case State::INIT:
-      return "INIT";
-    case State::RED_STATE:
-      return "RED";
-    case State::GREEN_STATE:
-      return "GREEN";
-    case State::YELLOW_STATE:
-      return "YELLOW";
-    default:
-      return "UNKNOWN";
-    }
+  const char *getStateString() const {
+    return GPSU::Util::ToString::TLState(current());
   }
 };
 

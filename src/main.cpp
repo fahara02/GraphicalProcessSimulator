@@ -111,7 +111,7 @@ TrafficLight::Context context{
 SM::TrafficLightSM trafficLight(context); // Global object
 unsigned long lastMillis;      // Global variable to track last update time
 TrafficLight::State prevState; // Global variable to track previous state
-// SM::WaterLevelSM waterLevel;
+SM::WaterLevelSM waterLevel;
 void setup() {
 
   Serial.begin(115200);
@@ -120,7 +120,7 @@ void setup() {
 
   // Perform initial update to transition from INIT to RED_STATE
   // trafficLight.update();
-  // waterLevel.update();
+  waterLevel.update();
   //  Print initial state
   Serial.print("Initial state: ");
   Serial.println(trafficLight.getStateString());
@@ -222,7 +222,7 @@ void setup() {
   // ledcWrite(pwmLedChannelTFT, 100);
 }
 void loop() {
-  Serial.println("....main loop.......");
+  Serial.println("......");
   vTaskDelay(500);
 }
 void TestTask(void *param) {
@@ -236,15 +236,31 @@ void TestTask(void *param) {
     lastMillis = currentMillis;
 
     // Update the state machine to check transitions
-    trafficLight.update();
+    TrafficLight::Command cmd = trafficLight.update();
+    const char *exitCommand =
+        GPSU::Util::ToString::TLCommands(cmd.exit_command);
+    const char *entryCommand =
+        GPSU::Util::ToString::TLCommands(cmd.entry_command);
+    const char *State = GPSU::Util::ToString::TLState(trafficLight.current());
+
+    if (cmd.check_exit) {
+      Serial.printf("exit command is %s for State %s \n", exitCommand, State);
+    }
+    if (cmd.check_entry) {
+      Serial.printf("entry command is %s for State %s \n", entryCommand, State);
+    }
 
     // Check if the state has changed
     TrafficLight::State currentState = trafficLight.current();
     if (currentState != prevState) {
-      Serial.print("State changed to: ");
-      Serial.print(trafficLight.getStateString());
-      Serial.print(" at time: ");
-      Serial.println(currentMillis);
+      const char *current =
+          GPSU::Util::ToString::TLState(trafficLight.current());
+      const char *previous =
+          GPSU::Util::ToString::TLState(trafficLight.previous());
+
+      Serial.printf("State changed to: %s from state %s in time %lu \n",
+                    current, previous, currentMillis);
+
       prevState = currentState;
     }
   }
