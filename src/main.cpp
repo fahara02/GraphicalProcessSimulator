@@ -101,13 +101,17 @@ void cb2(void *data) { Serial.println(" Higher limit reached"); }
 
 void cb3(int *data) { Serial.println(" lower limit reached"); }
 void cb4(int *data) { Serial.println(" Higher limit reached"); }
+TrafficLight::Context context{
+    TrafficLight::State::INIT, // previous_state
+    {5000, 3000, 2000, false}, // config
+    {0},                       // data
+    {{0}, {false}}             // inputs
+};
 
-// SM::TrafficLightConfig config{5000, 3000, 2000, false};
-
-// SM::TrafficLightSM trafficLight(config); // Global object
-unsigned long lastMillis; // Global variable to track last update time
-// SM::StateTrafficLight prevState; // Global variable to track previous state
-SM::WaterLevelSM waterLevel;
+SM::TrafficLightSM trafficLight(context); // Global object
+unsigned long lastMillis;      // Global variable to track last update time
+TrafficLight::State prevState; // Global variable to track previous state
+// SM::WaterLevelSM waterLevel;
 void setup() {
 
   Serial.begin(115200);
@@ -116,14 +120,14 @@ void setup() {
 
   // Perform initial update to transition from INIT to RED_STATE
   // trafficLight.update();
-  waterLevel.update();
-  // Print initial state
-  // Serial.print("Initial state: ");
-  // Serial.println(trafficLight.getStateString());
+  // waterLevel.update();
+  //  Print initial state
+  Serial.print("Initial state: ");
+  Serial.println(trafficLight.getStateString());
 
   // Record initial time and state
   lastMillis = millis();
-  // prevState = trafficLight.getState();
+  prevState = trafficLight.current();
   // tft.init();
   // display.init();
   // display.showMenu();
@@ -165,9 +169,8 @@ void setup() {
   //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   // expander.dumpRegisters();
 
-  // xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2,
-  // &runTaskhandle,
-  //                         0);
+  xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2, &runTaskhandle,
+                          0);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -222,31 +225,31 @@ void loop() {
   Serial.println("....main loop.......");
   vTaskDelay(500);
 }
-// void TestTask(void *param) {
-//   while (true) {
-//     vTaskDelay(50);
-//     unsigned long currentMillis = millis();
-//     int delta = currentMillis - lastMillis;
-//     SM::TrafficLightInput input;
-//     input.delta_time_ms = delta;
-//     trafficLight.updateData(input);
-//     lastMillis = currentMillis;
+void TestTask(void *param) {
+  while (true) {
+    vTaskDelay(50);
+    unsigned long currentMillis = millis();
+    int delta = currentMillis - lastMillis;
+    TrafficLight::Inputs input;
+    input.external_timer.delta_time_ms = delta;
+    trafficLight.updateData(input);
+    lastMillis = currentMillis;
 
-//     // Update the state machine to check transitions
-//     trafficLight.update();
+    // Update the state machine to check transitions
+    trafficLight.update();
 
-//     // Check if the state has changed
-//     SM::StateTrafficLight currentState = trafficLight.getState();
-//     if (currentState != prevState) {
-//       Serial.print("State changed to: ");
-//       Serial.print(trafficLight.getStateString());
-//       Serial.print(" at time: ");
-//       Serial.println(currentMillis);
-//       prevState = currentState;
-//     }
-//   }
-//   vTaskDelete(NULL);
-// }
+    // Check if the state has changed
+    TrafficLight::State currentState = trafficLight.current();
+    if (currentState != prevState) {
+      Serial.print("State changed to: ");
+      Serial.print(trafficLight.getStateString());
+      Serial.print(" at time: ");
+      Serial.println(currentMillis);
+      prevState = currentState;
+    }
+  }
+  vTaskDelete(NULL);
+}
 // void loop() {
 //   int angle, angle2, angle3 = 0;
 
