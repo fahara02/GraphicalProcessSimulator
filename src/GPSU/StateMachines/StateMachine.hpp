@@ -12,27 +12,25 @@ struct TransitionGroup {
   const Transition *transitions[MaxTransitions] = {};
   std::size_t count = 0;
 };
-
-template <typename Transition, std::size_t N,
-          const std::array<Transition, N> &Transitions>
-constexpr std::size_t compute_state_count() {
+template <typename Transition, std::size_t N>
+constexpr std::size_t
+compute_state_count(const std::array<Transition, N> &transitions) {
   std::size_t max_state = 0;
   for (std::size_t i = 0; i < N; ++i) {
-    std::size_t s = static_cast<std::size_t>(Transitions[i].from);
-    if (s > max_state)
+    std::size_t s = static_cast<std::size_t>(transitions[i].from);
+    if (s > max_state) {
       max_state = s;
+    }
   }
   return max_state + 1;
 }
 
-template <typename Transition, std::size_t N,
-          const std::array<Transition, N> &Transitions>
-constexpr auto group_transitions_by_state() {
-  constexpr std::size_t state_count =
-      compute_state_count<Transition, N, Transitions>();
-  std::array<TransitionGroup<Transition, N>, state_count> groups{};
+template <typename Transition, std::size_t N, std::size_t StateCount>
+constexpr std::array<TransitionGroup<Transition, N>, StateCount>
+group_transitions_by_state(const std::array<Transition, N> &transitions) {
+  std::array<TransitionGroup<Transition, N>, StateCount> groups{};
   for (std::size_t i = 0; i < N; ++i) {
-    const auto &t = Transitions[i];
+    const auto &t = transitions[i];
     std::size_t state = static_cast<std::size_t>(t.from);
     groups[state].transitions[groups[state].count] = &t;
     ++groups[state].count;
@@ -53,13 +51,13 @@ public:
 
   Command update() {
     Command cmd{};
-    if (!dataUpdated_)
+    if (!dataUpdated_) {
       return cmd;
+    }
     dataUpdated_ = false;
-    constexpr auto lookup = Traits::transitions_by_state;
     const auto current_state = static_cast<std::size_t>(current());
-    if (current_state < lookup.size()) {
-      const auto &group = lookup[current_state];
+    if (current_state < Traits::transitions_by_state.size()) {
+      const auto &group = Traits::transitions_by_state[current_state];
       for (std::size_t i = 0; i < group.count; ++i) {
         const auto *t = group.transitions[i];
         if (t->condition && t->condition(ctx_)) {
@@ -74,7 +72,6 @@ public:
     }
     return cmd;
   }
-
   State current() const { return current_.load(); }
   State previous() const { return previous_.load(); }
 

@@ -220,8 +220,8 @@ struct Traits {
   }};
 
   static constexpr auto transitions_by_state =
-      SM::group_transitions_by_state<Transition, transition_count,
-                                     transitions>();
+      SM::group_transitions_by_state<Transition, transition_count, state_count>(
+          transitions);
 };
 
 }; // namespace WaterLevel
