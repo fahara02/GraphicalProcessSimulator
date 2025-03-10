@@ -27,29 +27,21 @@ public:
     bool transitionFound = false;
     for (const auto &t : transitions_) {
       if (t.from == current() && t.condition && t.condition(ctx_)) {
-
         Command exitCmd, entryCmd;
-
         // Execute exit action from the current state
         if constexpr (Traits::has_exit_actions) {
-
           if (t.exit_action) {
-
             exitCmd = t.exit_action(ctx_);
           }
         }
-
         // Update to the new state
         previous_.store(current_);
         const State newState = t.to;
         current_.store(newState);
         ctx_.previous_state = previous_.load();
-
         // Execute entry action for the new state
         if constexpr (Traits::has_entry_actions) {
-
           if (t.entry_action) {
-
             entryCmd = t.entry_action(ctx_);
           }
         }
@@ -65,7 +57,6 @@ public:
           cmd.entry_data = entryCmd.entry_data;
           cmd.check_entry = true;
         }
-
         notify(previous_.load(), newState);
         transitionFound = true;
         break;

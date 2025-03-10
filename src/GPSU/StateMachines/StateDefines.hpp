@@ -2,7 +2,7 @@
 #define STATE_DEFINES_HPP
 #include "stdint.h"
 namespace TrafficLight {
-enum class State { INIT, RED_STATE, GREEN_STATE, YELLOW_STATE };
+enum class State { INIT = 0, RED_STATE, GREEN_STATE, YELLOW_STATE };
 enum class CommandType {
   NONE,
   RESET,
@@ -14,16 +14,16 @@ enum class CommandType {
   TURN_OFF_GREEN,
 };
 struct CommandData {
-  int timeout_ms;
+  int timeout_ms = 0;
   bool immediate_transition = false;
 };
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command;
-  CommandType entry_command;
-  CommandData exit_data;
-  CommandData entry_data;
+  CommandType exit_command = CommandType::NONE;
+  CommandType entry_command = CommandType::NONE;
+  CommandData exit_data = CommandData{};
+  CommandData entry_data = CommandData{};
 };
 struct Config {
   int redTimeout_ms = 5000;
@@ -35,14 +35,14 @@ struct Config {
 };
 struct Inputs {
   struct Timer {
-    int delta_time_ms;
+    int delta_time_ms = 0;
   } external_timer;
   struct UserCommand {
     bool button_pressed = false;
   } user_command;
 };
 struct Data {
-  uint32_t current_time_ms;
+  uint32_t current_time_ms = 0;
 };
 } // namespace TrafficLight
 namespace WaterLevel {
@@ -76,10 +76,10 @@ struct CommandData {
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command;
-  CommandType entry_command;
-  CommandData exit_data;
-  CommandData entry_data;
+  CommandType exit_command = CommandType::NONE;
+  CommandType entry_command = CommandType::NONE;
+  CommandData exit_data = CommandData{};
+  CommandData entry_data = CommandData{};
 };
 struct Config {
   float alarm_level = 2100;
@@ -94,21 +94,21 @@ struct Config {
 
 struct Inputs {
   struct Sensors {
-    float raw_adc_value;
-    float measured_level;
+    float raw_adc_value = 0;
+    float measured_level = 0;
     bool drain_valve_state = false;
     bool fill_valve_state = false;
   } sensors;
   struct UserCommand {
-    float new_target_level;
-    bool fill_request;
-    bool drain_request;
-    bool stop;
+    float new_target_level = 0;
+    bool fill_request = false;
+    bool drain_request = false;
+    bool stop = false;
   } user_command;
 };
 struct Data {
-  float current_level;
-  float current_target_level;
+  float current_level = 0;
+  float current_target_level = 0;
 };
 } // namespace WaterLevel
 namespace SM {
