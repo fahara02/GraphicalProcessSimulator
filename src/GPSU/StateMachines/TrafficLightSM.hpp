@@ -30,6 +30,7 @@ struct Traits {
 
   static constexpr bool has_exit_actions = true;
   static constexpr bool has_entry_actions = true;
+  static constexpr uint16_t state_count = 4;
   static constexpr uint16_t transition_count = 6;
 
   struct Transition {
@@ -169,6 +170,10 @@ struct Traits {
         entryActions::yellowToRed, exitActions::yellowToRed},
        {State::RED_STATE, State::GREEN_STATE, buttonPress,
         entryActions::redToGreen, exitActions::redToGreen}}};
+
+  static constexpr auto transitions_by_state =
+      SM::group_transitions_by_state<Transition, transition_count,
+                                     transitions>();
 };
 
 } // namespace TrafficLight

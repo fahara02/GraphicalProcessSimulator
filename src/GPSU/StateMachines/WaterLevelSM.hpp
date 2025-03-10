@@ -29,6 +29,7 @@ struct Traits {
 
   static constexpr bool has_exit_actions = true;
   static constexpr bool has_entry_actions = true;
+  static constexpr uint16_t state_count = 7;
   static constexpr uint16_t transition_count = 18;
 
   struct Transition {
@@ -39,51 +40,51 @@ struct Traits {
     ExitAction exit_action;
   };
 
-  static bool detectedOverflow(const Context &ctx) {
+  static inline bool detectedOverflow(const Context &ctx) {
     return ctx.data.current_level > ctx.config.max_capacity;
   }
-  static bool overflowResolved(const Context &ctx) {
+  static inline bool overflowResolved(const Context &ctx) {
     return ctx.data.current_level <= ctx.config.max_capacity;
   }
 
-  static bool waterDetected(const Context &ctx) {
+  static inline bool waterDetected(const Context &ctx) {
     // water is detected and filling should start.
     return ctx.inputs.sensors.raw_adc_value > ctx.config.sensor_min_sensitivity;
   }
-  static bool startFillingCondition(const Context &ctx) {
+  static inline bool startFillingCondition(const Context &ctx) {
     return ctx.inputs.user_command.fill_request;
   }
-  static bool fillingTimeout(const Context &ctx) {
+  static inline bool fillingTimeout(const Context &ctx) {
     static unsigned long startTime = millis();
     if (ctx.previous_state != State::START_FILLING)
       startTime = millis();
-    return (millis() - startTime > 5000); // 5-second timeout
+    return (millis() - ctx.data.filling_start_time > 5000); // 5-second timeout
   }
 
-  static bool reachedEmpty(const Context &ctx) {
+  static inline bool reachedEmpty(const Context &ctx) {
     return ctx.inputs.sensors.measured_level <= 0.0f + ctx.config.hysteresis;
   }
-  static bool reachedPartial(const Context &ctx) {
+  static inline bool reachedPartial(const Context &ctx) {
     // Transition when the water level is moderately high (e.g., > 500 units)
     return ctx.data.current_level >= ctx.config.partial_mark;
   }
-  static bool reachedLevel(const Context &ctx) {
+  static inline bool reachedLevel(const Context &ctx) {
     // Transition when the water level reached a particular value
     return ctx.data.current_level + ctx.config.hysteresis >=
            ctx.data.current_target_level;
   }
-  static bool reachedFull(const Context &ctx) {
+  static inline bool reachedFull(const Context &ctx) {
     return ctx.data.current_level >=
            (ctx.config.max_capacity - ctx.config.hysteresis);
   }
-  static bool droppedBelowFull(const Context &ctx) {
+  static inline bool droppedBelowFull(const Context &ctx) {
     return ctx.data.current_level <
            (ctx.config.draining_mark - ctx.config.hysteresis);
   }
-  static bool startDrainingCondition(const Context &ctx) {
+  static inline bool startDrainingCondition(const Context &ctx) {
     return ctx.inputs.user_command.drain_request;
   }
-  static bool stopCondition(const Context &ctx) {
+  static inline bool stopCondition(const Context &ctx) {
     return ctx.inputs.user_command.stop;
   }
   struct entryActions {
@@ -217,6 +218,10 @@ struct Traits {
       {State::PARTIAL_FILLED, State::DRAINING, startDrainingCondition,
        entryActions::partialToDraining, nullptr},
   }};
+
+  static constexpr auto transitions_by_state =
+      SM::group_transitions_by_state<Transition, transition_count,
+                                     transitions>();
 };
 
 }; // namespace WaterLevel

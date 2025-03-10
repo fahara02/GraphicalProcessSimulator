@@ -2,9 +2,9 @@
 #define STATE_DEFINES_HPP
 #include "stdint.h"
 namespace TrafficLight {
-enum class State { INIT = 0, RED_STATE, GREEN_STATE, YELLOW_STATE };
-enum class CommandType {
-  NONE,
+enum class State : uint8_t { INIT = 0, RED_STATE, GREEN_STATE, YELLOW_STATE };
+enum class CommandType : uint8_t {
+  NONE = 0,
   RESET,
   TURN_ON_RED,
   TURN_ON_YELLOW,
@@ -20,10 +20,10 @@ struct CommandData {
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command = CommandType::NONE;
-  CommandType entry_command = CommandType::NONE;
-  CommandData exit_data = CommandData{};
-  CommandData entry_data = CommandData{};
+  CommandType exit_command;
+  CommandType entry_command;
+  CommandData exit_data;
+  CommandData entry_data;
 };
 struct Config {
   int redTimeout_ms = 5000;
@@ -56,8 +56,8 @@ enum class State : uint8_t {
   FULL,
   OVERFLOW,
 };
-enum class CommandType {
-  NONE,
+enum class CommandType : uint8_t {
+  NONE = 0,
   LEVEL_UPDATE,
   START_FILL,
   FILL_TO_LEVEL,
@@ -68,7 +68,7 @@ enum class CommandType {
 };
 struct CommandData {
   int pump_speed = 0;
-  float target_level = 0.0f;
+  int32_t target_level = 0;
   bool open_drain_valve = false;
   bool open_fill_valve = false;
   bool alarm = false;
@@ -76,39 +76,40 @@ struct CommandData {
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command = CommandType::NONE;
-  CommandType entry_command = CommandType::NONE;
-  CommandData exit_data = CommandData{};
-  CommandData entry_data = CommandData{};
+  CommandType exit_command;
+  CommandType entry_command;
+  CommandData exit_data;
+  CommandData entry_data;
 };
 struct Config {
-  float alarm_level = 2100;
-  float max_capacity = 2000;
-  float partial_mark = 500;
-  float draining_mark = 1800;
+  uint16_t alarm_level = 2100;
+  uint16_t max_capacity = 2000;
+  uint16_t partial_mark = 500;
+  uint16_t draining_mark = 1800;
   int fill_rate = 100;
   int drain_rate = -50;
-  float sensor_min_sensitivity = 10;
-  float hysteresis = 15;
+  int32_t sensor_min_sensitivity = 10;
+  int32_t hysteresis = 15;
 };
 
 struct Inputs {
   struct Sensors {
-    float raw_adc_value = 0;
-    float measured_level = 0;
+    int32_t raw_adc_value = 0;
+    int32_t measured_level = 0;
     bool drain_valve_state = false;
     bool fill_valve_state = false;
   } sensors;
   struct UserCommand {
-    float new_target_level = 0;
+    int32_t new_target_level = 0;
     bool fill_request = false;
     bool drain_request = false;
     bool stop = false;
   } user_command;
 };
 struct Data {
-  float current_level = 0;
-  float current_target_level = 0;
+  unsigned long filling_start_time = 0;
+  int32_t current_level = 0;
+  int32_t current_target_level = 0;
 };
 } // namespace WaterLevel
 namespace StepperMotor {
