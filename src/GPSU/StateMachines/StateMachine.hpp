@@ -87,6 +87,7 @@ public:
   }
   void handleEvent(const Event ev) {
     static_cast<Derived *>(this)->updateInternalState(ev);
+    update();
   }
 
 protected:
@@ -132,19 +133,6 @@ private:
     }
     return base;
   }
-  // // Helper to count transitions per 'from' state at compile time
-  // template <typename Transition, size_t N, typename State>
-  // constexpr auto
-  // count_transitions_by_from(const std::array<Transition, N> &transitions,
-  //                           State from_state) {
-  //   size_t count = 0;
-  //   for (size_t i = 0; i < N; ++i) {
-  //     if (transitions[i].from == from_state) {
-  //       ++count;
-  //     }
-  //   }
-  //   return count;
-  // }
 };
 } // namespace SM
 
