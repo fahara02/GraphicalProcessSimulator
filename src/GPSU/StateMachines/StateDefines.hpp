@@ -55,6 +55,7 @@ struct WaterLevelConfig {
   int pumpDrainFlowRate = -50;
   float sensorVoltperLitre = 2.3;
   float sensorMinSensivityLitre = 10;
+  float hysteresis = 15;
 };
 enum class CommandsWL {
   NONE,
@@ -74,11 +75,14 @@ struct WaterLevelOutputs {
 };
 struct WaterLevelInputs {
   int sensorADC;
-  float currentLevel;
   float targetLevel;
   bool start_filling_flag;
   bool start_draining_flag;
   bool stop_flag;
+};
+struct WaterLevelData {
+  float currentLevel;
+  float currentTargetLevel;
 };
 
 struct WLCommand {
