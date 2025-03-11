@@ -195,6 +195,7 @@ struct Inputs {
     bool start_move = false;
     bool stop = false;
     bool home_request = false;
+    bool clear_error = false;
   } user_command;
 };
 

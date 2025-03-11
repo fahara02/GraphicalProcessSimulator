@@ -6,6 +6,7 @@
 #include "Process/Process.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
+#include "StateMachines/StepperMotorSM.hpp"
 #include "StateMachines/TrafficLightSM.hpp"
 #include "StateMachines/WaterLevelSM.hpp"
 #include "esp_task_wdt.h"
