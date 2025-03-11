@@ -76,12 +76,12 @@ struct Traits {
 
   static inline bool timeoutRed(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.external_timer.timer_expired ||
+           (ctx.inputs.timer.internal_timer_expired ||
             ctx.data.current_time_ms >= ctx.config.redTimeout_ms);
   }
   static inline bool timeoutGreen(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.external_timer.timer_expired ||
+           (ctx.inputs.timer.internal_timer_expired ||
             ctx.data.current_time_ms >= ctx.config.greenTimeout_ms);
   }
 
@@ -95,13 +95,13 @@ struct Traits {
   }
   static inline bool timeoutYellowToRed(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.external_timer.timer_expired ||
+           (ctx.inputs.timer.internal_timer_expired ||
             ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
            (ctx.previous_state == State::GREEN_STATE);
   }
   static inline bool timeoutYellowToGreen(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.external_timer.timer_expired ||
+           (ctx.inputs.timer.internal_timer_expired ||
             ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
            (ctx.previous_state == State::RED_STATE);
   }
@@ -110,8 +110,7 @@ struct Traits {
   }
   struct entryActions {
     static Command initToRed(const Context &ctx) {
-      Serial.println("Auto mode is");
-      Serial.println(auto_mode(ctx));
+
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_RED;
@@ -265,11 +264,12 @@ public:
 
   void updateInternalState(const Inputs &input) {
 
-    if (input.external_timer.timer_expired) {
+    if (input.timer.internal_timer_expired) {
       ctx_.data.current_time_ms = 0;
       update();
+      ctx_.inputs.timer.internal_timer_expired = false;
     }
-    ctx_.data.current_time_ms += input.external_timer.delta_time_ms;
+    ctx_.data.current_time_ms += input.timer.external_delta_time_ms;
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
   static void resetTransitionCallback(State from, State to, Context &ctx) {

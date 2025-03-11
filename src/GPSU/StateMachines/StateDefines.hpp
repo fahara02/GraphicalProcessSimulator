@@ -47,10 +47,10 @@ struct Config {
 };
 struct Inputs {
   struct Timer {
-    int delta_time_ms = 0;
+    int external_delta_time_ms = 0;
+    bool internal_timer_expired = false;
     int current_time_ms = 0;
-    bool timer_expired = false;
-  } external_timer;
+  } timer;
   struct UserCommand {
     bool turn_on_red = false;
     bool turn_on_yellow = false;
@@ -115,9 +115,10 @@ struct Config {
 
 struct Inputs {
   struct Timer {
+    int external_delta_time_ms = 0;
+    bool internal_timer_expired = false;
     int current_time_ms = 0;
-    bool timer_expired = false;
-  } external_timer;
+  } timer;
   struct Sensors {
     int32_t raw_adc_value = 0;
     int32_t measured_level = 0;
@@ -190,9 +191,10 @@ struct Config {
 
 struct Inputs {
   struct Timer {
+    int external_delta_time_ms = 0;
+    bool internal_timer_expired = false;
     int current_time_ms = 0;
-    bool timer_expired = false;
-  } external_timer;
+  } timer;
   struct Sensors {
     // PCNT inputs
     int16_t pulse_count = 0;

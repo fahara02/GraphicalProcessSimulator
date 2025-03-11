@@ -1,5 +1,6 @@
 
 #pragma once
+#include "esp_log.h"
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -49,16 +50,12 @@ public:
   using Command = typename Traits::Command;
   using Transition = typename Traits::Transition;
 
-  StateMachine(const Context &ctx, State initial, bool enableTimer = false)
+  explicit StateMachine(const Context &ctx, State initial,
+                        bool enableTimer = true)
       : ctx_(ctx), current_(initial), previous_(initial),
-        enable_timer_(enableTimer) {
-    // init();
-  }
+        enable_timer_(enableTimer) {}
 
   Command update() {
-    // Serial.printf("Context Mode is %s",
-    //               ctx_.mode == TrafficLight::Mode::AUTO ? "Auto" :
-    //               "Unknown");
 
     Command cmd{};
     if (!dataUpdated_) {
@@ -72,11 +69,11 @@ public:
         const auto *t = group.transitions[i];
         if (t->condition && t->condition(ctx_)) {
           cmd = executeTransition(*t);
-          // handleTimer(cmd);
           previous_.store(current());
           current_.store(t->to);
           ctx_.previous_state = previous_.load();
           notify(previous_, current_);
+          handleTimer(cmd);
           return cmd;
         }
       }
@@ -101,6 +98,31 @@ public:
     static_cast<Derived *>(this)->updateInternalState(ev);
     update();
   }
+  void init() {
+
+    if (!initialised) {
+      initialised = true;
+      dataUpdated_ = true;
+      if (enable_timer_) {
+
+        Serial.println("Creating Timer");
+        esp_timer_create_args_t timer_args = {.callback = &timerCallback,
+                                              .arg = this,
+                                              .dispatch_method = ESP_TIMER_TASK,
+                                              .name = "sm_timer"};
+        esp_err_t err = esp_timer_create(&timer_args, &timer_);
+        if (err != ESP_OK) {
+          Serial.println("Timer creation failed");
+        }
+        if (!timer_) { // Check if timer is NULL
+          Serial.println("Timer handle is NULL, cannot start timer!");
+        }
+        if (err == ESP_OK && timer_) {
+          // ESP_LOGI("STATE_MACHINE", "TIMER_CREATION SUCCESSFULL");
+        }
+      }
+    }
+  }
 
 protected:
   Context ctx_;
@@ -115,14 +137,17 @@ private:
   esp_timer_handle_t timer_;
 
   // Timer control
-  void startTimer(uint64_t timeout_us) {
-    esp_timer_start_once(timer_, timeout_us);
+  esp_err_t startTimer(uint64_t timeout_us) {
+    return esp_timer_start_once(timer_, timeout_us);
   }
 
   void stopTimer() { esp_timer_stop(timer_); }
 
   bool isTimerExpired() const { return timerExpired_; }
-  void resetTimerExpired() { timerExpired_ = false; }
+  void resetTimerExpired() {
+    timerExpired_ = false;
+    ctx_.inputs.timer.internal_timer_expired = false;
+  }
   bool timerExpired_ = false;
 
   const Transition *transitions_ = Traits::transitions.data();
@@ -161,41 +186,35 @@ private:
     }
     return base;
   }
-  void init() {
-    Serial.println("init called");
-    if (!initialised) {
-      initialised = true;
-      if (enable_timer_) {
-        Serial.println("Creating Timer");
-        esp_timer_create_args_t timer_args = {.callback = &timerCallback,
-                                              .arg = this,
-                                              .dispatch_method = ESP_TIMER_TASK,
-                                              .name = "sm_timer"};
-        esp_err_t err = esp_timer_create(&timer_args, &timer_);
-        if (err != ESP_OK) {
-          Serial.println("Timer creation failed");
-        }
-      }
-    }
-  }
+
   static void timerCallback(void *arg) {
     StateMachine *sm = static_cast<StateMachine *>(arg);
     sm->timerExpired_ = true;
-    sm->ctx_.inputs.external_timer.timer_expired = sm->timerExpired_;
+    sm->ctx_.inputs.timer.internal_timer_expired = true;
+    sm->dataUpdated_ = true;
     if (sm->enable_timer_) {
-      static_cast<Derived *>(sm)->updateData(sm->ctx_.inputs);
+      sm->updateData(sm->ctx_.inputs);
     }
   }
   void handleTimer(Command cmd) {
-    Serial.printf("handle timer called and enable_timer_ is %d \n",
-                  enable_timer_);
+
     if (enable_timer_) {
-      Serial.println("starting timer");
-      resetTimerExpired();
-      if (cmd.check_entry && cmd.entry_data.timeout_ms > 0) {
-        startTimer(static_cast<uint64_t>(cmd.entry_data.timeout_ms) * 1000);
+      if (!timer_) {
+
+        Serial.println("no timer handle yet");
       } else {
-        stopTimer();
+        resetTimerExpired();
+        if (cmd.check_entry && cmd.entry_data.timeout_ms > 0) {
+
+          esp_err_t err = startTimer(
+              static_cast<uint64_t>(cmd.entry_data.timeout_ms) * 1000);
+
+          if (err != ESP_OK) {
+            Serial.println("Timer start  failed");
+          }
+        } else {
+          stopTimer();
+        }
       }
     }
   }
