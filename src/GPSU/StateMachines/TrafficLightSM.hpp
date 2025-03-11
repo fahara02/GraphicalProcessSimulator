@@ -254,7 +254,8 @@ public:
   using Mode = TrafficLight::Mode;
   explicit TrafficLightSM(const Context &context, State state,
                           bool internalTimer = false)
-      : StateMachine(context, state, internalTimer) {
+      : StateMachine(context, state, internalTimer),
+        use_internal_timer(internalTimer) {
     // ctx_.mode = mode;
     register_callback(resetTransitionCallback);
   }
@@ -263,13 +264,15 @@ public:
   TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, false) {}
 
   void updateInternalState(const Inputs &input) {
-
-    if (input.timer.internal_timer_expired) {
-      ctx_.data.current_time_ms = 0;
+    if (use_internal_timer) {
+      if (input.timer.internal_timer_expired) {
+        ctx_.data.current_time_ms = 0;
+        update();
+      }
+    } else {
+      ctx_.data.current_time_ms += input.timer.external_delta_time_ms;
       update();
-      //  ctx_.inputs.timer.internal_timer_expired = false;
     }
-    ctx_.data.current_time_ms += input.timer.external_delta_time_ms;
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
   static void resetTransitionCallback(State from, State to, Context &ctx) {
@@ -279,6 +282,9 @@ public:
   const char *getStateString() const {
     return GPSU::Util::ToString::TLState(current());
   }
+
+private:
+  bool use_internal_timer;
 };
 
 } // namespace SM
