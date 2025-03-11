@@ -1,123 +1,142 @@
-// #include "Process.hpp"
+#include "Process.hpp"
 
-// namespace Process {
-// StackType_t Display::sharedStack[2048]; // Define the stack array
-// StaticTask_t Display::sharedTCB;        // Define the TCB
-// } // namespace Process
+namespace GPSU {
+StackType_t Process::sharedStack[2048]; // Define the stack array
+StaticTask_t Process::sharedTCB;        // Define the TCB
+} // namespace GPSU
 
-// namespace Process {
-// const MenuItem Process::all_process[] = {
-//     {"TRAFFIC_LIGHT", Process::processTrafficLight},
-//     {"WATER_LEVEL", Process::processWaterLevel},
-//     {"STEPPER_MOTOR", Process::processStepperMotor},
-//     {"STATE_MACHINE", Process::processStateMachine},
-//     {"OBJECT_COUNTER", Process::processObjectCounter},
-//     {"MOTOR_CONTROl", Process::processMotorControl}};
-// Process::Process()
-//     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
-//       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
-//       display_(GUI::Display::getInstance()),
-//       io_expander(std::make_unique<COMPONENET::MCP23017>(sda_, scl_,
-//       reset_)), menu_selector_(std::make_unique<MenuSelector>(
-//           all_process, MENU_PRCOESS_COUNT, 4, pinA_, pinB_, btn_)),
-// {}
+namespace GPSU {
 
-// void Process::init() {
-//   display_.init();
-//   setting_.opMode = MCP::OperationMode::SequentialMode16;
-//   io_expander->configure(setting_);
-//   io_expander->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
-//   io_expander->pinMode(MCP::PORT::GPIOB, INPUT);
-//   io_expander->invertInput(true, GPB1, GPB2, GPB3, GPB4);
+// Correct the process_list initialization
+const MenuItem Process::process_list[] = {
+    {"TRAFFIC_LIGHT", &Process::processTrafficLight},
+    {"WATER_LEVEL", &Process::processWaterLevel},
+    {"STEPPER_MOTOR", &Process::processStepperMotor},
+    {"STATE_MACHINE", &Process::processStateMachine},
+    {"OBJECT_COUNTER", &Process::processObjectCounter},
+    {"MOTOR_CONTROL", &Process::processMotorControl}};
+Process::Process()
+    : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
+      pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
+      display_(GUI::Display::getInstance()),
+      io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
+      menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
+                                           pinA_, pinB_, btn_)),
+      counter_(std::make_unique<Pulse::Counter>()),
+      tlsm_(std::make_unique<SM::TrafficLightSM>()),
+      wlsm_(std::make_unique<SM::WaterLevelSM>()),
+      stsm_(std::make_unique<SM::StepperMotorSM>()),
+      current_process_(ProcessType::ANY) {}
 
-//   menu_selector_->set_selection_changed_Cb([](size_t index) {
-//     GUI::DisplayCommand cmd;
-//     cmd.type = GUI::DisplayCommandType::SHOW_MENU;
-//     getInstance().sendDisplayCommand(cmd);
-//     if (getInstance().current_process_ == ProcessType::ANY) {
+void Process::init() {
+  display_.init();
+  setting_.opMode = MCP::OperationMode::SequentialMode16;
+  io_->configure(setting_);
+  io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+  io_->pinMode(MCP::PORT::GPIOB, INPUT);
+  io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
 
-//       if (display_.processTaskHandle != NULL) {
-//         vTaskDelete(display.processTaskHandle);
-//         display_.processTaskHandle = NULL;
-//       }
-//     }
-//   });
-//   menu_->set_item_selected_cb([](size_t index) {
-//     menuItems[index].action(); // Sets current_process_
-//     GUI::DisplayCommand cmd;
-//     cmd.type = DisplayCommandType::SHOW_PROCESS_SCREEN;
-//     cmd.process_type = getInstance().current_process_;
-//     getInstance().sendDisplayCommand(cmd);
-//   });
-// }
-// void Process::startProcess(ProcessType type) {
-//   // Delete the existing task, if any
-//   if (processTaskHandle != NULL) {
-//     vTaskDelete(processTaskHandle);
-//     processTaskHandle = NULL; // Clear the handle
-//   }
+  menu_->set_selection_changed_cb(&Process::selectionChanged);
+  menu_->set_item_selected_cb(&Process::itemSelected);
+}
+void Process::selectionChanged(size_t index, void *data) {
+  Process *proc = static_cast<Process *>(data);
+  proc->handleSelectionChanged(index);
+}
 
-//   // Create the new task using the shared static memory
-//   if (type == ProcessType::TRAFFIC_LIGHT) {
-//     processTaskHandle = xTaskCreateStatic(traffic_light_task, // Task
-//     function
-//                                           "traffic_task",     // Task name
-//                                           2048,               // Stack depth
-//                                           NULL,               // Parameters
-//                                           1,                  // Priority
-//                                           sharedStack,        // Shared stack
-//                                           &sharedTCB          // Shared TCB
-//     );
-//   } else if (type == ProcessType::WATER_LEVEL) {
-//     processTaskHandle = xTaskCreateStatic(water_level_task, // Task function
-//                                           "water_level",    // Task name
-//                                           2048,             // Stack depth
-//                                           NULL,             // Parameters
-//                                           1,                // Priority
-//                                           sharedStack,      // Shared stack
-//                                           &sharedTCB        // Shared TCB
-//     );
-//   } else if (type == ProcessType::STEPPER_MOTOR_CONTROL) {
-//     processTaskHandle = xTaskCreateStatic(stepper_task,    // Task function
-//                                           "stepper_motor", // Task name
-//                                           2048,            // Stack depth
-//                                           NULL,            // Parameters
-//                                           1,               // Priority
-//                                           sharedStack,     // Shared stack
-//                                           &sharedTCB       // Shared TCB
-//     );
-//   }
-// }
+void Process::itemSelected(size_t index, void *data) {
+  Process *proc = static_cast<Process *>(data);
+  proc->handleItemSelected(index);
+}
+void Process::handleSelectionChanged(size_t index) {
+  GUI::Command cmd;
+  cmd.type = GUI::CommandType::SHOW_MENU;
+  display_.sendDisplayCommand(cmd);
+  if (current_process_ == ProcessType::ANY) {
+    if (processTaskHandle != nullptr) {
+      vTaskDelete(processTaskHandle);
+      processTaskHandle = nullptr;
+    }
+  }
+}
 
-// void Process::traffic_light_task(void *param) {
-//   int state = 0;
-//   while (true) {
-//     GUI::DisplayCommand cmd;
-//     cmd.type = GUI::DisplayCommandType::UPDATE_TRAFFIC_LIGHT;
-//     cmd.traffic_light_state = state;
-//     display_.sendDisplayCommand(cmd);
-//     state = (state + 1) % 3;         // Cycle through 0, 1, 2
-//     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
-//   }
-// }
+void Process::handleItemSelected(size_t index) {
+  process_list[index].action(this);
+  GUI::Command cmd;
+  cmd.type = GUI::CommandType::SHOW_PROCESS_SCREEN;
+  cmd.process_type = current_process_;
+  display_.sendDisplayCommand(cmd);
+}
+void Process::create_task(ProcessType type) {
+
+  if (processTaskHandle != NULL) {
+    vTaskDelete(processTaskHandle);
+    processTaskHandle = NULL;
+  }
+
+  TaskFunction_t func = nullptr;
+  const char *taskname = nullptr;
+
+  switch (type) {
+  case ProcessType::TRAFFIC_LIGHT:
+    func = traffic_light_task;
+    taskname = "traffic_task";
+    break;
+  case ProcessType::WATER_LEVEL:
+    func = water_level_task;
+    taskname = "water_level";
+    break;
+  case ProcessType::STEPPER_MOTOR:
+    func = stepper_task;
+    taskname = "stepper_motor";
+    break;
+  default:
+    taskname = "Unknown";
+  }
+  if (func) {
+    processTaskHandle = xTaskCreateStatic(func,        // Task function
+                                          taskname,    // Task name
+                                          2048,        // Stack depth
+                                          this,        // Parameters
+                                          1,           // Priority
+                                          sharedStack, // Shared stack
+                                          &sharedTCB); // Shared TCB
+  }
+}
+void Process::startProcess(ProcessType type) {}
+
+void Process::traffic_light_task(void *param) {
+  auto instance = static_cast<GPSU::Process *>(param);
+  int state = 0;
+  while (true) {
+    GUI::Command cmd;
+    cmd.type = GUI::CommandType::UPDATE_TRAFFIC_LIGHT;
+    cmd.traffic_light_state = state;
+    instance->display_.sendDisplayCommand(cmd);
+    state = (state + 1) % 3;         // Cycle through 0, 1, 2
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
+  }
+}
 
 // void Process::water_level_task(void *param) {
+//   auto instance = static_cast<GPSU::Process *>(param);
+//   auto waterlevel = instance->wlsm_.get();
 //   int level = 0;
 //   while (true) {
-//     int state = 0;
-//     state = tank_state.load(); // Update state each iteration
+//     WaterLevel::State state;
+//     state = waterlevel->current(); // Update state each iteration
 
-//     if (state == 1) { // Filling
+//     if (state == WaterLevel::State::FILLING) { // Filling
 
 //       level = (level >= 100) ? 100 : level + 1;
 //       if (level == 100)
-//         state = 2;
+//         state = WaterLevel::State::FULL;
 //       vTaskDelay(pdMS_TO_TICKS(100));
-//     } else if (state == 2) { // Full
+//     } else if (state == WaterLevel::State::FULL) { // Full
 
 //       vTaskDelay(pdMS_TO_TICKS(1000));
-//       state = 0;             // Transition to drain
-//     } else if (state == 0) { // Draining
+//       state = WaterLevel::State::DRAINING;             // Transition to drain
+//     } else if (state == WaterLevel::State::DRAINING) { // Draining
 
 //       level = (level <= 0) ? 0 : level - 1;
 //       if (level == 0) {
@@ -130,11 +149,11 @@
 //     if (state >= 0 || state <= 3) {
 
 //       tank_state.store(state);
-//       DisplayCommand cmd;
-//       cmd.type = DisplayCommandType::UPDATE_WATER_LEVEL;
+//       GUI::Command cmd;
+//       cmd.type = GUI::CommandType::UPDATE_WATER_LEVEL;
 //       cmd.water_level_state = state;
 //       cmd.analog_ch0 = level;
-//       Display::getInstance().sendDisplayCommand(cmd);
+//       display_.sendDisplayCommand(cmd);
 //       vTaskDelay(pdMS_TO_TICKS(100));
 //     }
 //   }
@@ -152,8 +171,8 @@
 //       dir = dir * (-1);
 //     }
 
-//     GUI::DisplayCommand cmd;
-//     cmd.type = GUI::DisplayCommandType::UPDATE_STEPPER;
+//     GUI::Command cmd;
+//     cmd.type = GUI::CommandType::UPDATE_STEPPER;
 //     stepper_step = step;
 //     cmd.stteper_motor_state = 1; // running
 //     cmd.analog_ch0 = dir;
@@ -162,5 +181,58 @@
 //     vTaskDelay(pdMS_TO_TICKS(100));
 //   }
 // }
+//
+//------------------------------------------------------------------------------
+// Static callback functions for each menu item.
+//------------------------------------------------------------------------------
+void Process::processTrafficLight(void *data) {
+  Process *proc = static_cast<Process *>(data);
+  if (proc) {
+    proc->current_process_ = ProcessType::TRAFFIC_LIGHT;
+    proc->display_.run_process(ProcessType::TRAFFIC_LIGHT);
+    proc->create_task(ProcessType::TRAFFIC_LIGHT);
+  }
+}
 
-// } // namespace Process
+void Process::processWaterLevel(void *data) {
+  Process *proc = static_cast<Process *>(data);
+  if (proc) {
+    proc->current_process_ = ProcessType::WATER_LEVEL;
+    proc->display_.run_process(ProcessType::WATER_LEVEL);
+    proc->create_task(ProcessType::WATER_LEVEL);
+  }
+}
+
+void Process::processStepperMotor(void *data) {
+  Process *proc = static_cast<Process *>(data);
+  if (proc) {
+    proc->current_process_ = ProcessType::STEPPER_MOTOR;
+    proc->display_.run_process(ProcessType::STEPPER_MOTOR);
+    proc->create_task(ProcessType::STEPPER_MOTOR);
+  }
+}
+
+void Process::processStateMachine(void *data) {
+  Process *proc = static_cast<Process *>(data);
+  if (proc) {
+    proc->current_process_ = ProcessType::STATE_MACHINE;
+    proc->display_.run_process(GPSU::ProcessType::STATE_MACHINE);
+  }
+}
+
+void Process::processObjectCounter(void *data) {
+  Process *proc = static_cast<Process *>(data);
+  if (proc) {
+    proc->current_process_ = ProcessType::OBJECT_COUNTER;
+    proc->display_.run_process(GPSU::ProcessType::OBJECT_COUNTER);
+  }
+}
+
+void Process::processMotorControl(void *data) {
+  Process *proc = static_cast<Process *>(data);
+  if (proc) {
+    proc->current_process_ = ProcessType::MOTOR_CONTROL;
+    proc->display_.run_process(GPSU::ProcessType::MOTOR_CONTROL);
+  }
+}
+} // namespace GPSU

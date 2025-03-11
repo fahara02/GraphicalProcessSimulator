@@ -11,11 +11,13 @@ struct Context {
   using Data = WaterLevel::Data;
   using Inputs = WaterLevel::Inputs;
   using Event = WaterLevel::Event;
+  using Mode = TrafficLight::Mode;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
+  Mode mode = Mode::AUTO;
 };
 
 struct Traits {

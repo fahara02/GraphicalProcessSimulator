@@ -3,10 +3,12 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <esp_timer.h>
 #include <functional>
 #include <utility>
 
 namespace SM {
+
 template <typename Transition, std::size_t MaxTransitions>
 struct TransitionGroup {
   const Transition *transitions[MaxTransitions] = {};
@@ -47,10 +49,17 @@ public:
   using Command = typename Traits::Command;
   using Transition = typename Traits::Transition;
 
-  StateMachine(const Context &ctx, State initial)
-      : ctx_(ctx), current_(initial), previous_(initial) {}
+  StateMachine(const Context &ctx, State initial, bool enableTimer = false)
+      : ctx_(ctx), current_(initial), previous_(initial),
+        enable_timer_(enableTimer) {
+    // init();
+  }
 
   Command update() {
+    // Serial.printf("Context Mode is %s",
+    //               ctx_.mode == TrafficLight::Mode::AUTO ? "Auto" :
+    //               "Unknown");
+
     Command cmd{};
     if (!dataUpdated_) {
       return cmd;
@@ -63,6 +72,7 @@ public:
         const auto *t = group.transitions[i];
         if (t->condition && t->condition(ctx_)) {
           cmd = executeTransition(*t);
+          // handleTimer(cmd);
           previous_.store(current());
           current_.store(t->to);
           ctx_.previous_state = previous_.load();
@@ -81,7 +91,9 @@ public:
       callbacks_[callback_count_++] = cb;
     }
   }
+
   void updateData(const Inputs &newInput) {
+    ctx_.inputs = newInput;
     static_cast<Derived *>(this)->updateInternalState(newInput);
     dataUpdated_ = true;
   }
@@ -96,6 +108,22 @@ protected:
 private:
   std::atomic<State> current_;
   std::atomic<State> previous_;
+  bool enable_timer_ = true;
+  bool initialised = false;
+
+  // Timer members
+  esp_timer_handle_t timer_;
+
+  // Timer control
+  void startTimer(uint64_t timeout_us) {
+    esp_timer_start_once(timer_, timeout_us);
+  }
+
+  void stopTimer() { esp_timer_stop(timer_); }
+
+  bool isTimerExpired() const { return timerExpired_; }
+  void resetTimerExpired() { timerExpired_ = false; }
+  bool timerExpired_ = false;
 
   const Transition *transitions_ = Traits::transitions.data();
   std::array<void (*)(State, State, Context &), 4> callbacks_{};
@@ -132,6 +160,44 @@ private:
       base.check_entry = true;
     }
     return base;
+  }
+  void init() {
+    Serial.println("init called");
+    if (!initialised) {
+      initialised = true;
+      if (enable_timer_) {
+        Serial.println("Creating Timer");
+        esp_timer_create_args_t timer_args = {.callback = &timerCallback,
+                                              .arg = this,
+                                              .dispatch_method = ESP_TIMER_TASK,
+                                              .name = "sm_timer"};
+        esp_err_t err = esp_timer_create(&timer_args, &timer_);
+        if (err != ESP_OK) {
+          Serial.println("Timer creation failed");
+        }
+      }
+    }
+  }
+  static void timerCallback(void *arg) {
+    StateMachine *sm = static_cast<StateMachine *>(arg);
+    sm->timerExpired_ = true;
+    sm->ctx_.inputs.external_timer.timer_expired = sm->timerExpired_;
+    if (sm->enable_timer_) {
+      static_cast<Derived *>(sm)->updateData(sm->ctx_.inputs);
+    }
+  }
+  void handleTimer(Command cmd) {
+    Serial.printf("handle timer called and enable_timer_ is %d \n",
+                  enable_timer_);
+    if (enable_timer_) {
+      Serial.println("starting timer");
+      resetTimerExpired();
+      if (cmd.check_entry && cmd.entry_data.timeout_ms > 0) {
+        startTimer(static_cast<uint64_t>(cmd.entry_data.timeout_ms) * 1000);
+      } else {
+        stopTimer();
+      }
+    }
   }
 };
 } // namespace SM

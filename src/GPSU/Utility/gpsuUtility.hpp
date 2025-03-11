@@ -20,7 +20,7 @@ public:
       case ProcessType ::WATER_LEVEL:
         return "Water-Level";
         break;
-      case ProcessType ::STEPPER_MOTOR_CONTROL:
+      case ProcessType ::STEPPER_MOTOR:
         return "Stepper-Motor";
         break;
       case ProcessType ::STATE_MACHINE:
@@ -29,7 +29,7 @@ public:
       case ProcessType ::OBJECT_COUNTER:
         return "Object-Counter";
         break;
-      case ProcessType ::MOTOR_CONTROl:
+      case ProcessType ::MOTOR_CONTROL:
         return "Motor-Control";
         break;
       default:

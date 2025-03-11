@@ -11,7 +11,7 @@
 #include <tuple>
 
 namespace GUI {
-enum class DisplayCommandType {
+enum class CommandType {
   SHOW_STARTUP,
   SHOW_MENU,            // Display the main menu
   SHOW_PROCESS_SCREEN,  // Show the initial screen for a selected process
@@ -23,8 +23,8 @@ enum class DisplayCommandType {
   UPDATE_MOTOR
 };
 
-struct DisplayCommand {
-  DisplayCommandType type;
+struct Command {
+  CommandType type;
 
   GPSU::ProcessType process_type;
   // For SHOW_PROCESS_SCREEN
@@ -51,6 +51,8 @@ public:
   TFT_eSprite &Sprite();
 
   void init();
+  void sendDisplayCommand(const Command &cmd);
+  void run_process(GPSU::ProcessType type);
 
 private:
   // Private constructor.
@@ -59,9 +61,7 @@ private:
   bool setup_traffic = false;
   bool setup_waterlevel = false;
   bool setup_stepper = false;
-  int stepper_step = 1;
-  std::atomic<int> tank_state{1};
-  size_t tank_capacity_litre = 2000;
+
   std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> bg_;
   std::unique_ptr<TFT_eSprite> label_;
@@ -69,37 +69,21 @@ private:
   std::unique_ptr<TFT_eSprite> img_;
   std::unique_ptr<TFT_eSprite> imgRotor_;
   std::unique_ptr<TFT_eSprite> frame_;
-  std::unique_ptr<MenuSelector> menu_;
   GPSU::ProcessType current_process_;
-  static StackType_t sharedStack[2048];
-  static StaticTask_t sharedTCB;
 
-  TaskHandle_t processTaskHandle = NULL;
   QueueHandle_t displayQueue;
 
-  void showMenu();
+  void showMenu(size_t selected_index, size_t num_items);
   void showProcessScreen(GPSU::ProcessType type);
   void updateTrafficLightDisplay(int state);
   void updateWaterLevelDisplay(const int state, int level);
   void updateStepperDisplay(const int dir, int step);
-  void sendDisplayCommand(const DisplayCommand &cmd);
-  void run_process(GPSU::ProcessType type);
-  void startProcess(GPSU::ProcessType type);
 
   void showSubMenu();
-  static void processTrafficLight();
-  static void processWaterLevel();
-  static void processStepperMotor();
-  static void processStateMachine();
-  static void processObjectCounter();
-  static void processMotorControl();
 
   static void onSelectionChanged(size_t index);
   static void onItemSelected(size_t index);
   static void display_loop(void *param);
-  static void traffic_light_task(void *param);
-  static void water_level_task(void *param);
-  static void stepper_task(void *param);
 
   void deleteSprites();
   void createSprites();

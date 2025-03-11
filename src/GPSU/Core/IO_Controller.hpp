@@ -130,7 +130,7 @@ private:
       _initialised_adc = true;
       break;
 
-    case GPSU::ProcessType::STEPPER_MOTOR_CONTROL:
+    case GPSU::ProcessType::STEPPER_MOTOR:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},
@@ -175,7 +175,7 @@ private:
       break;
 
     case GPSU::ProcessType::OBJECT_COUNTER:
-    case GPSU::ProcessType::MOTOR_CONTROl:
+    case GPSU::ProcessType::MOTOR_CONTROL:
       gpio_configs = {
           {GPIO::DI::DI_PIN_0, GPIO_MODE_INPUT, GPIO_PULLUP_DISABLE,
            GPIO_PULLDOWN_DISABLE, GPIO_INTR_DISABLE},

@@ -106,10 +106,13 @@ TrafficLight::Context context{
     TrafficLight::State::INIT, // previous_state
     {5000, 3000, 2000, false}, // config
     {0},                       // data
-    {{0}, {false}}             // inputs
+    {{0}, {false}},            // inputs
+    TrafficLight::Event::OK,   // Event
+    TrafficLight::Mode::AUTO   // Mode
 };
 
-SM::TrafficLightSM trafficLight(context); // Global object
+SM::TrafficLightSM trafficLight(context, TrafficLight::State::INIT,
+                                TrafficLight::Mode::AUTO); // Global object
 unsigned long lastMillis;      // Global variable to track last update time
 TrafficLight::State prevState; // Global variable to track previous state
 SM::WaterLevelSM waterLevel;
@@ -120,7 +123,7 @@ void setup() {
   // Initialize traffic light with timeouts: 5s red, 3s green, 2s yellow
 
   // Perform initial update to transition from INIT to RED_STATE
-  // trafficLight.update();
+  trafficLight.update();
   waterLevel.update();
   //  Print initial state
   Serial.print("Initial state: ");
@@ -346,9 +349,7 @@ void RunTask(void *param) {
     // vTaskDelay(pdMS_TO_TICKS(10));
 
     expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
-
     send_req += 1;
-
     // expander->gpioBankA->setPinState(mask, false);
     vTaskDelay(pdMS_TO_TICKS(100));
     uint8_t readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);

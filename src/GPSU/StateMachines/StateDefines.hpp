@@ -2,6 +2,7 @@
 #define STATE_DEFINES_HPP
 #include "stdint.h"
 namespace TrafficLight {
+enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t {
   INIT = 0,
   RED_STATE,
@@ -47,17 +48,23 @@ struct Config {
 struct Inputs {
   struct Timer {
     int delta_time_ms = 0;
+    int current_time_ms = 0;
+    bool timer_expired = false;
   } external_timer;
   struct UserCommand {
+    bool turn_on_red = false;
+    bool turn_on_yellow = false;
+    bool turn_on_green = false;
     bool button_pressed = false;
   } user_command;
 };
 struct Data {
   uint32_t current_time_ms = 0;
+  bool timer_expired = false;
 };
 } // namespace TrafficLight
 namespace WaterLevel {
-
+enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t {
   EMPTY = 0,
   START_FILLING,
@@ -80,6 +87,7 @@ enum class CommandType : uint8_t {
 
 };
 struct CommandData {
+  int timeout_ms = 0;
   int pump_speed = 0;
   int32_t target_level = 0;
   bool open_drain_valve = false;
@@ -106,6 +114,10 @@ struct Config {
 };
 
 struct Inputs {
+  struct Timer {
+    int current_time_ms = 0;
+    bool timer_expired = false;
+  } external_timer;
   struct Sensors {
     int32_t raw_adc_value = 0;
     int32_t measured_level = 0;
@@ -133,6 +145,7 @@ struct Data {
 };
 } // namespace WaterLevel
 namespace StepperMotor {
+enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t { IDLE = 0, MOVING_CW, MOVING_CCW, HOMING, ERROR };
 
 enum class CommandType : uint8_t {
@@ -146,6 +159,7 @@ enum class CommandType : uint8_t {
 };
 
 struct CommandData {
+  int timeout_ms = 0;
   int32_t target_position = 0;
   uint16_t speed_rpm = 60;
   bool direction = true; // CW=true, CCW=false
@@ -175,6 +189,10 @@ struct Config {
 };
 
 struct Inputs {
+  struct Timer {
+    int current_time_ms = 0;
+    bool timer_expired = false;
+  } external_timer;
   struct Sensors {
     // PCNT inputs
     int16_t pulse_count = 0;

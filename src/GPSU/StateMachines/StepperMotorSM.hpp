@@ -12,12 +12,14 @@ struct Context {
   using Inputs = StepperMotor::Inputs;
   using Event = StepperMotor::Event;
   using Pulse = StepperMotor::PulseControl;
+  using Mode = TrafficLight::Mode;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
   Pulse pulse;
+  Mode mode = Mode::AUTO;
 };
 
 struct Traits {
