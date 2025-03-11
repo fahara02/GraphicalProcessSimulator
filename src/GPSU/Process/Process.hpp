@@ -15,6 +15,8 @@ namespace GPSU {
 class Process {
 
 public:
+  using tlContext = TrafficLight::Context;
+  using tlMode = TrafficLight::Mode;
   Process();
   void init();
   void setupProcess(ProcessType type);
@@ -40,6 +42,14 @@ protected:
   static StaticTask_t sharedTCB;
 
 private:
+  TrafficLight ::Context tl_ctx = TrafficLight ::Context{
+      TrafficLight::State::INIT, // previous_state
+      {5000, 3000, 2000, false}, // config
+      {0},                       // data
+      {{0}, {false}},            // inputs
+      TrafficLight::Event::OK,   // Event
+      TrafficLight::Mode::MANUAL // Mode
+  };
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;
   static void processTrafficLight(void *data);
@@ -59,6 +69,18 @@ private:
   static void itemSelected(size_t index, void *data);
   void handleSelectionChanged(size_t index);
   void handleItemSelected(size_t index);
+  template <ProcessType type, typename Context> Context mapUserCommand() {
+
+    if (type == ProcessType::TRAFFIC_LIGHT) {
+      Context ctx;
+      ctx.inputs.user_command.turn_on_red = io_->digitalRead(GPB1);
+      ctx.inputs.user_command.turn_on_green = io_->digitalRead(GPB2);
+      ctx.inputs.user_command.turn_on_yellow = io_->digitalRead(GPB3);
+      ctx.inputs.user_command.button_pressed = io_->digitalRead(GPB4);
+      return ctx;
+    }
+    return Context{};
+  }
 };
 
 } // namespace GPSU

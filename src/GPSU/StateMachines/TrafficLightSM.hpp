@@ -13,12 +13,26 @@ struct Context {
   using Inputs = TrafficLight::Inputs;
   using Event = TrafficLight::Event;
   using Mode = TrafficLight::Mode;
+
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
+
+  // Assignment operator
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      previous_state = other.previous_state;
+      config = other.config;
+      data = other.data;
+      inputs = other.inputs;
+      event = other.event;
+      mode = other.mode;
+    }
+    return *this;
+  }
 };
 
 struct Traits {
@@ -253,25 +267,29 @@ public:
   using Event = TrafficLight::Event;
   using Mode = TrafficLight::Mode;
   explicit TrafficLightSM(const Context &context, State state,
-                          bool internalTimer = false)
+                          bool internalTimer = true)
       : StateMachine(context, state, internalTimer),
         use_internal_timer(internalTimer) {
     // ctx_.mode = mode;
     register_callback(resetTransitionCallback);
   }
-  TrafficLightSM(const Context &context)
-      : TrafficLightSM(context, State::INIT, false) {}
+  TrafficLightSM(const Context &context, bool internalTimer = true)
+      : TrafficLightSM(context, State::INIT, internalTimer) {}
+
   TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, false) {}
 
   void updateInternalState(const Inputs &input) {
-    if (use_internal_timer) {
+    if (use_internal_timer && ctx_.mode == Mode::AUTO) {
       if (input.timer.internal_timer_expired) {
         ctx_.data.current_time_ms = 0;
         update();
       }
-    } else {
+    } else if (!use_internal_timer && ctx_.mode == Mode::AUTO) {
       ctx_.data.current_time_ms += input.timer.external_delta_time_ms;
       update();
+    } else if (ctx_.mode == Mode::MANUAL) {
+      update();
+    } else {
     }
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }

@@ -81,6 +81,7 @@ public:
   }
   State current() const { return current_.load(); }
   State previous() const { return previous_.load(); }
+  Context context() const { return ctx_; }
 
   void register_callback(void (*cb)(State, State, Context &)) {
     if (callback_count_ < callbacks_.size()) {

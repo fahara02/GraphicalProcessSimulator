@@ -5,6 +5,7 @@
 #include "GUIConstants.hpp"
 #include "MenuSelector.hpp"
 #include "Process/ProcessDefines.hpp"
+#include "StateMachines/StateDefines.hpp"
 #include "atomic"
 #include <TFT_eSPI.h>
 #include <memory>
@@ -22,21 +23,33 @@ enum class CommandType {
   UPDATE_STATE_MACHINE,
   UPDATE_MOTOR
 };
-
+// int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
+// int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
+// int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)
 struct Command {
   CommandType type;
-
   GPSU::ProcessType process_type;
-  // For SHOW_PROCESS_SCREEN
-  union {
-    int traffic_light_state; //  (e.g., 0=red, 1=yellow,  2=green)
-    int water_level_state; //  (e.g., 0=drained, 1=filling,  2=full,3=overflow)
-    int stteper_motor_state;  //  (e.g., 0=cw, 1=ccw, 2=limit ,3=jitter)
-    int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
-    int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
-    int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)
-  };
+  struct {
+    size_t index;
+    size_t items;
+    const char *label;
+  } cursor;
 
+  struct {
+    TrafficLight::State tl_state;
+    WaterLevel::State wl_state;
+    StepperMotor::State st_state;
+  } states;
+  struct {
+    TrafficLight::Inputs tl_inputs;
+    WaterLevel::Inputs wl_inputs;
+    StepperMotor::Inputs st_inputs;
+  } inputs;
+  struct {
+    TrafficLight::Data tl_data;
+    WaterLevel::Data wl_data;
+    StepperMotor::Data st_data;
+  } data;
   uint16_t analog_ch0;
   uint16_t analog_ch1;
 };
@@ -53,6 +66,7 @@ public:
   void init();
   void sendDisplayCommand(const Command &cmd);
   void run_process(GPSU::ProcessType type);
+  void setMenuItems(const MenuItem *items, size_t count);
 
 private:
   // Private constructor.
@@ -72,10 +86,12 @@ private:
   GPSU::ProcessType current_process_;
 
   QueueHandle_t displayQueue;
+  const MenuItem *menuItems_ = nullptr;
+  size_t menuItemCount_ = 0;
 
   void showMenu(size_t selected_index, size_t num_items);
   void showProcessScreen(GPSU::ProcessType type);
-  void updateTrafficLightDisplay(int state);
+  void updateTrafficLightDisplay(Command cmd);
   void updateWaterLevelDisplay(const int state, int level);
   void updateStepperDisplay(const int dir, int step);
 
@@ -88,9 +104,6 @@ private:
   void deleteSprites();
   void createSprites();
   void deinitProcessFlags();
-
-  static const MenuItem menuItems[];
-  static constexpr size_t MENU_ITEM_COUNT = 6;
 
   // helpers
   void drawAlignText(AlignMent align, const char *text, uint8_t font,

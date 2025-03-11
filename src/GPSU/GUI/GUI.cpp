@@ -1,214 +1,186 @@
-// #include "GUI/GUI.hpp"
+#include "GUI/GUI.hpp"
 
-// #include "Utility/gpsuUtility.hpp"
-// #include "esp_log.h"
+#include "Utility/gpsuUtility.hpp"
+#include "esp_log.h"
 
-// namespace GUI {
+namespace GUI {
 
-// Display &Display::getInstance() {
-//   static Display instance;
-//   return instance;
-// }
-// Display::Display()
-//     : initialised(false), canvas_(std::make_unique<TFT_eSPI>()),
-//       bg_(std::make_unique<TFT_eSprite>(canvas_.get())),
-//       label_(std::make_unique<TFT_eSprite>(canvas_.get())),
-//       analog_(std::make_unique<TFT_eSprite>(canvas_.get())),
-//       img_(std::make_unique<TFT_eSprite>(canvas_.get())),
-//       imgRotor_(std::make_unique<TFT_eSprite>(canvas_.get())),
-//       frame_(std::make_unique<TFT_eSprite>(canvas_.get())),
-//       current_process_(GPSU::ProcessType::ANY) {}
+Display &Display::getInstance() {
+  static Display instance;
+  return instance;
+}
+Display::Display()
+    : initialised(false), canvas_(std::make_unique<TFT_eSPI>()),
+      bg_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      label_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      analog_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      img_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      imgRotor_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      frame_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      current_process_(GPSU::ProcessType::ANY) {}
 
-// //------------------------------------------------------------------------------
-// // Initialisation function.
-// //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+// Initialisation function.
+//------------------------------------------------------------------------------
 
-// void Display::init() {
-//   if (!initialised) {
+void Display::init() {
+  if (!initialised) {
 
-//     canvas_->init();
-//     bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
-//     label_->createSprite(MAX_WIDTH - TOP_MARGIN_PX,
-//                          MAX_HEIGHT - BOTTOM_MARGIN_PX);
-//     displayQueue = xQueueCreate(10, sizeof(DisplayCommand));
-//     xTaskCreate(&Display::display_loop, "display_loop", 2048, this, 1, NULL);
+    canvas_->init();
+    bg_->createSprite(MAX_WIDTH, MAX_HEIGHT);
+    label_->createSprite(MAX_WIDTH - TOP_MARGIN_PX,
+                         MAX_HEIGHT - BOTTOM_MARGIN_PX);
+    displayQueue = xQueueCreate(10, sizeof(Command));
+    xTaskCreate(&Display::display_loop, "display_loop", 2048, this, 1, NULL);
 
-//     // Show initial menu
-//     DisplayCommand cmd;
-//     cmd.type = DisplayCommandType::SHOW_MENU;
-//     sendDisplayCommand(cmd);
-//     initialised = true;
-//   }
-// }
-// void Display::deinitProcessFlags() {
-//   setup_traffic = false;
-//   setup_waterlevel = false;
-//   setup_stepper = false;
-// }
-// void Display::deleteSprites() {
-//   // except bg and label_
-//   if (img_->created()) {
-//     img_->deleteSprite();
-//   }
-//   if (imgRotor_->created()) {
-//     imgRotor_->deleteSprite();
-//   }
-//   if (frame_->created()) {
-//     frame_->deleteSprite();
-//   }
-// }
-// void Display::createSprites() {
-//   if (setup_traffic) {
-//     img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
-//     img_->setSwapBytes(true);
-//   }
-//   if (setup_waterlevel) {
-//     frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
-//   }
-//   if (setup_stepper) {
-//     img_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
-//     img_->setSwapBytes(true);
-//     imgRotor_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
-//     imgRotor_->setSwapBytes(true);
-//   }
-// }
-// void Display::sendDisplayCommand(const DisplayCommand &cmd) {
-//   xQueueSend(displayQueue, &cmd, portMAX_DELAY);
-// }
-// void Display::display_loop(void *param) {
-//   Display *self = static_cast<Display *>(param);
-//   DisplayCommand cmd;
-//   while (true) {
-//     if (xQueueReceive(self->displayQueue, &cmd, portMAX_DELAY) == pdPASS) {
-//       switch (cmd.type) {
-//       case DisplayCommandType::SHOW_MENU:
-//         self->showMenu();
-//         break;
-//       case DisplayCommandType::SHOW_PROCESS_SCREEN:
-//         self->current_process_ = cmd.process_type;
+    // Show initial menu
+    Command cmd;
+    cmd.type = CommandType::SHOW_MENU;
+    sendDisplayCommand(cmd);
+    initialised = true;
+  }
+}
+void Display::deinitProcessFlags() {
+  setup_traffic = false;
+  setup_waterlevel = false;
+  setup_stepper = false;
+}
+void Display::deleteSprites() {
+  // except bg and label_
+  if (img_->created()) {
+    img_->deleteSprite();
+  }
+  if (imgRotor_->created()) {
+    imgRotor_->deleteSprite();
+  }
+  if (frame_->created()) {
+    frame_->deleteSprite();
+  }
+}
+void Display::createSprites() {
+  if (setup_traffic) {
+    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
+    img_->setSwapBytes(true);
+  }
+  if (setup_waterlevel) {
+    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
+  }
+  if (setup_stepper) {
+    img_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    img_->setSwapBytes(true);
+    imgRotor_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    imgRotor_->setSwapBytes(true);
+  }
+}
+void Display::sendDisplayCommand(const Command &cmd) {
+  xQueueSend(displayQueue, &cmd, portMAX_DELAY);
+}
+void Display::display_loop(void *param) {
+  Display *self = static_cast<Display *>(param);
+  Command cmd;
+  while (true) {
+    if (xQueueReceive(self->displayQueue, &cmd, portMAX_DELAY) == pdPASS) {
+      switch (cmd.type) {
+      case CommandType::SHOW_MENU:
+        self->showMenu(cmd.cursor.index, cmd.cursor.items);
+        break;
+      case CommandType::SHOW_PROCESS_SCREEN:
+        self->current_process_ = cmd.process_type;
 
-//         self->showProcessScreen(cmd.process_type);
-//         break;
-//       case DisplayCommandType::UPDATE_TRAFFIC_LIGHT:
-//         if (self->current_process_ == GPSU::ProcessType::TRAFFIC_LIGHT) {
+        self->showProcessScreen(cmd.process_type);
+        break;
+      case CommandType::UPDATE_TRAFFIC_LIGHT:
+        if (self->current_process_ == GPSU::ProcessType::TRAFFIC_LIGHT) {
 
-//           self->updateTrafficLightDisplay(cmd.traffic_light_state);
-//         }
-//         break;
-//       case DisplayCommandType::UPDATE_WATER_LEVEL:
-//         if (self->current_process_ == GPSU::ProcessType::WATER_LEVEL) {
+          self->updateTrafficLightDisplay(cmd);
+        }
+        break;
+      case CommandType::UPDATE_WATER_LEVEL:
+        if (self->current_process_ == GPSU::ProcessType::WATER_LEVEL) {
 
-//           self->updateWaterLevelDisplay(cmd.water_level_state,
-//           cmd.analog_ch0);
-//         }
-//         break;
-//       case DisplayCommandType::UPDATE_STEPPER:
-//         if (self->current_process_ ==
-//             GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
+          // self->updateWaterLevelDisplay(cmd.water_level_state,
+          // cmd.analog_ch0);
+        }
+        break;
+      case CommandType::UPDATE_STEPPER:
+        if (self->current_process_ == GPSU::ProcessType::STEPPER_MOTOR) {
 
-//           self->updateStepperDisplay(cmd.analog_ch0, cmd.analog_ch1);
-//         }
-//         break;
-//       }
-//     }
-//   }
-// }
-// void Display::showProcessScreen(GPSU::ProcessType type) {
-//   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-//   const int16_t fontSize = MENU_FONT;
-//   const char *label = "";
-//   label_->setTextColor(static_cast<uint16_t>(Colors::main),
-//                        static_cast<uint16_t>(Colors::black));
-//   // Determine the label and set up the label_ sprite
-//   for (size_t i = 0; i < MENU_ITEM_COUNT; ++i) {
-//     if (menuItems[i].action == processTrafficLight &&
-//         type == GPSU::ProcessType::TRAFFIC_LIGHT) {
-//       label = menuItems[i].label;
-//       // Set text color for TRAFFIC_LIGHT
+          // self->updateStepperDisplay(cmd.analog_ch0, cmd.analog_ch1);
+        }
+        break;
+      }
+    }
+  }
+}
+void Display::showProcessScreen(GPSU::ProcessType type) {
+  bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  const int16_t fontSize = MENU_FONT;
+  const char *label = GPSU::Util::ToString::Process(type);
+  label_->setTextColor(static_cast<uint16_t>(Colors::main),
+                       static_cast<uint16_t>(Colors::black));
+  processScreenSetup();
+  label_->fillSprite(static_cast<uint16_t>(Colors::black));
+  label_->drawString(label, 0, 0, fontSize);
+  label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
+                       static_cast<uint16_t>(Colors::black));
+  img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                     static_cast<uint16_t>(Colors::black));
+  frame_->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
+  bg_->pushSprite(0, 0);
+}
 
-//     } else if (menuItems[i].action == processWaterLevel &&
-//                type == GPSU::ProcessType::WATER_LEVEL) {
-//       label = menuItems[i].label;
+void Display::processScreenSetup() {
+  bg_->fillSprite(TFT_BLACK);
+  bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  img_->fillSprite(TFT_BLACK);
+  if (setup_stepper) {
+    imgRotor_->fillSprite(TFT_BLACK);
+  }
+  if (setup_waterlevel) {
+    frame_->fillSprite(TFT_BLACK);
+  }
 
-//     } else if (menuItems[i].action == processStepperMotor &&
-//                type == GPSU::ProcessType::STEPPER_MOTOR_CONTROL) {
-//       label = menuItems[i].label;
+  label_->fillSprite(TFT_BLACK);
+  label_->setTextColor(static_cast<uint16_t>(Colors::white),
+                       static_cast<uint16_t>(Colors::black));
+}
+void Display::processScreenExecute(int angle) {
 
-//     } else if (menuItems[i].action == processStateMachine &&
-//                type == GPSU::ProcessType::STATE_MACHINE) {
-//       label = menuItems[i].label;
+  img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                     static_cast<uint16_t>(Colors::black));
 
-//     } else if (menuItems[i].action == processObjectCounter &&
-//                type == GPSU::ProcessType::OBJECT_COUNTER) {
-//       label = menuItems[i].label;
+  if (setup_stepper) {
+    canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
+    imgRotor_->pushRotated(bg_.get(), angle,
+                           static_cast<uint16_t>(Colors::black));
+  }
+  if (setup_waterlevel) {
+    frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
+                         static_cast<uint16_t>(Colors::black));
+  }
 
-//     } else if (menuItems[i].action == processMotorControl &&
-//                type == GPSU::ProcessType::MOTOR_CONTROl) {
-//       label = menuItems[i].label;
-//     }
-//   }
-//   processScreenSetup();
-//   label_->fillSprite(static_cast<uint16_t>(Colors::black));
-//   label_->drawString(label, 0, 0, fontSize);
-//   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
-//                        static_cast<uint16_t>(Colors::black));
-//   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-//                      static_cast<uint16_t>(Colors::black));
-//   frame_->pushToSprite(bg_.get(), 0, 0,
-//   static_cast<uint16_t>(Colors::black)); bg_->pushSprite(0, 0);
-// }
+  label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
+                       static_cast<uint16_t>(Colors::black));
+  bg_->pushSprite(0, 0);
+}
 
-// void Display::processScreenSetup() {
-//   bg_->fillSprite(TFT_BLACK);
-//   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-//   img_->fillSprite(TFT_BLACK);
-//   if (setup_stepper) {
-//     imgRotor_->fillSprite(TFT_BLACK);
-//   }
-//   if (setup_waterlevel) {
-//     frame_->fillSprite(TFT_BLACK);
-//   }
-
-//   label_->fillSprite(TFT_BLACK);
-//   label_->setTextColor(static_cast<uint16_t>(Colors::white),
-//                        static_cast<uint16_t>(Colors::black));
-// }
-// void Display::processScreenExecute(int angle) {
-
-//   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-//                      static_cast<uint16_t>(Colors::black));
-
-//   if (setup_stepper) {
-//     canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
-//     imgRotor_->pushRotated(bg_.get(), angle,
-//                            static_cast<uint16_t>(Colors::black));
-//   }
-//   if (setup_waterlevel) {
-//     frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
-//                          static_cast<uint16_t>(Colors::black));
-//   }
-
-//   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
-//                        static_cast<uint16_t>(Colors::black));
-//   bg_->pushSprite(0, 0);
-// }
-
-// void Display::updateTrafficLightDisplay(int state) {
-//   processScreenSetup();
-//   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
-//   switch (state) {
-//   case 0: // Red
-//     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
-//     break;
-//   case 1: // Yellow
-//     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
-//     break;
-//   case 2: // Green
-//     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
-//     break;
-//   }
-//   processScreenExecute();
-// }
+void Display::updateTrafficLightDisplay(Command cmd) {
+  processScreenSetup();
+  label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
+  TrafficLight::State state = cmd.states.tl_state;
+  switch (state) {
+  case TrafficLight::State::RED_STATE: // Red
+    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
+    break;
+  case TrafficLight::State::YELLOW_STATE: // Yellow
+    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
+    break;
+  case TrafficLight::State::GREEN_STATE: // Green
+    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
+    break;
+  }
+  processScreenExecute();
+}
 // void Display::updateWaterLevelDisplay(const int state, int level) {
 //   processScreenSetup();
 //   // Draw labels
@@ -255,165 +227,172 @@
 
 //   processScreenExecute();
 // }
-// void Display::updateStepperDisplay(const int dir, int step) {
-//   processScreenSetup();
+void Display::updateStepperDisplay(const int dir, int step) {
+  processScreenSetup();
 
-//   label_->drawString("Stepper-Motor", 0, 0, MENU_FONT);
-//   img_->pushImage(0, 0, IMG2_WIDTH, IMG2_HEIGHT,
-//                   Asset::stepper); // 130X130
+  label_->drawString("Stepper-Motor", 0, 0, MENU_FONT);
+  img_->pushImage(0, 0, IMG2_WIDTH, IMG2_HEIGHT,
+                  Asset::stepper); // 130X130
 
-//   int stator_length = 80;
-//   int stator_width = 25;
-//   int stator_x = (IMG2_WIDTH - stator_length) / 2;
-//   int stator_y = (IMG2_HEIGHT - stator_width) / 2;
+  int stator_length = 80;
+  int stator_width = 25;
+  int stator_x = (IMG2_WIDTH - stator_length) / 2;
+  int stator_y = (IMG2_HEIGHT - stator_width) / 2;
 
-//   imgRotor_->fillRoundRect(stator_x, stator_y, stator_length, stator_width,
-//   20,
-//                            TFT_BLUE);
+  imgRotor_->fillRoundRect(stator_x, stator_y, stator_length, stator_width, 20,
+                           TFT_BLUE);
 
-//   int angle = 0;
-//   if (dir == 1) {
-//     angle = 45 + step * 1;
+  int angle = 0;
+  if (dir == 1) {
+    angle = 45 + step * 1;
 
-//   } else if (dir == -1) {
-//     angle = 45 - step * 1;
-//   }
-//   if (angle > 360) {
-//     angle = 0;
-//   }
-//   label_->drawString(String(angle), 0, 20, 4);
-//   processScreenExecute(angle);
-// }
+  } else if (dir == -1) {
+    angle = 45 - step * 1;
+  }
+  if (angle > 360) {
+    angle = 0;
+  }
+  label_->drawString(String(angle), 0, 20, 4);
+  processScreenExecute(angle);
+}
 
-// //------------------------------------------------------------------------------
-// // Accessor functions
-// //------------------------------------------------------------------------------
-// TFT_eSPI &Display::Canvas() { return *canvas_; }
+//------------------------------------------------------------------------------
+// Accessor functions
+//------------------------------------------------------------------------------
+TFT_eSPI &Display::Canvas() { return *canvas_; }
 
-// TFT_eSprite &Display::Sprite() { return *img_; }
-// //------------------------------------------------------------------------------
-// // show_menu (//https://barth-dev.de/online/rgb565-color-picker/)
-// //
-// https://www.iconarchive.com/show/farm-fresh-icons-by-fatcow/traffic-lights-green-icon.html
-// //
-// https://www.cleanpng.com/png-traffic-light-indicating-different-types-of-traffi-7915271/download-png.html
-// // https://www.pngwing.com/en/free-png-yjwqm/download
-// // http: // www.rinkydinkelectronics.com/
-// // https://oleddisplay.squix.ch/#/home
-// //------------------------------------------------------------------------------
-// void Display::showMenu(size_t selected_index, size_t num_items) {
-//   // Clear the screen with a black background
-//   current_process_ = GPSU::ProcessType::ANY;
-//   bg_->fillScreen(TFT_BLACK);
+TFT_eSprite &Display::Sprite() { return *img_; }
+//------------------------------------------------------------------------------
+//  (//https://barth-dev.de/online/rgb565-color-picker/)
+// www.iconarchive.com/show/farm-fresh-icons-by-fatcow/traffic-lights-green-icon.html
+// www.cleanpng.com/png-traffic-light-indicating-different-types-of-traffi-7915271/download-png.html
+// https://www.pngwing.com/en/free-png-yjwqm/download
+// http: // www.rinkydinkelectronics.com/
+// https://oleddisplay.squix.ch/#/home
+//------------------------------------------------------------------------------
 
-//   // Define constants for layout
-//   const int16_t padding = PADDING_PX;
-//   const int16_t fontSize = MENU_FONT;
-//   const int16_t textHeight = bg_->fontHeight(fontSize);
-//   const int16_t itemHeight = textHeight + MENU_VERTICAL_PADDING;
-//   // Define frame padding
-//   const int16_t frame_padding = 10; // Adjustable padding around the frame
-//   // Calculate frame top and bottom positions
-//   int16_t y_frame_top = padding - frame_padding;
-//   if (y_frame_top < 0)
-//     y_frame_top = 0; // Ensure it doesn’t go off-screen
-//   int16_t y_frame_bottom =
-//       padding + (num_items + 1) * itemHeight + frame_padding;
-//   if (y_frame_bottom > bg_->height())
-//     y_frame_bottom = bg_->height(); // Cap at screen height
+// set menuItems
 
-//   // Draw the frame around the menu
-//   bg_->drawRect(0, y_frame_top, bg_->width(), y_frame_bottom - y_frame_top,
-//                 static_cast<uint16_t>(Colors::white));
+void Display::setMenuItems(const MenuItem *items, size_t count) {
+  menuItems_ = items;
+  menuItemCount_ = count;
+}
 
-//   // Draw the title "Main Menu"
-//   const char *title = "Main Menu";
-//   int16_t title_width = bg_->textWidth(title, fontSize);
-//   int16_t x_title = (bg_->width() - title_width) / 2; // Center horizontally
-//   int16_t y_title =
-//       padding + (itemHeight - textHeight) / 2; // Center vertically in slot
-//   bg_->setTextColor(static_cast<uint16_t>(Colors::main),
-//                     static_cast<uint16_t>(Colors::black));
-//   bg_->drawString(title, x_title, y_title, fontSize);
-//   // Loop through all menu items, shifted down by one itemHeight
-//   for (size_t i = 0; i < num_items; i++) {
-//     int16_t yPos = padding + (i + 1) * itemHeight; // Shifted position
+// StartUp menu of GUI
+void Display::showMenu(size_t selected_index, size_t num_items) {
+  // Clear the screen with a black background
+  current_process_ = GPSU::ProcessType::ANY;
+  bg_->fillScreen(TFT_BLACK);
 
-//     // Draw a background rectangle for the selected item
-//     if (i == selected_index) {
-//       bg_->fillRect(0, yPos, bg_->width(), itemHeight,
-//                     static_cast<uint16_t>(Colors::logo));
-//     }
+  // Define constants for layout
+  const int16_t padding = PADDING_PX;
+  const int16_t fontSize = MENU_FONT;
+  const int16_t textHeight = bg_->fontHeight(fontSize);
+  const int16_t itemHeight = textHeight + MENU_VERTICAL_PADDING;
+  // Define frame padding
+  const int16_t frame_padding = 10; // Adjustable padding around the frame
+  // Calculate frame top and bottom positions
+  int16_t y_frame_top = padding - frame_padding;
+  if (y_frame_top < 0)
+    y_frame_top = 0; // Ensure it doesn’t go off-screen
+  int16_t y_frame_bottom =
+      padding + (num_items + 1) * itemHeight + frame_padding;
+  if (y_frame_bottom > bg_->height())
+    y_frame_bottom = bg_->height(); // Cap at screen height
 
-//     // Calculate text dimensions
-//     int16_t textWidth = bg_->textWidth(menuItems[i].label, fontSize);
-//     // Calculate x-position to center the text horizontally
-//     int16_t xPos = (bg_->width() - textWidth) / 2;
-//     // Adjust y-position to center the text vertically within the item height
-//     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
-//     // Set text and background colors
-//     Colors textColor = Colors::main;
-//     Colors bgColor = (i == selected_index) ? Colors::logo : Colors::black;
-//     bg_->setTextColor(static_cast<uint16_t>(textColor),
-//                       static_cast<uint16_t>(bgColor));
+  // Draw the frame around the menu
+  bg_->drawRect(0, y_frame_top, bg_->width(), y_frame_bottom - y_frame_top,
+                static_cast<uint16_t>(Colors::white));
 
-//     // Draw the menu item's text
-//     bg_->drawString(menuItems[i].label, xPos, adjustedYPos, fontSize);
-//   }
+  // Draw the title "Main Menu"
+  const char *title = "Main Menu";
+  int16_t title_width = bg_->textWidth(title, fontSize);
+  int16_t x_title = (bg_->width() - title_width) / 2; // Center horizontally
+  int16_t y_title =
+      padding + (itemHeight - textHeight) / 2; // Center vertically in slot
+  bg_->setTextColor(static_cast<uint16_t>(Colors::main),
+                    static_cast<uint16_t>(Colors::black));
+  bg_->drawString(title, x_title, y_title, fontSize);
+  // Loop through all menu items, shifted down by one itemHeight
+  for (size_t i = 0; i < num_items; i++) {
+    int16_t yPos = padding + (i + 1) * itemHeight; // Shifted position
 
-//   // Push the sprite to the display
-//   bg_->pushSprite(0, 0);
-// }
+    // Draw a background rectangle for the selected item
+    if (i == selected_index) {
+      bg_->fillRect(0, yPos, bg_->width(), itemHeight,
+                    static_cast<uint16_t>(Colors::logo));
+    }
 
-// void Display::showSubMenu() { Serial.println("not implemented yet"); }
+    // Calculate text dimensions
+    int16_t textWidth = bg_->textWidth(menuItems_[i].label, fontSize);
+    // Calculate x-position to center the text horizontally
+    int16_t xPos = (bg_->width() - textWidth) / 2;
+    // Adjust y-position to center the text vertically within the item
+    // height
+    int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
+    // Set text and background colors
+    Colors textColor = Colors::main;
+    Colors bgColor = (i == selected_index) ? Colors::logo : Colors::black;
+    bg_->setTextColor(static_cast<uint16_t>(textColor),
+                      static_cast<uint16_t>(bgColor));
 
-// //------------------------------------------------------------------------------
-// // Runs a process based on the ProcessType.
-// //------------------------------------------------------------------------------
-// void Display::run_process(GPSU::ProcessType type) {
-//   current_process_ = type;
-//   // show_menu();
-//   switch (type) {
-//   case GPSU::ProcessType::TRAFFIC_LIGHT:
-//     deinitProcessFlags();
-//     setup_traffic = true;
-//     deleteSprites();
-//     createSprites();
+    // Draw the menu item's text
+    bg_->drawString(menuItems_[i].label, xPos, adjustedYPos, fontSize);
+  }
 
-//     Serial.println("Running traffic light process");
-//     break;
-//   case GPSU::ProcessType::WATER_LEVEL:
-//     deinitProcessFlags();
-//     setup_waterlevel = true;
-//     deleteSprites();
-//     createSprites();
+  // Push the sprite to the display
+  bg_->pushSprite(0, 0);
+}
 
-//     Serial.println("Running water level process");
-//     break;
-//   case GPSU::ProcessType::STEPPER_MOTOR_CONTROL:
-//     deinitProcessFlags();
-//     setup_stepper = true;
-//     deleteSprites();
-//     createSprites();
+void Display::showSubMenu() { Serial.println("not implemented yet"); }
 
-//     Serial.println("Running stepper motor process");
-//     break;
-//   case GPSU::ProcessType::STATE_MACHINE:
-//     Serial.println("Running state machine process");
-//     break;
-//   case GPSU::ProcessType::OBJECT_COUNTER:
-//     Serial.println("Running object counter process");
-//     break;
-//   case GPSU::ProcessType::MOTOR_CONTROl:
-//     Serial.println("Running motor control process");
-//     break;
-//   default:
-//     Serial.println("Unknown process");
-//     break;
-//   }
-// }
+//------------------------------------------------------------------------------
+// Runs a process based on the ProcessType.
+//------------------------------------------------------------------------------
+void Display::run_process(GPSU::ProcessType type) {
+  current_process_ = type;
+  // show_menu();
+  switch (type) {
+  case GPSU::ProcessType::TRAFFIC_LIGHT:
+    deinitProcessFlags();
+    setup_traffic = true;
+    deleteSprites();
+    createSprites();
 
-// } // namespace GUI
+    Serial.println("Running traffic light process");
+    break;
+  case GPSU::ProcessType::WATER_LEVEL:
+    deinitProcessFlags();
+    setup_waterlevel = true;
+    deleteSprites();
+    createSprites();
+
+    Serial.println("Running water level process");
+    break;
+  case GPSU::ProcessType::STEPPER_MOTOR:
+    deinitProcessFlags();
+    setup_stepper = true;
+    deleteSprites();
+    createSprites();
+
+    Serial.println("Running stepper motor process");
+    break;
+  case GPSU::ProcessType::STATE_MACHINE:
+    Serial.println("Running state machine process");
+    break;
+  case GPSU::ProcessType::OBJECT_COUNTER:
+    Serial.println("Running object counter process");
+    break;
+  case GPSU::ProcessType::MOTOR_CONTROL:
+    Serial.println("Running motor control process");
+    break;
+  default:
+    Serial.println("Unknown process");
+    break;
+  }
+}
+
+} // namespace GUI
 
 // // std::tuple<int16_t, int16_t>
 // //  Display::calculateAlignment(AlignMent align, int16_t Width, int16_t

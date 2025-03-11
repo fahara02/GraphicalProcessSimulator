@@ -102,43 +102,43 @@ void cb2(void *data) { Serial.println(" Higher limit reached"); }
 
 void cb3(int *data) { Serial.println(" lower limit reached"); }
 void cb4(int *data) { Serial.println(" Higher limit reached"); }
-TrafficLight::Context context{
-    TrafficLight::State::INIT, // previous_state
-    {5000, 3000, 2000, false}, // config
-    {0},                       // data
-    {{0}, {false}},            // inputs
-    TrafficLight::Event::OK,   // Event
-    TrafficLight::Mode::AUTO   // Mode
-};
+// TrafficLight::Context context{
+//     TrafficLight::State::INIT, // previous_state
+//     {5000, 3000, 2000, false}, // config
+//     {0},                       // data
+//     {{0}, {false}},            // inputs
+//     TrafficLight::Event::OK,   // Event
+//     TrafficLight::Mode::AUTO   // Mode
+// };
 
-SM::TrafficLightSM trafficLight(context, TrafficLight::State::INIT,
-                                true); // Global object
-unsigned long lastMillis;      // Global variable to track last update time
-TrafficLight::State prevState; // Global variable to track previous state
+// SM::TrafficLightSM trafficLight(context, TrafficLight::State::INIT,
+//                                 true); // Global object
+// unsigned long lastMillis;      // Global variable to track last update time
+// TrafficLight::State prevState; // Global variable to track previous state
 // SM::WaterLevelSM waterLevel;
+GPSU::Process process;
 void setup() {
 
   Serial.begin(115200);
+  process.init();
 
   // Initialize traffic light with timeouts: 5s red, 3s green, 2s yellow
 
   // Perform initial update to transition from INIT to RED_STATE
-  delay(2000);
-  trafficLight.init();
-  delay(2000);
-  trafficLight.update();
+  // delay(2000);
+  // trafficLight.init();
+  // delay(2000);
+  // trafficLight.update();
   // waterLevel.update();
   //   Print initial state
-  Serial.print("Initial state: ");
-  Serial.println(trafficLight.getStateString());
 
   // Record initial time and state
-  lastMillis = millis();
-  prevState = trafficLight.current();
+  // lastMillis = millis();
+  // prevState = trafficLight.current();
   // tft.init();
   // display.init();
   // display.showMenu();
-  delay(1000);
+  // delay(1000);
   // auto &controller = GPSU_CORE::IO_Controller::getInstance(
   //     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
@@ -176,8 +176,9 @@ void setup() {
   //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   // expander.dumpRegisters();
 
-  xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2, &runTaskhandle,
-                          0);
+  // xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2,
+  // &runTaskhandle,
+  //                         0);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -233,40 +234,43 @@ void loop() {
   vTaskDelay(500);
 }
 
-void TestTask(void *param) {
-  while (true) {
-    vTaskDelay(50);
-    // Update the state machine to check transitions
-    TrafficLight::Command cmd = trafficLight.update();
-    const char *exitCommand =
-        GPSU::Util::ToString::TLCommands(cmd.exit_command);
-    const char *entryCommand =
-        GPSU::Util::ToString::TLCommands(cmd.entry_command);
-    const char *State = GPSU::Util::ToString::TLState(trafficLight.current());
+// void TestTask(void *param) {
+//   while (true) {
+//     vTaskDelay(50);
+//     // Update the state machine to check transitions
+//     TrafficLight::Command cmd = trafficLight.update();
+//     const char *exitCommand =
+//         GPSU::Util::ToString::TLCommands(cmd.exit_command);
+//     const char *entryCommand =
+//         GPSU::Util::ToString::TLCommands(cmd.entry_command);
+//     const char *State =
+//     GPSU::Util::ToString::TLState(trafficLight.current());
 
-    if (cmd.check_exit) {
-      Serial.printf("exit command is %s for State %s \n", exitCommand, State);
-    }
-    if (cmd.check_entry) {
-      Serial.printf("entry command is %s for State %s \n", entryCommand, State);
-    }
+//     if (cmd.check_exit) {
+//       Serial.printf("exit command is %s for State %s \n", exitCommand,
+//       State);
+//     }
+//     if (cmd.check_entry) {
+//       Serial.printf("entry command is %s for State %s \n", entryCommand,
+//       State);
+//     }
 
-    // Check if the state has changed
-    TrafficLight::State currentState = trafficLight.current();
-    if (currentState != prevState) {
-      const char *current =
-          GPSU::Util::ToString::TLState(trafficLight.current());
-      const char *previous =
-          GPSU::Util::ToString::TLState(trafficLight.previous());
+//     // Check if the state has changed
+//     TrafficLight::State currentState = trafficLight.current();
+//     if (currentState != prevState) {
+//       const char *current =
+//           GPSU::Util::ToString::TLState(trafficLight.current());
+//       const char *previous =
+//           GPSU::Util::ToString::TLState(trafficLight.previous());
 
-      Serial.printf("State changed to: %s from state %s  int time %lu\n",
-                    current, previous, millis());
+//       Serial.printf("State changed to: %s from state %s  int time %lu\n",
+//                     current, previous, millis());
 
-      prevState = currentState;
-    }
-  }
-  vTaskDelete(NULL);
-}
+//       prevState = currentState;
+//     }
+//   }
+//   vTaskDelete(NULL);
+// }
 // void TestTask(void *param) {
 //   while (true) {
 //     vTaskDelay(50);
