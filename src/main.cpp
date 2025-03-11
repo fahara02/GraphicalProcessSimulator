@@ -112,7 +112,7 @@ TrafficLight::Context context{
 };
 
 SM::TrafficLightSM trafficLight(context, TrafficLight::State::INIT,
-                                TrafficLight::Mode::AUTO); // Global object
+                                true); // Global object
 unsigned long lastMillis;      // Global variable to track last update time
 TrafficLight::State prevState; // Global variable to track previous state
 // SM::WaterLevelSM waterLevel;

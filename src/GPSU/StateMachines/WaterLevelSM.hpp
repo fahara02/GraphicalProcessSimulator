@@ -248,7 +248,7 @@ public:
   using Event = WaterLevel::Event;
 
   WaterLevelSM(const Context &context = Context{})
-      : StateMachine(context, State::EMPTY) {}
+      : StateMachine(context, State::EMPTY, false) {}
 
   void updateInternalState(const Inputs &input) {
     ctx_.data.current_level = input.sensors.measured_level;

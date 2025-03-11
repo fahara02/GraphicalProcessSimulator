@@ -189,7 +189,7 @@ public:
   using Event = StepperMotor::Event;
 
   explicit StepperMotorSM(const Context &context, State state)
-      : StateMachine(context, state) {}
+      : StateMachine(context, state, false) {}
 
   StepperMotorSM(const Context &context)
       : StepperMotorSM(context, State::IDLE) {}

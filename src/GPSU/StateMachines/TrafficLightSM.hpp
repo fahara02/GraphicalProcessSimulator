@@ -253,21 +253,21 @@ public:
   using Event = TrafficLight::Event;
   using Mode = TrafficLight::Mode;
   explicit TrafficLightSM(const Context &context, State state,
-                          Mode mode = Mode::AUTO)
-      : StateMachine(context, state, mode == Mode::AUTO) {
-    ctx_.mode = mode;
+                          bool internalTimer = false)
+      : StateMachine(context, state, internalTimer) {
+    // ctx_.mode = mode;
     register_callback(resetTransitionCallback);
   }
   TrafficLightSM(const Context &context)
-      : TrafficLightSM(context, State::INIT, Mode::AUTO) {}
-  TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, Mode::AUTO) {}
+      : TrafficLightSM(context, State::INIT, false) {}
+  TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, false) {}
 
   void updateInternalState(const Inputs &input) {
 
     if (input.timer.internal_timer_expired) {
       ctx_.data.current_time_ms = 0;
       update();
-      ctx_.inputs.timer.internal_timer_expired = false;
+      //  ctx_.inputs.timer.internal_timer_expired = false;
     }
     ctx_.data.current_time_ms += input.timer.external_delta_time_ms;
   }

@@ -50,8 +50,7 @@ public:
   using Command = typename Traits::Command;
   using Transition = typename Traits::Transition;
 
-  explicit StateMachine(const Context &ctx, State initial,
-                        bool enableTimer = true)
+  explicit StateMachine(const Context &ctx, State initial, bool enableTimer)
       : ctx_(ctx), current_(initial), previous_(initial),
         enable_timer_(enableTimer) {}
 
@@ -130,7 +129,7 @@ protected:
 private:
   std::atomic<State> current_;
   std::atomic<State> previous_;
-  bool enable_timer_ = true;
+  bool enable_timer_ = false;
   bool initialised = false;
 
   // Timer members
