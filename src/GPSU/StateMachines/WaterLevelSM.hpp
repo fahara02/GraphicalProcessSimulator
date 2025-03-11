@@ -254,7 +254,7 @@ public:
     ctx_.inputs = input;
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
-  // Get the current state as a string for debugging or display
+
   String getStateString() const {
     return GPSU::Util::ToString::WLState(current());
   }

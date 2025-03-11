@@ -44,29 +44,29 @@ struct Traits {
     ExitAction exit_action;
   };
 
-  static bool alwaysTrue(const Context &ctx) { return true; }
-  static bool systemFault(const Context &ctx) {
+  static inline bool alwaysTrue(const Context &ctx) { return true; }
+  static inline bool systemFault(const Context &ctx) {
     return ctx.event == Event::LED_FAULT || ctx.event == Event::TIMER_FAULT;
   }
-  static bool systemFaultCleared(const Context &ctx) {
+  static inline bool systemFaultCleared(const Context &ctx) {
     return ctx.event == Event::OK;
   }
 
-  static bool timeoutRed(const Context &ctx) {
+  static inline bool timeoutRed(const Context &ctx) {
     return ctx.data.current_time_ms >= ctx.config.redTimeout_ms;
   }
-  static bool timeoutGreen(const Context &ctx) {
+  static inline bool timeoutGreen(const Context &ctx) {
     return ctx.data.current_time_ms >= ctx.config.greenTimeout_ms;
   }
-  static bool timeoutYellowToRed(const Context &ctx) {
+  static inline bool timeoutYellowToRed(const Context &ctx) {
     return (ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
            (ctx.previous_state == State::GREEN_STATE);
   }
-  static bool timeoutYellowToGreen(const Context &ctx) {
+  static inline bool timeoutYellowToGreen(const Context &ctx) {
     return (ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
            (ctx.previous_state == State::RED_STATE);
   }
-  static bool buttonPress(const Context &ctx) {
+  static inline bool buttonPress(const Context &ctx) {
     return ctx.inputs.user_command.button_pressed;
   }
   struct entryActions {
@@ -222,7 +222,7 @@ public:
   static void resetTimerCallback(State from, State to, Context &ctx) {
     ctx.data.current_time_ms = 0;
   }
-  // Add method to get state as a string
+
   const char *getStateString() const {
     return GPSU::Util::ToString::TLState(current());
   }

@@ -133,23 +133,103 @@ struct Data {
 };
 } // namespace WaterLevel
 namespace StepperMotor {
+enum class State : uint8_t { IDLE = 0, MOVING_CW, MOVING_CCW, HOMING, ERROR };
 
+enum class CommandType : uint8_t {
+  NONE = 0,
+  START_MOVE,
+  STOP,
+  SET_TARGET,
+  HOME,
+  CLEAR_ERROR,
+  EMERGENCY_STOP
+};
+
+struct CommandData {
+  int32_t target_position = 0;
+  uint16_t speed_rpm = 60;
+  bool direction = true; // CW=true, CCW=false
+};
+struct Command {
+  bool check_exit = false;
+  bool check_entry = false;
+  CommandType exit_command;
+  CommandType entry_command;
+  CommandData exit_data;
+  CommandData entry_data;
+};
 struct Config {
-  const float degreePerStep = 1.9;
-  const uint16_t step_per_mm = 120;
+  // Physical properties
+  float degrees_per_step = 1.8;
+  uint16_t steps_per_revolution = 200;
+  uint16_t max_steps = 2000; // Mechanical limit
+
+  // Electrical properties
+  uint16_t max_rpm = 300;
+  uint16_t hold_current = 30;  // Percentage
+  uint16_t move_current = 100; // Percentage
+
+  // Safety
+  uint32_t stall_timeout = 2000;  // ms
+  int32_t position_tolerance = 5; // Steps
 };
+
+struct Inputs {
+  struct Sensors {
+    // PCNT inputs
+    int16_t pulse_count = 0;
+    bool direction_state = true;
+
+    // Limit switches
+    bool home_switch = false;
+    bool cw_limit = false;
+    bool ccw_limit = false;
+
+    // Driver feedback
+    bool driver_fault = false;
+    bool over_temp = false;
+  } sensors;
+
+  struct UserCommand {
+    int32_t target_position = 0;
+    bool start_move = false;
+    bool stop = false;
+    bool home_request = false;
+  } user_command;
+};
+
+enum class Event : uint8_t {
+  OK = 0,
+  MOVEMENT_COMPLETE,
+  HOMING_COMPLETE,
+  STALL_DETECTED,
+  OVERCURRENT,
+  OVERTEMP,
+  LIMIT_SW_ACTIVATED
+};
+
 struct Data {
-  uint16_t currentDirection = 1; //+1 or -1
-  uint16_t currentStep;
+  // Position tracking
+  int32_t current_position = 0;
+  int32_t target_position = 0;
+
+  // Movement parameters
+  uint16_t current_rpm = 0;
+  bool current_direction = true;
+
+  // Timing
+  unsigned long move_start_time = 0;
+
+  // Error tracking
+  uint8_t error_code = 0;
 };
 
-enum class StateStepperMotor : uint8_t {
-  IDLE = 0,
-  RUN,
-  ERROR
-
+// Pulse generation control structure
+struct PulseControl {
+  uint8_t step_pin;
+  uint8_t dir_pin;
+  uint16_t pulse_delay; // µs between pulses
+  bool pulse_state;
 };
-
 } // namespace StepperMotor
-
 #endif
