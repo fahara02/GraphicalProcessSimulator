@@ -15,6 +15,7 @@ namespace GPSU {
 class Process {
 
 public:
+  using tlState = TrafficLight::State;
   using tlContext = TrafficLight::Context;
   using tlMode = TrafficLight::Mode;
   Process();
@@ -30,7 +31,7 @@ protected:
   gpio_num_t pinB_;
   gpio_num_t btn_;
   GUI::Display &display_;
-  std::unique_ptr<COMPONENT::MCP23017> io_;
+  // std::unique_ptr<COMPONENT::MCP23017> io_;
   std::unique_ptr<MenuSelector> menu_;
   // std::unique_ptr<Pulse::Counter> counter_;
   std::unique_ptr<SM::TrafficLightSM> tlsm_;
@@ -48,7 +49,7 @@ private:
       {0},                       // data
       {{0}, {false}},            // inputs
       TrafficLight::Event::OK,   // Event
-      TrafficLight::Mode::MANUAL // Mode
+      TrafficLight::Mode::AUTO   // Mode
   };
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;
@@ -74,12 +75,13 @@ private:
 
     if (type == ProcessType::TRAFFIC_LIGHT) {
       Context ctx;
-      uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
+      // uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
 
-      ctx.inputs.user_command.turn_on_red = (pinStatus >> 1) & 0x01;    // GPB1
-      ctx.inputs.user_command.turn_on_green = (pinStatus >> 2) & 0x01;  // GPB2
-      ctx.inputs.user_command.turn_on_yellow = (pinStatus >> 3) & 0x01; // GPB3
-      ctx.inputs.user_command.button_pressed = (pinStatus >> 4) & 0x01; // GPB4
+      // ctx.inputs.user_command.turn_on_red = (pinStatus >> 1) & 0x01;    //
+      // GPB1 ctx.inputs.user_command.turn_on_green = (pinStatus >> 2) & 0x01;
+      // // GPB2 ctx.inputs.user_command.turn_on_yellow = (pinStatus >> 3) &
+      // 0x01; // GPB3 ctx.inputs.user_command.button_pressed = (pinStatus >> 4)
+      // & 0x01; // GPB4 ctx.inputs.new_input = true;
       ctx.inputs.new_input = true;
       return ctx;
     }

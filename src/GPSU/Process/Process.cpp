@@ -24,11 +24,11 @@ Process::Process()
     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
       display_(GUI::Display::getInstance(process_list, process_count)),
-      io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
+      // io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
       menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
                                            pinA_, pinB_, btn_)),
 
-      tlsm_(std::make_unique<SM::TrafficLightSM>(tl_ctx, false)),
+      tlsm_(std::make_unique<SM::TrafficLightSM>()),
       wlsm_(std::make_unique<SM::WaterLevelSM>()),
       stsm_(std::make_unique<SM::StepperMotorSM>()),
       current_process_(ProcessType::ANY) {}
@@ -36,12 +36,12 @@ Process::Process()
 void Process::init() {
 
   display_.init();
-  io_->init();
+  // io_->init();
   setting_.opMode = MCP::OperationMode::SequentialMode16;
-  io_->configure(setting_);
-  io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
-  io_->pinMode(MCP::PORT::GPIOB, INPUT);
-  io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
+  // io_->configure(setting_);
+  // io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+  // io_->pinMode(MCP::PORT::GPIOB, INPUT);
+  // io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
   menu_->set_selection_changed_cb(&Process::selectionChanged, this);
   menu_->set_item_selected_cb(&Process::itemSelected, this);
   menu_->init();
@@ -78,7 +78,6 @@ void Process::handleItemSelected(size_t index) {
   GUI::Command cmd;
   cmd.type = GUI::CommandType::SHOW_PROCESS_SCREEN;
   cmd.process_type = current_process_;
-  initialiseProcess(current_process_);
   display_.sendDisplayCommand(cmd);
 }
 void Process::initialiseProcess(ProcessType type) {
@@ -144,8 +143,17 @@ void Process::traffic_light_task(void *param) {
     ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
                                    TrafficLight::Context>();
 
-    instance->tlsm_->updateData(ctx.inputs);
+    // instance->tlsm_->updateData(ctx.inputs);
+    instance->tlsm_->setAutoUpdate();
+    instance->tlsm_->update();
     state = instance->tlsm_->current();
+    const char *current =
+        GPSU::Util::ToString::TLState(instance->tlsm_->current());
+    const char *previous =
+        GPSU::Util::ToString::TLState(instance->tlsm_->previous());
+
+    Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
+                  previous, millis());
     GUI::Command cmd;
     cmd.type = GUI::CommandType::UPDATE_TRAFFIC_LIGHT;
     cmd.states.tl_state = state;
@@ -229,6 +237,7 @@ void Process::processTrafficLight(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
     proc->current_process_ = ProcessType::TRAFFIC_LIGHT;
+    proc->initialiseProcess(ProcessType::TRAFFIC_LIGHT);
     proc->display_.run_process(ProcessType::TRAFFIC_LIGHT);
     proc->create_task(ProcessType::TRAFFIC_LIGHT);
   }

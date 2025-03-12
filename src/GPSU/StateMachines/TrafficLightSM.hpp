@@ -73,8 +73,8 @@ struct Traits {
     return ctx.mode == Mode::AUTO;
   }
   static inline bool start(const Context &ctx) {
-    // Serial.printf("Context Mode is %s",
-    //               ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Unknown");
+    Serial.printf("Context Mode is %s\n",
+                  ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Unknown");
     return auto_mode(ctx);
   }
   static inline bool manual_red(const Context &ctx) {
@@ -129,6 +129,7 @@ struct Traits {
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_RED;
       cmd.entry_data.timeout_ms = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      Serial.printf("time out set for red %d \n", cmd.entry_data.timeout_ms);
       cmd.entry_data.immediate_transition = false;
       return cmd;
     }
@@ -276,7 +277,7 @@ public:
   TrafficLightSM(const Context &context, bool internalTimer = true)
       : TrafficLightSM(context, State::INIT, internalTimer) {}
 
-  TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, false) {}
+  TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, true) {}
 
   void updateInternalState(const Inputs &input) {
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {

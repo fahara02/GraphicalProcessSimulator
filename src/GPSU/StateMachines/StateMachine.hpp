@@ -90,11 +90,10 @@ public:
   }
 
   void updateData(const Inputs &newInput) {
-    if (newInput.new_input) {
-      ctx_.inputs = newInput;
-      static_cast<Derived *>(this)->updateInternalState(newInput);
-      dataUpdated_ = true;
-    }
+
+    ctx_.inputs = newInput;
+    static_cast<Derived *>(this)->updateInternalState(newInput);
+    dataUpdated_ = true;
   }
   void handleEvent(const Event ev) {
     static_cast<Derived *>(this)->updateInternalState(ev);
@@ -125,6 +124,7 @@ public:
       }
     }
   }
+  void setAutoUpdate() { dataUpdated_ = true; }
 
 protected:
   Context ctx_;
