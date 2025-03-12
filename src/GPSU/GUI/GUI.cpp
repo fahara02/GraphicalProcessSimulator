@@ -161,6 +161,9 @@ void Display::updateTrafficLight(Command cmd) {
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
   TrafficLight::State state = cmd.states.tl_state;
   switch (state) {
+  case TrafficLight::State::INIT: // Init
+    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
+    break;
   case TrafficLight::State::RED_STATE: // Red
     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
     break;
@@ -170,6 +173,9 @@ void Display::updateTrafficLight(Command cmd) {
   case TrafficLight::State::GREEN_STATE: // Green
     img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
     break;
+    // default:
+    //   img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
+    //   break;
   }
   processScreenExecute();
 }

@@ -381,43 +381,43 @@ void loop() {
 //   img.pushSprite(0, 0);
 // }
 
-void RunTask(void *param) {
-  MCP::MCPDevice *expander = static_cast<MCP::MCPDevice *>(param);
-  while (true) {
-    Serial.println("....MAIN TASK......");
-    // uint8_t readmask = 0;
-    // readmask = expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+// void RunTask(void *param) {
+//   MCP::MCPDevice *expander = static_cast<MCP::MCPDevice *>(param);
+//   while (true) {
+//     Serial.println("....MAIN TASK......");
+//     // uint8_t readmask = 0;
+//     // readmask = expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
 
-    // vTaskDelay(pdMS_TO_TICKS(10));
+//     // vTaskDelay(pdMS_TO_TICKS(10));
 
-    // expander->digitalWrite(MCP::PORT::GPIOA, readmask, true);
-    // vTaskDelay(pdMS_TO_TICKS(10));
+//     // expander->digitalWrite(MCP::PORT::GPIOA, readmask, true);
+//     // vTaskDelay(pdMS_TO_TICKS(10));
 
-    expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
-    send_req += 1;
-    // expander->gpioBankA->setPinState(mask, false);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
-    Serial.printf("pins value is %d", readmask);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    send_req += 1;
-    if (send_req == 2) {
-      send_req = 0;
-      expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
-      vTaskDelay(pdMS_TO_TICKS(10));
-      expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
-      Serial.printf("B ports value is %d", readmask);
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    Serial.printf("pins value is %d", readmask);
+//     expander->digitalWrite(true, GPA1, GPA2, GPA3, GPA4);
+//     send_req += 1;
+//     // expander->gpioBankA->setPinState(mask, false);
+//     vTaskDelay(pdMS_TO_TICKS(100));
+//     uint8_t readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
+//     Serial.printf("pins value is %d", readmask);
+//     vTaskDelay(pdMS_TO_TICKS(10));
+//     send_req += 1;
+//     if (send_req == 2) {
+//       send_req = 0;
+//       expander->digitalWrite(false, GPA1, GPA2, GPA3, GPA4);
+//       vTaskDelay(pdMS_TO_TICKS(10));
+//       expander->digitalRead(GPB1, GPB2, GPB3, GPB4);
+//       Serial.printf("B ports value is %d", readmask);
+//       vTaskDelay(pdMS_TO_TICKS(10));
+//     }
+//     readmask = expander->digitalRead(GPA1, GPA2, GPA3, GPA4);
+//     vTaskDelay(pdMS_TO_TICKS(10));
+//     Serial.printf("pins value is %d", readmask);
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+//     vTaskDelay(pdMS_TO_TICKS(10));
 
-    Serial.printf("Total send request=%d\n", send_req);
-    Serial.println("..........");
-    vTaskDelay(pdMS_TO_TICKS(10));
-  }
-  vTaskDelete(NULL);
-}
+//     Serial.printf("Total send request=%d\n", send_req);
+//     Serial.println("..........");
+//     vTaskDelay(pdMS_TO_TICKS(10));
+//   }
+//   vTaskDelete(NULL);
+// }

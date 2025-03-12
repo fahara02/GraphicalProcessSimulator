@@ -30,7 +30,7 @@ protected:
   gpio_num_t pinB_;
   gpio_num_t btn_;
   GUI::Display &display_;
-  // std::unique_ptr<COMPONENT::MCP23017> io_;
+  std::unique_ptr<COMPONENT::MCP23017> io_;
   std::unique_ptr<MenuSelector> menu_;
   // std::unique_ptr<Pulse::Counter> counter_;
   std::unique_ptr<SM::TrafficLightSM> tlsm_;
@@ -74,10 +74,13 @@ private:
 
     if (type == ProcessType::TRAFFIC_LIGHT) {
       Context ctx;
-      // ctx.inputs.user_command.turn_on_red = io_->digitalRead(GPB1);
-      // ctx.inputs.user_command.turn_on_green = io_->digitalRead(GPB2);
-      // ctx.inputs.user_command.turn_on_yellow = io_->digitalRead(GPB3);
-      // ctx.inputs.user_command.button_pressed = io_->digitalRead(GPB4);
+      uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
+
+      ctx.inputs.user_command.turn_on_red = (pinStatus >> 1) & 0x01;    // GPB1
+      ctx.inputs.user_command.turn_on_green = (pinStatus >> 2) & 0x01;  // GPB2
+      ctx.inputs.user_command.turn_on_yellow = (pinStatus >> 3) & 0x01; // GPB3
+      ctx.inputs.user_command.button_pressed = (pinStatus >> 4) & 0x01; // GPB4
+      ctx.inputs.new_input = true;
       return ctx;
     }
     return Context{};

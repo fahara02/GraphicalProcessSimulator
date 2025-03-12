@@ -90,9 +90,11 @@ public:
   }
 
   void updateData(const Inputs &newInput) {
-    ctx_.inputs = newInput;
-    static_cast<Derived *>(this)->updateInternalState(newInput);
-    dataUpdated_ = true;
+    if (newInput.new_input) {
+      ctx_.inputs = newInput;
+      static_cast<Derived *>(this)->updateInternalState(newInput);
+      dataUpdated_ = true;
+    }
   }
   void handleEvent(const Event ev) {
     static_cast<Derived *>(this)->updateInternalState(ev);

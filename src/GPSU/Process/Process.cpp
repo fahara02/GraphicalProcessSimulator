@@ -24,7 +24,7 @@ Process::Process()
     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
       display_(GUI::Display::getInstance(process_list, process_count)),
-
+      io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
       menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
                                            pinA_, pinB_, btn_)),
 
@@ -36,8 +36,12 @@ Process::Process()
 void Process::init() {
 
   display_.init();
+  io_->init();
   setting_.opMode = MCP::OperationMode::SequentialMode16;
-
+  io_->configure(setting_);
+  io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+  io_->pinMode(MCP::PORT::GPIOB, INPUT);
+  io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
   menu_->set_selection_changed_cb(&Process::selectionChanged, this);
   menu_->set_item_selected_cb(&Process::itemSelected, this);
   menu_->init();

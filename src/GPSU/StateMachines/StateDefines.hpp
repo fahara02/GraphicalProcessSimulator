@@ -46,6 +46,7 @@ struct Config {
   uint8_t max_errors = 3;
 };
 struct Inputs {
+  bool new_input = false;
   struct Timer {
     int external_delta_time_ms = 0;
     bool internal_timer_expired = false;
@@ -114,6 +115,7 @@ struct Config {
 };
 
 struct Inputs {
+  bool new_input = false;
   struct Timer {
     int external_delta_time_ms = 0;
     bool internal_timer_expired = false;
@@ -190,6 +192,7 @@ struct Config {
 };
 
 struct Inputs {
+  bool new_input = false;
   struct Timer {
     int external_delta_time_ms = 0;
     bool internal_timer_expired = false;
