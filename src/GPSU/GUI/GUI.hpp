@@ -34,7 +34,6 @@ struct Command {
     size_t items;
     const char *label;
   } cursor;
-
   struct {
     TrafficLight::State tl_state;
     WaterLevel::State wl_state;
@@ -55,10 +54,7 @@ struct Command {
 };
 class Display {
 public:
-  static Display &getInstance();
-
-  Display(const Display &) = delete;
-  Display &operator=(const Display &) = delete;
+  static Display &getInstance(const MenuItem *items, size_t count);
 
   TFT_eSPI &Canvas();
   TFT_eSprite &Sprite();
@@ -67,11 +63,16 @@ public:
   void sendDisplayCommand(const Command &cmd);
   void run_process(GPSU::ProcessType type);
   void setMenuItems(const MenuItem *items, size_t count);
-  void setCursorIndex(size_t index) { cursorIndex_ = index; }
+  void setCursorIndex(size_t index);
+
+  Display(const Display &) = delete;
+  Display &operator=(const Display &) = delete;
 
 private:
   // Private constructor.
-  explicit Display();
+  explicit Display(const MenuItem *items, size_t count);
+  const MenuItem *menuItems_ = nullptr;
+  size_t menuItemCount_ = 0;
   bool initialised;
   bool setup_traffic = false;
   bool setup_waterlevel = false;
@@ -87,17 +88,14 @@ private:
   GPSU::ProcessType current_process_;
 
   QueueHandle_t displayQueue;
-  const MenuItem *menuItems_ = nullptr;
-  size_t menuItemCount_ = 0;
+
   size_t cursorIndex_ = 0;
 
   void showMenu();
   void showProcessScreen(GPSU::ProcessType type);
-  void updateTrafficLightDisplay(Command cmd);
+  void updateTrafficLight(Command cmd);
   void updateWaterLevelDisplay(const int state, int level);
   void updateStepperDisplay(const int dir, int step);
-
-  void showSubMenu();
 
   static void onSelectionChanged(size_t index);
   static void onItemSelected(size_t index);

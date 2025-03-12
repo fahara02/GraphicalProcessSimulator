@@ -1,5 +1,10 @@
 #include "Process.hpp"
-
+// io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
+//  counter_(std::make_unique<Pulse::Counter>()),
+// io_->configure(setting_);
+// io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+// io_->pinMode(MCP::PORT::GPIOB, INPUT);
+// io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
 namespace GPSU {
 StackType_t Process::sharedStack[2048]; // Define the stack array
 StaticTask_t Process::sharedTCB;        // Define the TCB
@@ -18,11 +23,11 @@ const MenuItem Process::process_list[] = {
 Process::Process()
     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
-      display_(GUI::Display::getInstance()),
-      // io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
+      display_(GUI::Display::getInstance(process_list, process_count)),
+
       menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
                                            pinA_, pinB_, btn_)),
-      //  counter_(std::make_unique<Pulse::Counter>()),
+
       tlsm_(std::make_unique<SM::TrafficLightSM>(tl_ctx, false)),
       wlsm_(std::make_unique<SM::WaterLevelSM>()),
       stsm_(std::make_unique<SM::StepperMotorSM>()),
@@ -32,13 +37,10 @@ void Process::init() {
 
   display_.init();
   setting_.opMode = MCP::OperationMode::SequentialMode16;
-  // io_->configure(setting_);
-  // io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
-  // io_->pinMode(MCP::PORT::GPIOB, INPUT);
-  // io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
-  menu_->set_selection_changed_cb(&Process::selectionChanged);
-  menu_->set_item_selected_cb(&Process::itemSelected);
-  display_.setMenuItems(process_list, process_count);
+
+  menu_->set_selection_changed_cb(&Process::selectionChanged, this);
+  menu_->set_item_selected_cb(&Process::itemSelected, this);
+  menu_->init();
   GUI::Command cmd;
   cmd.type = GUI::CommandType::SHOW_MENU;
   display_.sendDisplayCommand(cmd);

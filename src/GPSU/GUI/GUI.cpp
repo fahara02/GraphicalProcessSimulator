@@ -5,12 +5,13 @@
 
 namespace GUI {
 
-Display &Display::getInstance() {
-  static Display instance;
+Display &Display::getInstance(const MenuItem *items, size_t count) {
+  static Display instance(items, count);
   return instance;
 }
-Display::Display()
-    : initialised(false), canvas_(std::make_unique<TFT_eSPI>()),
+Display::Display(const MenuItem *items, size_t count)
+    : menuItems_(items), menuItemCount_(count), initialised(false),
+      canvas_(std::make_unique<TFT_eSPI>()),
       bg_(std::make_unique<TFT_eSprite>(canvas_.get())),
       label_(std::make_unique<TFT_eSprite>(canvas_.get())),
       analog_(std::make_unique<TFT_eSprite>(canvas_.get())),
@@ -32,14 +33,11 @@ void Display::init() {
                          MAX_HEIGHT - BOTTOM_MARGIN_PX);
     displayQueue = xQueueCreate(10, sizeof(Command));
     xTaskCreate(&Display::display_loop, "display_loop", 2048, this, 1, NULL);
-
-    // Show initial menu
-    // Command cmd;
-    // cmd.type = CommandType::SHOW_MENU;
-    // sendDisplayCommand(cmd);
     initialised = true;
   }
 }
+void Display::setCursorIndex(size_t index) { cursorIndex_ = index; }
+
 void Display::deinitProcessFlags() {
   setup_traffic = false;
   setup_waterlevel = false;
@@ -87,25 +85,21 @@ void Display::display_loop(void *param) {
         break;
       case CommandType::SHOW_PROCESS_SCREEN:
         self->current_process_ = cmd.process_type;
-
         self->showProcessScreen(cmd.process_type);
         break;
       case CommandType::UPDATE_TRAFFIC_LIGHT:
         if (self->current_process_ == GPSU::ProcessType::TRAFFIC_LIGHT) {
-
-          self->updateTrafficLightDisplay(cmd);
+          self->updateTrafficLight(cmd);
         }
         break;
       case CommandType::UPDATE_WATER_LEVEL:
         if (self->current_process_ == GPSU::ProcessType::WATER_LEVEL) {
-
           // self->updateWaterLevelDisplay(cmd.water_level_state,
           // cmd.analog_ch0);
         }
         break;
       case CommandType::UPDATE_STEPPER:
         if (self->current_process_ == GPSU::ProcessType::STEPPER_MOTOR) {
-
           // self->updateStepperDisplay(cmd.analog_ch0, cmd.analog_ch1);
         }
         break;
@@ -140,7 +134,6 @@ void Display::processScreenSetup() {
   if (setup_waterlevel) {
     frame_->fillSprite(TFT_BLACK);
   }
-
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
@@ -149,7 +142,6 @@ void Display::processScreenExecute(int angle) {
 
   img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                      static_cast<uint16_t>(Colors::black));
-
   if (setup_stepper) {
     canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
     imgRotor_->pushRotated(bg_.get(), angle,
@@ -159,13 +151,12 @@ void Display::processScreenExecute(int angle) {
     frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
                          static_cast<uint16_t>(Colors::black));
   }
-
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
 }
 
-void Display::updateTrafficLightDisplay(Command cmd) {
+void Display::updateTrafficLight(Command cmd) {
   processScreenSetup();
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
   TrafficLight::State state = cmd.states.tl_state;
@@ -281,10 +272,11 @@ void Display::setMenuItems(const MenuItem *items, size_t count) {
 
 // StartUp menu of GUI
 void Display::showMenu() {
-  // Clear the screen with a black background
-  size_t selected_index = cursorIndex_;
-  size_t num_items = menuItemCount_;
+
+  //   size_t selected_index = cursorIndex_;
+  //   size_t num_items = menuItemCount_;
   current_process_ = GPSU::ProcessType::ANY;
+  // Clear the screen with a black background
   bg_->fillScreen(TFT_BLACK);
 
   // Define constants for layout
@@ -299,7 +291,7 @@ void Display::showMenu() {
   if (y_frame_top < 0)
     y_frame_top = 0; // Ensure it doesn’t go off-screen
   int16_t y_frame_bottom =
-      padding + (num_items + 1) * itemHeight + frame_padding;
+      padding + (menuItemCount_ + 1) * itemHeight + frame_padding;
   if (y_frame_bottom > bg_->height())
     y_frame_bottom = bg_->height(); // Cap at screen height
 
@@ -317,11 +309,11 @@ void Display::showMenu() {
                     static_cast<uint16_t>(Colors::black));
   bg_->drawString(title, x_title, y_title, fontSize);
   // Loop through all menu items, shifted down by one itemHeight
-  for (size_t i = 0; i < num_items; i++) {
+  for (size_t i = 0; i < menuItemCount_; i++) {
     int16_t yPos = padding + (i + 1) * itemHeight; // Shifted position
 
     // Draw a background rectangle for the selected item
-    if (i == selected_index) {
+    if (i == cursorIndex_) {
       bg_->fillRect(0, yPos, bg_->width(), itemHeight,
                     static_cast<uint16_t>(Colors::logo));
     }
@@ -335,7 +327,7 @@ void Display::showMenu() {
     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
     // Set text and background colors
     Colors textColor = Colors::main;
-    Colors bgColor = (i == selected_index) ? Colors::logo : Colors::black;
+    Colors bgColor = (i == cursorIndex_) ? Colors::logo : Colors::black;
     bg_->setTextColor(static_cast<uint16_t>(textColor),
                       static_cast<uint16_t>(bgColor));
 
@@ -346,8 +338,6 @@ void Display::showMenu() {
   // Push the sprite to the display
   bg_->pushSprite(0, 0);
 }
-
-void Display::showSubMenu() { Serial.println("not implemented yet"); }
 
 //------------------------------------------------------------------------------
 // Runs a process based on the ProcessType.
