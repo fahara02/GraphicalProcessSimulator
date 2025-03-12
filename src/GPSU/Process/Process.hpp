@@ -30,9 +30,9 @@ protected:
   gpio_num_t pinB_;
   gpio_num_t btn_;
   GUI::Display &display_;
-  std::unique_ptr<COMPONENT::MCP23017> io_;
+  // std::unique_ptr<COMPONENT::MCP23017> io_;
   std::unique_ptr<MenuSelector> menu_;
-  std::unique_ptr<Pulse::Counter> counter_;
+  // std::unique_ptr<Pulse::Counter> counter_;
   std::unique_ptr<SM::TrafficLightSM> tlsm_;
   std::unique_ptr<SM::WaterLevelSM> wlsm_;
   std::unique_ptr<SM::StepperMotorSM> stsm_;
@@ -69,14 +69,15 @@ private:
   static void itemSelected(size_t index, void *data);
   void handleSelectionChanged(size_t index);
   void handleItemSelected(size_t index);
+  void initialiseProcess(ProcessType type);
   template <ProcessType type, typename Context> Context mapUserCommand() {
 
     if (type == ProcessType::TRAFFIC_LIGHT) {
       Context ctx;
-      ctx.inputs.user_command.turn_on_red = io_->digitalRead(GPB1);
-      ctx.inputs.user_command.turn_on_green = io_->digitalRead(GPB2);
-      ctx.inputs.user_command.turn_on_yellow = io_->digitalRead(GPB3);
-      ctx.inputs.user_command.button_pressed = io_->digitalRead(GPB4);
+      // ctx.inputs.user_command.turn_on_red = io_->digitalRead(GPB1);
+      // ctx.inputs.user_command.turn_on_green = io_->digitalRead(GPB2);
+      // ctx.inputs.user_command.turn_on_yellow = io_->digitalRead(GPB3);
+      // ctx.inputs.user_command.button_pressed = io_->digitalRead(GPB4);
       return ctx;
     }
     return Context{};

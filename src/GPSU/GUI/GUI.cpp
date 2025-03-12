@@ -34,9 +34,9 @@ void Display::init() {
     xTaskCreate(&Display::display_loop, "display_loop", 2048, this, 1, NULL);
 
     // Show initial menu
-    Command cmd;
-    cmd.type = CommandType::SHOW_MENU;
-    sendDisplayCommand(cmd);
+    // Command cmd;
+    // cmd.type = CommandType::SHOW_MENU;
+    // sendDisplayCommand(cmd);
     initialised = true;
   }
 }
@@ -82,7 +82,8 @@ void Display::display_loop(void *param) {
     if (xQueueReceive(self->displayQueue, &cmd, portMAX_DELAY) == pdPASS) {
       switch (cmd.type) {
       case CommandType::SHOW_MENU:
-        self->showMenu(cmd.cursor.index, cmd.cursor.items);
+        self->setCursorIndex(cmd.cursor.index);
+        self->showMenu();
         break;
       case CommandType::SHOW_PROCESS_SCREEN:
         self->current_process_ = cmd.process_type;
@@ -279,8 +280,10 @@ void Display::setMenuItems(const MenuItem *items, size_t count) {
 }
 
 // StartUp menu of GUI
-void Display::showMenu(size_t selected_index, size_t num_items) {
+void Display::showMenu() {
   // Clear the screen with a black background
+  size_t selected_index = cursorIndex_;
+  size_t num_items = menuItemCount_;
   current_process_ = GPSU::ProcessType::ANY;
   bg_->fillScreen(TFT_BLACK);
 

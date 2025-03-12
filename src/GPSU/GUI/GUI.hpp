@@ -67,6 +67,7 @@ public:
   void sendDisplayCommand(const Command &cmd);
   void run_process(GPSU::ProcessType type);
   void setMenuItems(const MenuItem *items, size_t count);
+  void setCursorIndex(size_t index) { cursorIndex_ = index; }
 
 private:
   // Private constructor.
@@ -88,8 +89,9 @@ private:
   QueueHandle_t displayQueue;
   const MenuItem *menuItems_ = nullptr;
   size_t menuItemCount_ = 0;
+  size_t cursorIndex_ = 0;
 
-  void showMenu(size_t selected_index, size_t num_items);
+  void showMenu();
   void showProcessScreen(GPSU::ProcessType type);
   void updateTrafficLightDisplay(Command cmd);
   void updateWaterLevelDisplay(const int state, int level);
