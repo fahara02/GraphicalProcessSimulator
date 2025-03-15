@@ -20,6 +20,20 @@ struct Context {
   Event event;
   Pulse pulse;
   Mode mode = Mode::AUTO;
+
+  // Assignment operator
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      previous_state = other.previous_state;
+      config = other.config;
+      data = other.data;
+      inputs = other.inputs;
+      event = other.event;
+      pulse = other.pulse;
+      mode = other.mode;
+    }
+    return *this;
+  }
 };
 
 struct Traits {

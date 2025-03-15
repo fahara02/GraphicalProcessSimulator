@@ -90,12 +90,12 @@ struct Traits {
 
   static inline bool timeoutRed(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer_expired ||
+           (ctx.inputs.timer.internal_timer1_expired ||
             ctx.data.current_time_ms >= ctx.config.redTimeout_ms);
   }
   static inline bool timeoutGreen(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer_expired ||
+           (ctx.inputs.timer.internal_timer1_expired ||
             ctx.data.current_time_ms >= ctx.config.greenTimeout_ms);
   }
 
@@ -109,13 +109,13 @@ struct Traits {
   }
   static inline bool timeoutYellowToRed(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer_expired ||
+           (ctx.inputs.timer.internal_timer1_expired ||
             ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
            (ctx.previous_state == State::GREEN_STATE);
   }
   static inline bool timeoutYellowToGreen(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer_expired ||
+           (ctx.inputs.timer.internal_timer1_expired ||
             ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
            (ctx.previous_state == State::RED_STATE);
   }
@@ -128,8 +128,9 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_RED;
-      cmd.entry_data.timeout_ms = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
-      Serial.printf("time out set for red %d \n", cmd.entry_data.timeout_ms);
+      cmd.entry_data.timeout1_ms =
+          auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      Serial.printf("time out set for red %d \n", cmd.entry_data.timeout1_ms);
       cmd.entry_data.immediate_transition = false;
       return cmd;
     }
@@ -138,7 +139,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout_ms =
+      cmd.entry_data.timeout1_ms =
           auto_mode(ctx) ? ctx.config.yellowTimeout_ms : 0;
       return cmd;
     }
@@ -154,7 +155,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_GREEN;
-      cmd.entry_data.timeout_ms =
+      cmd.entry_data.timeout1_ms =
           auto_mode(ctx) ? ctx.config.greenTimeout_ms : 0;
 
       return cmd;
@@ -163,7 +164,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout_ms =
+      cmd.entry_data.timeout1_ms =
           auto_mode(ctx) ? ctx.config.yellowTimeout_ms : 0;
 
       return cmd;
@@ -172,7 +173,8 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CommandType::TURN_ON_RED;
-      cmd.entry_data.timeout_ms = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      cmd.entry_data.timeout1_ms =
+          auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
       return cmd;
     }
   };
@@ -281,7 +283,7 @@ public:
 
   void updateInternalState(const Inputs &input) {
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
-      if (input.timer.internal_timer_expired) {
+      if (input.timer.internal_timer1_expired) {
         ctx_.data.current_time_ms = 0;
         update();
       }

@@ -14,10 +14,8 @@ Display::Display(const MenuItem *items, size_t count)
       canvas_(std::make_unique<TFT_eSPI>()),
       bg_(std::make_unique<TFT_eSprite>(canvas_.get())),
       label_(std::make_unique<TFT_eSprite>(canvas_.get())),
-      analog_(std::make_unique<TFT_eSprite>(canvas_.get())),
-      img_(std::make_unique<TFT_eSprite>(canvas_.get())),
-      imgRotor_(std::make_unique<TFT_eSprite>(canvas_.get())),
-      frame_(std::make_unique<TFT_eSprite>(canvas_.get())),
+      layer_1(std::make_unique<TFT_eSprite>(canvas_.get())),
+      layer_2(std::make_unique<TFT_eSprite>(canvas_.get())),
       current_process_(GPSU::ProcessType::ANY) {}
 
 //------------------------------------------------------------------------------
@@ -45,29 +43,32 @@ void Display::deinitProcessFlags() {
 }
 void Display::deleteSprites() {
   // except bg and label_
-  if (img_->created()) {
-    img_->deleteSprite();
+  if (layer_1->created()) {
+    layer_1->deleteSprite();
   }
-  if (imgRotor_->created()) {
-    imgRotor_->deleteSprite();
-  }
-  if (frame_->created()) {
-    frame_->deleteSprite();
+  if (layer_2->created()) {
+    layer_2->deleteSprite();
   }
 }
 void Display::createSprites() {
   if (setup_traffic) {
-    img_->createSprite(IMG_WIDTH, IMG_HEIGHT);
-    img_->setSwapBytes(true);
+    layer_1->createSprite(IMG_WIDTH, IMG_HEIGHT);
+    layer_1->setSwapBytes(true);
   }
   if (setup_waterlevel) {
-    frame_->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
+    layer_2->createSprite(FRMAE_WIDTH, FRAME_HEIGHT);
   }
   if (setup_stepper) {
-    img_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
-    img_->setSwapBytes(true);
-    imgRotor_->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
-    imgRotor_->setSwapBytes(true);
+    layer_1->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    layer_1->setSwapBytes(true);
+    layer_2->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    layer_2->setSwapBytes(true);
+  }
+  if (setup_counter) {
+    layer_1->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    layer_1->setSwapBytes(true);
+    layer_2->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
+    layer_2->setSwapBytes(true);
   }
 }
 void Display::sendDisplayCommand(const Command &cmd) {
@@ -103,6 +104,11 @@ void Display::display_loop(void *param) {
           // self->updateStepperDisplay(cmd.analog_ch0, cmd.analog_ch1);
         }
         break;
+      case CommandType::UPDATE_COUNTER:
+        if (self->current_process_ == GPSU::ProcessType::OBJECT_COUNTER) {
+          self->updateObjectCounter(cmd);
+        }
+        break;
       }
     }
   }
@@ -118,21 +124,21 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
   label_->drawString(label, 0, 0, fontSize);
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
-  img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                     static_cast<uint16_t>(Colors::black));
-  frame_->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
+  layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                        static_cast<uint16_t>(Colors::black));
+  layer_2->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
 }
 
 void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK);
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-  img_->fillSprite(TFT_BLACK);
+  layer_1->fillSprite(TFT_BLACK);
   if (setup_stepper) {
-    imgRotor_->fillSprite(TFT_BLACK);
+    layer_2->fillSprite(TFT_BLACK);
   }
   if (setup_waterlevel) {
-    frame_->fillSprite(TFT_BLACK);
+    layer_2->fillSprite(TFT_BLACK);
   }
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
@@ -140,16 +146,16 @@ void Display::processScreenSetup() {
 }
 void Display::processScreenExecute(int angle) {
 
-  img_->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                     static_cast<uint16_t>(Colors::black));
+  layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                        static_cast<uint16_t>(Colors::black));
   if (setup_stepper) {
     canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
-    imgRotor_->pushRotated(bg_.get(), angle,
-                           static_cast<uint16_t>(Colors::black));
+    layer_2->pushRotated(bg_.get(), angle,
+                         static_cast<uint16_t>(Colors::black));
   }
   if (setup_waterlevel) {
-    frame_->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
-                         static_cast<uint16_t>(Colors::black));
+    layer_2->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
+                          static_cast<uint16_t>(Colors::black));
   }
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
@@ -162,23 +168,48 @@ void Display::updateTrafficLight(Command cmd) {
   TrafficLight::State state = cmd.states.tl_state;
   switch (state) {
   case TrafficLight::State::INIT: // Init
-    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
+    layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
     break;
   case TrafficLight::State::RED_STATE: // Red
-    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
+    layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
     break;
   case TrafficLight::State::YELLOW_STATE: // Yellow
-    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
+    layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
     break;
   case TrafficLight::State::GREEN_STATE: // Green
-    img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
+    layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
     break;
     // default:
-    //   img_->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
+    //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
     //   break;
   }
   processScreenExecute();
 }
+
+void Display::updateObjectCounter(Command cmd) {
+  processScreenSetup();
+  // label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
+  // switch (state) {
+  // case TrafficLight::State::INIT: // Init
+  //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
+  //   break;
+  // case TrafficLight::State::RED_STATE: // Red
+  //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
+  //   break;
+  // case TrafficLight::State::YELLOW_STATE: // Yellow
+  //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
+  //   break;
+  // case TrafficLight::State::GREEN_STATE: // Green
+  //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
+  //   break;
+  //   // default:
+  //   //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT,
+  //   Asset::blank_traffic);
+  //   //   break;
+  // }
+  processScreenExecute();
+}
+
 // void Display::updateWaterLevelDisplay(const int state, int level) {
 //   processScreenSetup();
 //   // Draw labels
@@ -215,12 +246,13 @@ void Display::updateTrafficLight(Command cmd) {
 //   label_->drawString(String(litre), 0, 120, 7);
 
 //   // Draw thick tank border
-//   frame_->fillRoundRect(tankX, tankY, FRMAE_WIDTH, FRAME_HEIGHT, TANK_RADIUS,
+//   layer_2->fillRoundRect(tankX, tankY, FRMAE_WIDTH, FRAME_HEIGHT,
+//   TANK_RADIUS,
 //                         TFT_WHITE);
-//   frame_->fillRoundRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK,
+//   layer_2->fillRoundRect(tankX + TANK_BORDER_THK, tankY + TANK_BORDER_THK,
 //                         TANK_WIDTH, TANK_HEIGHT, TANK_RADIUS, TFT_BLACK);
 //   // Draw water
-//   frame_->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH,
+//   layer_2->fillRect(tankX + TANK_BORDER_THK, waterY, TANK_WIDTH,
 //                    waterPixelHeight, waterColor);
 
 //   processScreenExecute();
@@ -229,16 +261,16 @@ void Display::updateStepperDisplay(const int dir, int step) {
   processScreenSetup();
 
   label_->drawString("Stepper-Motor", 0, 0, MENU_FONT);
-  img_->pushImage(0, 0, IMG2_WIDTH, IMG2_HEIGHT,
-                  Asset::stepper); // 130X130
+  layer_1->pushImage(0, 0, IMG2_WIDTH, IMG2_HEIGHT,
+                     Asset::stepper); // 130X130
 
   int stator_length = 80;
   int stator_width = 25;
   int stator_x = (IMG2_WIDTH - stator_length) / 2;
   int stator_y = (IMG2_HEIGHT - stator_width) / 2;
 
-  imgRotor_->fillRoundRect(stator_x, stator_y, stator_length, stator_width, 20,
-                           TFT_BLUE);
+  layer_2->fillRoundRect(stator_x, stator_y, stator_length, stator_width, 20,
+                         TFT_BLUE);
 
   int angle = 0;
   if (dir == 1) {
@@ -259,7 +291,7 @@ void Display::updateStepperDisplay(const int dir, int step) {
 //------------------------------------------------------------------------------
 TFT_eSPI &Display::Canvas() { return *canvas_; }
 
-TFT_eSprite &Display::Sprite() { return *img_; }
+TFT_eSprite &Display::Sprite() { return *layer_1; }
 //------------------------------------------------------------------------------
 //  (//https://barth-dev.de/online/rgb565-color-picker/)
 // www.iconarchive.com/show/farm-fresh-icons-by-fatcow/traffic-lights-green-icon.html

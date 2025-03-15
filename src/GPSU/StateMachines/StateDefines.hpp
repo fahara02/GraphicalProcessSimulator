@@ -26,7 +26,8 @@ enum class CommandType : uint8_t {
   TURN_OFF_GREEN,
 };
 struct CommandData {
-  int timeout_ms = 0;
+  int timeout1_ms = 0;
+  int timeout2_ms = 0;
   bool immediate_transition = false;
 };
 struct Command {
@@ -49,7 +50,8 @@ struct Inputs {
   bool new_input = false;
   struct Timer {
     int external_delta_time_ms = 0;
-    bool internal_timer_expired = false;
+    bool internal_timer1_expired = false;
+    bool internal_timer2_expired = false;
     int current_time_ms = 0;
   } timer;
   struct UserCommand {
@@ -88,7 +90,8 @@ enum class CommandType : uint8_t {
 
 };
 struct CommandData {
-  int timeout_ms = 0;
+  int timeout1_ms = 0;
+  int timeout2_ms = 0;
   int pump_speed = 0;
   int32_t target_level = 0;
   bool open_drain_valve = false;
@@ -118,7 +121,8 @@ struct Inputs {
   bool new_input = false;
   struct Timer {
     int external_delta_time_ms = 0;
-    bool internal_timer_expired = false;
+    bool internal_timer1_expired = false;
+    bool internal_timer2_expired = false;
     int current_time_ms = 0;
   } timer;
   struct Sensors {
@@ -162,7 +166,8 @@ enum class CommandType : uint8_t {
 };
 
 struct CommandData {
-  int timeout_ms = 0;
+  int timeout1_ms = 0;
+  int timeout2_ms = 0;
   int32_t target_position = 0;
   uint16_t speed_rpm = 60;
   bool direction = true; // CW=true, CCW=false
@@ -195,7 +200,8 @@ struct Inputs {
   bool new_input = false;
   struct Timer {
     int external_delta_time_ms = 0;
-    bool internal_timer_expired = false;
+    bool internal_timer1_expired = false;
+    bool internal_timer2_expired = false;
     int current_time_ms = 0;
   } timer;
   struct Sensors {
@@ -256,4 +262,128 @@ struct PulseControl {
   bool pulse_state;
 };
 } // namespace StepperMotor
+
+namespace ObjectCounter {
+enum class Mode : uint8_t { AUTO, MANUAL };
+enum class State : uint8_t {
+  INIT = 0,
+  READY,
+  RUNNING,
+  OBJECT_PLACED,
+  OBJECT_SENSED,
+  PICKING,
+  FAULT,
+  E_STOP,
+  RESET
+};
+
+enum class Event : uint8_t {
+  OK = 0,
+  NONE,
+  SENSOR_TRIGGERED,
+  PICK_SUCCESS,
+  PICK_TIMEOUT,
+  E_STOP_ACTIVATED,
+  SAFETY_TIMEOUT,
+  SENSOR_RUNWAY
+};
+enum class CommandType : uint8_t {
+  NONE = 0,
+  RESET,
+  START_CONVEYOR,
+  STOP_CONVEYOR,
+  TRIGGER_SENSOR,
+  ACTIVATE_PICKER,
+  SOUND_ALARM,
+  ENABLE_MANUAL_MODE
+
+};
+struct CommandData {
+  int timeout1_ms = 0;
+  int timeout2_ms = 0;
+  uint32_t duration_ms = 0;
+  uint8_t retry_count = 0;
+  bool requires_acknowledgment = false;
+};
+struct Command {
+  bool check_exit = false;
+  bool check_entry = false;
+  CommandType exit_command;
+  CommandType entry_command;
+  CommandData exit_data;
+  CommandData entry_data;
+};
+// struct Config {
+//   uint16_t object_length_mm = 50;
+//   uint16_t object_height_mm = 50;
+//   uint16_t conveyer_length_mm = 2000;
+//   uint16_t conveyer_velocity_mmps = 120;
+//   uint16_t sensor_position_mm = 500; // Position from start
+//   uint16_t picker_position_mm = 800; // Position from start
+
+//   uint16_t emergency_stop_deadline = 50;
+//   int32_t objectPlacementRate_sec = 5;
+//   int32_t simulated_pick_delay = 2;
+//   static constexpr uint16_t picker_position_limit_mm =
+//       picker_position_mm + object_length_mm;
+
+//   static constexpr uint16_t picking_time_limit_ms =
+//       picker_position_limit_mm / conveyer_velocity_mmps;
+//   static constexpr uint32_t per_object_time_msec =
+//       1000 / objectPlacementRate_sec;
+//   static constexpr uint32_t object_arrival_duration_sp_ms =
+//       (sensor_position_mm - object_length_mm) / conveyer_velocity_mmps;
+//   static constexpr uint32_t object_arrival_duration_pp_ms =
+//       (picker_position_mm - object_length_mm) / conveyer_velocity_mmps;
+//   static constexpr uint32_t auto_picking_time_ms =
+//       object_arrival_duration_pp_ms + simulated_pick_delay;
+//   ;
+// };
+struct Inputs {
+  bool new_input = false;
+  struct Timer {
+    // placement timer, resets after placement
+    bool internal_timer1_expired = false;
+    // timer from placement to end ,resets after picked or fail
+    bool internal_timer2_expired = false;
+    uint32_t current_placement_time_ms = 0;
+    uint32_t current_placed_object_ms = 0;
+  } timer;
+  struct Sensors {
+    bool photoeye_active = false;       // Main object detection sensor
+    bool pick_position_sensor = false;  // Picker mechanism position
+    bool emergency_stop_active = false; // E-stop button state
+    bool safety_guard_closed = true;    // Machine safety guard
+  } sensors;
+  struct UserCommand {
+
+    bool start = false;
+    bool stop = false;
+    bool reset = false;
+    bool acknowledge_sensor = false;
+    bool pick_arrived = false;
+    bool pick_now = false;    // Manual pick trigger
+    bool mode_switch = false; // Auto/Manual toggle
+  } user_command;
+};
+struct Data {
+  struct Timing {
+    // uint32_t current_object_placed_ms = 0;
+    // uint32_t current_obect_arrival_sp_ms = 0;
+    // uint32_t current_obect_arrival_pp_ms = 0;
+    uint32_t last_object_detected = 0;
+    uint32_t last_pick_attempt = 0;
+    uint32_t system_uptime = 0;
+    uint32_t conveyor_runtime = 0;
+  } timing;
+
+  struct ProductionData {
+    uint16_t total_objects_detected = 0;
+    uint16_t successful_picks = 0;
+    uint16_t failed_picks = 0;
+    uint16_t conveyor_starts = 0;
+    float average_cycle_time = 0.0f;
+  } production;
+};
+} // namespace ObjectCounter
 #endif

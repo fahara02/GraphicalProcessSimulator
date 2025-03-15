@@ -77,25 +77,22 @@ private:
   bool setup_traffic = false;
   bool setup_waterlevel = false;
   bool setup_stepper = false;
+  bool setup_counter = false;
 
   std::unique_ptr<TFT_eSPI> canvas_;
   std::unique_ptr<TFT_eSprite> bg_;
   std::unique_ptr<TFT_eSprite> label_;
-  std::unique_ptr<TFT_eSprite> analog_;
-  std::unique_ptr<TFT_eSprite> img_;
-  std::unique_ptr<TFT_eSprite> imgRotor_;
-  std::unique_ptr<TFT_eSprite> frame_;
+  std::unique_ptr<TFT_eSprite> layer_1;
+  std::unique_ptr<TFT_eSprite> layer_2;
   GPSU::ProcessType current_process_;
-
   QueueHandle_t displayQueue;
-
   size_t cursorIndex_ = 0;
-
   void showMenu();
   void showProcessScreen(GPSU::ProcessType type);
   void updateTrafficLight(Command cmd);
   void updateWaterLevelDisplay(const int state, int level);
   void updateStepperDisplay(const int dir, int step);
+  void updateObjectCounter(Command cmd);
 
   static void onSelectionChanged(size_t index);
   static void onItemSelected(size_t index);
