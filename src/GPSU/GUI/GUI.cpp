@@ -113,7 +113,7 @@ void Display::display_loop(void *param) {
         self->showMenu();
         break;
       case CommandType::SHOW_PROCESS_SCREEN:
-        self->reset_rotation();
+
         self->current_process_ = cmd.process_type;
         self->showProcessScreen(cmd.process_type);
         break;
@@ -265,11 +265,11 @@ void Display::showMenu() {
 }
 
 void Display::showProcessScreen(GPSU::ProcessType type) {
-  // if (type == GPSU::ProcessType::OBJECT_COUNTER) {
-  //   change_to_vertical();
-  // } else {
-  //   reset_rotation();
-  // }
+  if (type == GPSU::ProcessType::OBJECT_COUNTER) {
+    change_to_vertical();
+  } else {
+    reset_rotation();
+  }
 
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   const int16_t fontSize = MENU_FONT;
