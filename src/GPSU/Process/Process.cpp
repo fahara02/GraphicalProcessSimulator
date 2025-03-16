@@ -52,18 +52,22 @@ void Process::startProcess(ProcessType type) {
   switch (type) {
   case ProcessType::TRAFFIC_LIGHT:
     tlsm_ = std::make_unique<SM::TrafficLightSM>();
+    vTaskDelay(100);
     tlsm_->init();
     break;
   case ProcessType::WATER_LEVEL:
     wlsm_ = std::make_unique<SM::WaterLevelSM>();
+    vTaskDelay(100);
     wlsm_->init();
     break;
   case ProcessType::STEPPER_MOTOR:
     stsm_ = std::make_unique<SM::StepperMotorSM>();
+    vTaskDelay(100);
     stsm_->init();
     break;
   case ProcessType::OBJECT_COUNTER:
     ocsm_ = std::make_unique<SM::ObjectCounterSM>();
+    vTaskDelay(100);
     ocsm_->init();
     break;
   default:
@@ -92,15 +96,15 @@ void Process::deleteProcess(ProcessType type) {
 void Process::switchToProcess(ProcessType new_type) {
 
   if (current_process_ != ProcessType::ANY && current_process_ != new_type) {
-    // Delete the existing task
+
     if (processTaskHandle != nullptr) {
       vTaskDelete(processTaskHandle);
       processTaskHandle = nullptr;
     }
-    // Delete the current state machine
+
     deleteProcess(current_process_);
   }
-  // Set the new process and start it
+
   current_process_ = new_type;
   startProcess(current_process_);
   create_task(current_process_);
@@ -115,6 +119,7 @@ void Process::itemSelected(size_t index, void *data) {
   proc->handleItemSelected(index);
 }
 void Process::handleSelectionChanged(size_t index) {
+  current_process_ == ProcessType::ANY;
   GUI::Command cmd;
   size_t selected_index = menu_->get_selected_index();
   display_.setCursorIndex(selected_index);
@@ -122,12 +127,6 @@ void Process::handleSelectionChanged(size_t index) {
   cmd.cursor.items = process_count;
   cmd.type = GUI::CommandType::SHOW_MENU;
   display_.sendDisplayCommand(cmd);
-  if (current_process_ == ProcessType::ANY) {
-    if (processTaskHandle != nullptr) {
-      vTaskDelete(processTaskHandle);
-      processTaskHandle = nullptr;
-    }
-  }
 }
 void Process::handleItemSelected(size_t index) {
   ProcessType selected_type = static_cast<ProcessType>(index);
