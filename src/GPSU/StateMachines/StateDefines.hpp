@@ -287,8 +287,10 @@ enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t { INIT = 0, READY, RUNNING, FAULT, E_STOP, RESET };
 
 struct Object {
+  int id = 0;
   Objects::State state;
   Objects::Data data;
+  bool placed_in_conveyor = false;
   bool triggered_sensor = false;
   bool reached_picker = false;
 };
@@ -296,6 +298,7 @@ enum class Event : uint8_t {
   OK = 0,
   NONE,
   SENSOR_TRIGGERED,
+  AT_PICKER,
   PICK_SUCCESS,
   PICK_TIMEOUT,
   E_STOP_ACTIVATED,
@@ -307,6 +310,7 @@ enum class CommandType : uint8_t {
   RESET,
   START_CONVEYOR,
   STOP_CONVEYOR,
+  NEW_OBJECT,
   TRIGGER_SENSOR,
   ACTIVATE_PICKER,
   SOUND_ALARM,

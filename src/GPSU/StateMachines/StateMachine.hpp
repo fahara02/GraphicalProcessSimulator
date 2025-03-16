@@ -89,7 +89,11 @@ public:
       callbacks_[callback_count_++] = cb;
     }
   }
-
+  Command updateData() {
+    static_cast<Derived *>(this)->updateInternalState(ctx_.inputs);
+    dataUpdated_ = true;
+    return update();
+  }
   void updateData(const Inputs &newInput) {
 
     ctx_.inputs = newInput;

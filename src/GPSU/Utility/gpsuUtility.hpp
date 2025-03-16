@@ -132,6 +132,8 @@ public:
         return "START_CONVEYOR";
       case Command::STOP_CONVEYOR:
         return "STOP_CONVEYOR";
+      case Command::NEW_OBJECT:
+        return "NEW_OBJECT";
       case Command::TRIGGER_SENSOR:
         return "TRIGGER_SENSOR";
       case Command::ACTIVATE_PICKER:

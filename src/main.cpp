@@ -241,8 +241,8 @@ void TestTask(void *param) {
   while (true) {
     vTaskDelay(50);
     // Update the state machine to check transitions
-    oc.setAutoUpdate();
-    ObjectCounter::Command cmd = oc.update();
+    // oc.setAutoUpdate();
+    ObjectCounter::Command cmd = oc.updateData();
     const char *exitCommand =
         GPSU::Util::ToString::OCCommands(cmd.exit_command);
     const char *entryCommand =

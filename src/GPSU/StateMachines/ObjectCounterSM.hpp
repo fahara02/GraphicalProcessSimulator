@@ -24,6 +24,7 @@ struct Context {
   Mode mode = Mode::AUTO;
   Object objects[Config::max_objects];
   uint8_t object_count = 0; // Number of active objects
+  uint8_t id_counter = 0;
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
@@ -43,12 +44,16 @@ struct Context {
     if (object_count >= Config::max_objects)
       return;
     Object obj;
+    obj.id = id_counter;
     obj.state = Objects::State::PLACED;
+    obj.placed_in_conveyor = true;
     obj.data = {current_conveyor_runtime,
                 current_conveyor_runtime + config.sensor_trigger_delay_ms,
                 current_conveyor_runtime + config.picker_arrival_delay_ms, 0,
                 0};
+    Serial.printf("Object id= %d  is Placed \n", obj.id);
     objects[object_count++] = obj;
+    id_counter += 1;
   }
 
   void updateObjects(uint32_t current_conveyor_runtime) {
@@ -60,6 +65,7 @@ struct Context {
         event = Event::SENSOR_TRIGGERED;
         inputs.sensors.photoeye_active = true;
         objects[i].triggered_sensor = true;
+        Serial.printf("Object id= %d  is triggered \n", objects[i].id);
         data.production.total_objects_detected++;
       }
       // Transition from SENSED to AT_PICKER and start pick processing
@@ -67,6 +73,8 @@ struct Context {
           current_conveyor_runtime >= objects[i].data.picker_arrival_time_ms) {
         objects[i].state = Objects::State::AT_PICKER;
         objects[i].reached_picker = true;
+        event = Event::AT_PICKER; // Set event
+        Serial.printf("Object id= %d  is at Picker \n", objects[i].id);
         startPickerProcessing(objects[i], current_conveyor_runtime);
       }
     }
@@ -85,9 +93,13 @@ struct Context {
   void removeCompletedObjects() {
     uint8_t newCount = 0;
     for (uint8_t i = 0; i < object_count; ++i) {
-      if (objects[i].state != Objects::State::PICKED &&
-          objects[i].state != Objects::State::FAILED) {
+      if (objects[i].state == Objects::State::PICKED ||
+          objects[i].state == Objects::State::FAILED) {
+        Serial.printf("Object id= %d  is removed from active list\n",
+                      objects[i].id);
+      } else {
         objects[newCount++] = objects[i];
+        Serial.printf("Object id= %d  is kept in active list\n", objects[i].id);
       }
     }
     object_count = newCount;
@@ -111,7 +123,7 @@ struct Traits {
   static constexpr bool has_exit_actions = true;
   static constexpr bool has_entry_actions = true;
   static constexpr uint16_t state_count = 6;
-  static constexpr uint16_t transition_count = 11;
+  static constexpr uint16_t transition_count = 9;
 
   struct Transition {
     State from;
@@ -153,7 +165,13 @@ struct Traits {
   static inline bool stop(const Context &ctx) {
     return ctx.inputs.user_command.stop && ctx.mode == Mode::MANUAL;
   }
-
+  static inline bool objectPlaced(const Context &ctx) {
+    for (uint8_t i = 0; i < ctx.object_count; i++) {
+      if (ctx.objects[i].placed_in_conveyor)
+        return auto_mode(ctx);
+    }
+    return false; // No objects triggered the sensor
+  }
   static inline bool objectSensed(const Context &ctx) {
     for (uint8_t i = 0; i < ctx.object_count; i++) {
       if (ctx.objects[i].triggered_sensor)
@@ -185,6 +203,12 @@ struct Traits {
     cmd.check_entry = true;
     cmd.entry_command = CommandType::START_CONVEYOR;
     cmd.entry_data.timeout1_ms = ctx.config.object_placement_interval_ms;
+    return cmd;
+  }
+  static inline Command newObject(const Context &ctx) {
+    Command cmd{};
+    cmd.check_entry = true;
+    cmd.entry_command = CommandType::NEW_OBJECT;
     return cmd;
   }
   static inline Command triggerSensor(const Context &ctx) {
@@ -221,8 +245,10 @@ struct Traits {
        {State::RESET, State::READY, faultCleared, nullptr, nullptr},
        {State::READY, State::RUNNING, start, startConveyor, nullptr},
        {State::RUNNING, State::FAULT, checkFault, alarm, stopConveyor},
-       {State::RUNNING, State::RUNNING, objectSensed, triggerSensor, nullptr},
-       {State::RUNNING, State::RUNNING, objectAtPick, activatePicker, nullptr},
+       //    {State::RUNNING, State::RUNNING, objectPlaced, newObject, nullptr},
+       //    {State::RUNNING, State::RUNNING, objectSensed, triggerSensor,
+       //    nullptr}, {State::RUNNING, State::RUNNING, objectAtPick,
+       //    activatePicker, nullptr},
        {State::RUNNING, State::E_STOP, eStop, alarm, stopConveyor},
        {State::E_STOP, State::RESET, reset, nullptr, nullptr},
        {State::RUNNING, State::READY, stop, stopConveyor, nullptr}}
@@ -278,6 +304,7 @@ public:
                 ctx_.data.timing.conveyor_runtime <=
                     obj.data.pick_deadline_time_ms) {
               obj.state = Objects::State::PICKED;
+              Serial.printf("Object id= %d  is PICKED \n", obj.id);
               ctx_.data.production.successful_picks++;
             }
           } else { // MANUAL mode
@@ -285,6 +312,7 @@ public:
               if (currentTime <= obj.data.pick_deadline_time_ms) {
                 obj.state = Objects::State::PICKED;
                 ctx_.data.production.successful_picks++;
+
               } else {
                 obj.state = Objects::State::FAILED;
                 ctx_.data.production.failed_picks++;
@@ -298,6 +326,7 @@ public:
       }
       // After processing picks
       ctx_.removeCompletedObjects();
+      ctx_.event = Event::NONE;
       restartTimer1(
           static_cast<uint64_t>(ctx_.config.object_placement_interval_ms) *
           1000);
@@ -305,9 +334,11 @@ public:
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
   static void resetTransitionCallback(State from, State to, Context &ctx) {
-    ctx.data.timing = {}; // Reset all timing
-    ctx.object_count = 0;
-    memset(ctx.objects, 0, sizeof(ctx.objects));
+    if (from != to) {
+      ctx.data.timing = {}; // Reset all timing
+      ctx.object_count = 0;
+      memset(ctx.objects, 0, sizeof(ctx.objects));
+    }
   }
 
 private:
