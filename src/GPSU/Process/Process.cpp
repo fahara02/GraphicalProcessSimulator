@@ -255,27 +255,23 @@ void Process::object_counter_task(void *param) {
 
     // instance->tlsm_->updateData(ctx.inputs);
     // instance->ocsm_->setAutoUpdate();
-    if (instance->ocsm_.get()) {
-      instance->ocsm_->updateData();
-    } else {
-      Serial.println("error ocsm not initialised");
-    }
 
-    // state = instance->ocsm_->current();
-    // const char *current =
-    //     GPSU::Util::ToString::OCState(instance->ocsm_->current());
-    // const char *previous =
-    //     GPSU::Util::ToString::OCState(instance->ocsm_->previous());
+    instance->ocsm_->updateData();
 
-    // Serial.printf("State changed to: %s from state %s  int time %lu\n",
-    // current,
-    //               previous, millis());
-    // GUI::Command cmd;
-    // cmd.type = GUI::CommandType::UPDATE_COUNTER;
-    // cmd.states.oc_state = state;
-    // cmd.inputs.oc_inputs = ctx.inputs;
-    // cmd.data.oc_data = ctx.data;
-    // instance->display_.sendDisplayCommand(cmd);
+    state = instance->ocsm_->current();
+    const char *current =
+        GPSU::Util::ToString::OCState(instance->ocsm_->current());
+    const char *previous =
+        GPSU::Util::ToString::OCState(instance->ocsm_->previous());
+
+    Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
+                  previous, millis());
+    GUI::Command cmd;
+    cmd.type = GUI::CommandType::UPDATE_COUNTER;
+    cmd.states.oc_state = state;
+    cmd.inputs.oc_inputs = ctx.inputs;
+    cmd.data.oc_data = ctx.data;
+    instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
   }
