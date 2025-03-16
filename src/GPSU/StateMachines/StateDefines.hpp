@@ -335,6 +335,7 @@ struct Command {
   CommandData entry_data;
 };
 struct Config {
+  static constexpr uint16_t conveyer_length = 1000;
   static constexpr uint16_t object_length_mm = 50;
   static constexpr uint16_t conveyer_velocity_mmps = 120;
   static constexpr uint16_t sensor_position_mm = 500;

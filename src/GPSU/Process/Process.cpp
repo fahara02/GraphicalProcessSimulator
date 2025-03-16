@@ -29,10 +29,7 @@ Process::Process()
       menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
                                            pinA_, pinB_, btn_)),
 
-      tlsm_(std::make_unique<SM::TrafficLightSM>()),
-      wlsm_(std::make_unique<SM::WaterLevelSM>()),
-      stsm_(std::make_unique<SM::StepperMotorSM>()),
-      ocsm_(std::make_unique<SM::ObjectCounterSM>()),
+      tlsm_(nullptr), wlsm_(nullptr), stsm_(nullptr), ocsm_(nullptr),
       current_process_(ProcessType::ANY) {}
 
 void Process::init() {
@@ -50,6 +47,63 @@ void Process::init() {
   GUI::Command cmd;
   cmd.type = GUI::CommandType::SHOW_MENU;
   display_.sendDisplayCommand(cmd);
+}
+void Process::startProcess(ProcessType type) {
+  switch (type) {
+  case ProcessType::TRAFFIC_LIGHT:
+    tlsm_ = std::make_unique<SM::TrafficLightSM>();
+    tlsm_->init();
+    break;
+  case ProcessType::WATER_LEVEL:
+    wlsm_ = std::make_unique<SM::WaterLevelSM>();
+    wlsm_->init();
+    break;
+  case ProcessType::STEPPER_MOTOR:
+    stsm_ = std::make_unique<SM::StepperMotorSM>();
+    stsm_->init();
+    break;
+  case ProcessType::OBJECT_COUNTER:
+    ocsm_ = std::make_unique<SM::ObjectCounterSM>();
+    ocsm_->init();
+    break;
+  default:
+    // Handle unknown process type if necessary
+    break;
+  }
+}
+void Process::deleteProcess(ProcessType type) {
+  switch (type) {
+  case ProcessType::TRAFFIC_LIGHT:
+    tlsm_.reset();
+    break;
+  case ProcessType::WATER_LEVEL:
+    wlsm_.reset();
+    break;
+  case ProcessType::STEPPER_MOTOR:
+    stsm_.reset();
+    break;
+  case ProcessType::OBJECT_COUNTER:
+    ocsm_.reset();
+    break;
+  default:
+    break;
+  }
+}
+void Process::switchToProcess(ProcessType new_type) {
+
+  if (current_process_ != ProcessType::ANY && current_process_ != new_type) {
+    // Delete the existing task
+    if (processTaskHandle != nullptr) {
+      vTaskDelete(processTaskHandle);
+      processTaskHandle = nullptr;
+    }
+    // Delete the current state machine
+    deleteProcess(current_process_);
+  }
+  // Set the new process and start it
+  current_process_ = new_type;
+  startProcess(current_process_);
+  create_task(current_process_);
 }
 void Process::selectionChanged(size_t index, void *data) {
   Process *proc = static_cast<Process *>(data);
@@ -76,29 +130,14 @@ void Process::handleSelectionChanged(size_t index) {
   }
 }
 void Process::handleItemSelected(size_t index) {
+  ProcessType selected_type = static_cast<ProcessType>(index);
+  switchToProcess(selected_type);
   process_list[index].action(this);
   GUI::Command cmd;
   cmd.type = GUI::CommandType::SHOW_PROCESS_SCREEN;
   cmd.process_type = current_process_;
+
   display_.sendDisplayCommand(cmd);
-}
-void Process::initialiseProcess(ProcessType type) {
-  switch (type) {
-  case ProcessType::TRAFFIC_LIGHT:
-    tlsm_->init();
-    break;
-  case ProcessType::WATER_LEVEL:
-    wlsm_->init();
-    break;
-  case ProcessType::STEPPER_MOTOR:
-    stsm_->init();
-    break;
-  case ProcessType::OBJECT_COUNTER:
-    ocsm_->init();
-    break;
-  default:
-    break;
-  }
 }
 
 void Process::create_task(ProcessType type) {
@@ -147,7 +186,6 @@ void Process::create_task(ProcessType type) {
     }
   }
 }
-void Process::startProcess(ProcessType type) {}
 
 void Process::traffic_light_task(void *param) {
   auto instance = static_cast<GPSU::Process *>(param);
@@ -197,7 +235,8 @@ void Process::water_level_task(void *param) {
     // } else if (state == WaterLevel::State::FULL) { // Full
 
     //   vTaskDelay(pdMS_TO_TICKS(1000));
-    //   state = WaterLevel::State::DRAINING;             // Transition to drain
+    //   state = WaterLevel::State::DRAINING;             // Transition to
+    //   drain
     // } else if (state == WaterLevel::State::DRAINING) { // Draining
 
     //   level = (level <= 0) ? 0 : level - 1;
@@ -256,7 +295,7 @@ void Process::object_counter_task(void *param) {
     // instance->tlsm_->updateData(ctx.inputs);
     // instance->ocsm_->setAutoUpdate();
 
-    instance->ocsm_->updateData();
+    ObjectCounter::Command oc_cmd = instance->ocsm_->updateData();
 
     state = instance->ocsm_->current();
     const char *current =
@@ -271,6 +310,8 @@ void Process::object_counter_task(void *param) {
     cmd.states.oc_state = state;
     cmd.inputs.oc_inputs = ctx.inputs;
     cmd.data.oc_data = ctx.data;
+    cmd.configs.oc_config = ctx.config;
+    cmd.commands.oc_command = oc_cmd;
     instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
@@ -282,35 +323,32 @@ void Process::object_counter_task(void *param) {
 void Process::processTrafficLight(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    proc->current_process_ = ProcessType::TRAFFIC_LIGHT;
-    proc->initialiseProcess(ProcessType::TRAFFIC_LIGHT);
+
+    //  proc->initialiseProcess(ProcessType::TRAFFIC_LIGHT);
     proc->display_.run_process(ProcessType::TRAFFIC_LIGHT);
-    proc->create_task(ProcessType::TRAFFIC_LIGHT);
   }
 }
 
 void Process::processWaterLevel(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    proc->current_process_ = ProcessType::WATER_LEVEL;
+
     proc->display_.run_process(ProcessType::WATER_LEVEL);
-    proc->create_task(ProcessType::WATER_LEVEL);
   }
 }
 
 void Process::processStepperMotor(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    proc->current_process_ = ProcessType::STEPPER_MOTOR;
+
     proc->display_.run_process(ProcessType::STEPPER_MOTOR);
-    proc->create_task(ProcessType::STEPPER_MOTOR);
   }
 }
 
 void Process::processStateMachine(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    proc->current_process_ = ProcessType::STATE_MACHINE;
+
     proc->display_.run_process(GPSU::ProcessType::STATE_MACHINE);
   }
 }
@@ -318,17 +356,16 @@ void Process::processStateMachine(void *data) {
 void Process::processObjectCounter(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    proc->current_process_ = ProcessType::OBJECT_COUNTER;
-    proc->initialiseProcess(ProcessType::OBJECT_COUNTER);
+
+    //  proc->initialiseProcess(ProcessType::OBJECT_COUNTER);
     proc->display_.run_process(GPSU::ProcessType::OBJECT_COUNTER);
-    proc->create_task(ProcessType::OBJECT_COUNTER);
   }
 }
 
 void Process::processMotorControl(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    proc->current_process_ = ProcessType::MOTOR_CONTROL;
+
     proc->display_.run_process(GPSU::ProcessType::MOTOR_CONTROL);
   }
 }

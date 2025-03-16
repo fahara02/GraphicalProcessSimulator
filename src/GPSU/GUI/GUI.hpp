@@ -41,6 +41,12 @@ struct Command {
     ObjectCounter::State oc_state;
   } states;
   struct {
+    TrafficLight::Config tl_config;
+    WaterLevel::Config wl_config;
+    StepperMotor::Config st_config;
+    ObjectCounter::Config oc_config;
+  } configs;
+  struct {
     TrafficLight::Inputs tl_inputs;
     WaterLevel::Inputs wl_inputs;
     StepperMotor::Inputs st_inputs;
@@ -52,6 +58,12 @@ struct Command {
     StepperMotor::Data st_data;
     ObjectCounter::Data oc_data;
   } data;
+  struct {
+    TrafficLight::Command tl_command;
+    WaterLevel::Command wl_command;
+    StepperMotor::Command st_command;
+    ObjectCounter::Command oc_command;
+  } commands;
   uint16_t analog_ch0;
   uint16_t analog_ch1;
 };
@@ -76,7 +88,9 @@ private:
   explicit Display(const MenuItem *items, size_t count);
   const MenuItem *menuItems_ = nullptr;
   size_t menuItemCount_ = 0;
+  uint8_t rotation_ = 0;
   bool initialised;
+
   bool setup_traffic = false;
   bool setup_waterlevel = false;
   bool setup_stepper = false;
@@ -104,6 +118,8 @@ private:
   void deleteSprites();
   void createSprites();
   void deinitProcessFlags();
+  void reset_rotation();
+  void change_to_vertical();
 
   // helpers
   void drawAlignText(AlignMent align, const char *text, uint8_t font,
