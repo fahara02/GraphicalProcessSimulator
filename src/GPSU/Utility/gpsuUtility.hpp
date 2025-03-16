@@ -101,6 +101,51 @@ public:
         return "UNKNOWN";
       }
     }
+    static const char *OCState(ObjectCounter::State state) {
+      using State = ObjectCounter::State;
+      switch (state) {
+      case State::INIT:
+        return "INIT";
+      case State::READY:
+        return "READY";
+      case State::RUNNING:
+        return "RUNNING";
+      case State::RESET:
+        return "RESET";
+      case State::FAULT:
+        return "FAULT";
+      case State::E_STOP:
+        return "ESTOP";
+
+      default:
+        return "UNKNOWN";
+      }
+    }
+    static const char *OCCommands(ObjectCounter::CommandType cmd) {
+      using Command = ObjectCounter::CommandType;
+      switch (cmd) {
+      case Command::NONE:
+        return "NONE";
+      case Command::RESET:
+        return "RESET";
+      case Command::START_CONVEYOR:
+        return "START_CONVEYOR";
+      case Command::STOP_CONVEYOR:
+        return "STOP_CONVEYOR";
+      case Command::TRIGGER_SENSOR:
+        return "TRIGGER_SENSOR";
+      case Command::ACTIVATE_PICKER:
+        return "ACTIVATE_PICKER";
+      case Command::SOUND_ALARM:
+        return "SOUND_ALARM";
+      case Command::CLEAR_ALARM:
+        return "CLEAR_ALARM";
+      case Command::ENABLE_MANUAL_MODE:
+        return "ENABLE_MANUAL_MODE";
+      default:
+        return "UNKNOWN";
+      }
+    }
 
     static const char *TankState(int state) {
 

@@ -38,16 +38,19 @@ struct Command {
     TrafficLight::State tl_state;
     WaterLevel::State wl_state;
     StepperMotor::State st_state;
+    ObjectCounter::State oc_state;
   } states;
   struct {
     TrafficLight::Inputs tl_inputs;
     WaterLevel::Inputs wl_inputs;
     StepperMotor::Inputs st_inputs;
+    ObjectCounter::Inputs oc_inputs;
   } inputs;
   struct {
     TrafficLight::Data tl_data;
     WaterLevel::Data wl_data;
     StepperMotor::Data st_data;
+    ObjectCounter::Data oc_data;
   } data;
   uint16_t analog_ch0;
   uint16_t analog_ch1;

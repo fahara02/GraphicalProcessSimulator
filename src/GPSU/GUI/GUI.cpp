@@ -188,7 +188,7 @@ void Display::updateTrafficLight(Command cmd) {
 
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
-  // label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
+  label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
   // switch (state) {
   // case TrafficLight::State::INIT: // Init
   //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);

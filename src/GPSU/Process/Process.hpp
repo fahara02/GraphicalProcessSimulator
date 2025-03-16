@@ -4,6 +4,7 @@
 #include "MCP23017.hpp"
 #include "MenuSelector.hpp"
 #include "PulseCounter.hpp"
+#include "StateMachines/ObjectCounterSM.hpp"
 #include "StateMachines/StepperMotorSM.hpp"
 #include "StateMachines/TrafficLightSM.hpp"
 #include "StateMachines/WaterLevelSM.hpp"
@@ -37,6 +38,7 @@ protected:
   std::unique_ptr<SM::TrafficLightSM> tlsm_;
   std::unique_ptr<SM::WaterLevelSM> wlsm_;
   std::unique_ptr<SM::StepperMotorSM> stsm_;
+  std::unique_ptr<SM::ObjectCounterSM> ocsm_;
   ProcessType current_process_;
   MCP::Settings setting_;
   static StackType_t sharedStack[2048];
@@ -65,6 +67,7 @@ private:
   static void traffic_light_task(void *param);
   static void water_level_task(void *param);
   static void stepper_task(void *param);
+  static void object_counter_task(void *param);
 
   static void selectionChanged(size_t index, void *data);
   static void itemSelected(size_t index, void *data);

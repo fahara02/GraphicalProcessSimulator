@@ -31,6 +31,7 @@ Process::Process()
       tlsm_(std::make_unique<SM::TrafficLightSM>()),
       wlsm_(std::make_unique<SM::WaterLevelSM>()),
       stsm_(std::make_unique<SM::StepperMotorSM>()),
+      ocsm_(std::make_unique<SM::ObjectCounterSM>()),
       current_process_(ProcessType::ANY) {}
 
 void Process::init() {
@@ -91,6 +92,9 @@ void Process::initialiseProcess(ProcessType type) {
   case ProcessType::STEPPER_MOTOR:
     stsm_->init();
     break;
+  case ProcessType::OBJECT_COUNTER:
+    ocsm_->init();
+    break;
   default:
     break;
   }
@@ -118,6 +122,10 @@ void Process::create_task(ProcessType type) {
   case ProcessType::STEPPER_MOTOR:
     func = stepper_task;
     taskname = "stepper_motor";
+    break;
+  case ProcessType::OBJECT_COUNTER:
+    func = object_counter_task;
+    taskname = "object_counter";
     break;
   default:
     taskname = "Unknown";
@@ -229,7 +237,36 @@ void Process::stepper_task(void *param) {
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
+void Process::object_counter_task(void *param) {
+  auto instance = static_cast<GPSU::Process *>(param);
+  ObjectCounter::State state;
+  ObjectCounter::Context ctx;
+  while (true) {
 
+    // ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
+    //                                TrafficLight::Context>();
+
+    // instance->tlsm_->updateData(ctx.inputs);
+    instance->ocsm_->setAutoUpdate();
+    instance->ocsm_->update();
+    state = instance->ocsm_->current();
+    const char *current =
+        GPSU::Util::ToString::OCState(instance->ocsm_->current());
+    const char *previous =
+        GPSU::Util::ToString::OCState(instance->ocsm_->previous());
+
+    Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
+                  previous, millis());
+    GUI::Command cmd;
+    cmd.type = GUI::CommandType::UPDATE_COUNTER;
+    cmd.states.oc_state = state;
+    cmd.inputs.oc_inputs = ctx.inputs;
+    cmd.data.oc_data = ctx.data;
+    instance->display_.sendDisplayCommand(cmd);
+
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
+  }
+}
 //------------------------------------------------------------------------------
 // Static callback functions for each menu item.
 //------------------------------------------------------------------------------
@@ -274,6 +311,7 @@ void Process::processObjectCounter(void *data) {
   if (proc) {
     proc->current_process_ = ProcessType::OBJECT_COUNTER;
     proc->display_.run_process(GPSU::ProcessType::OBJECT_COUNTER);
+    proc->create_task(ProcessType::OBJECT_COUNTER);
   }
 }
 

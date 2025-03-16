@@ -137,6 +137,16 @@ public:
 protected:
   Context ctx_;
 
+  void restartTimer1(uint64_t timeout_us) {
+    if (enable_timer_ && timer_) {
+      esp_timer_stop(timer_); // Stop if already running
+      esp_err_t err = esp_timer_start_once(timer_, timeout_us);
+      if (err != ESP_OK) {
+        Serial.println("Timer1 restart failed");
+      }
+    }
+  }
+
 private:
   std::atomic<State> current_;
   std::atomic<State> previous_;
@@ -187,6 +197,7 @@ private:
   size_t transitionCount_ = Traits::transition_count;
   size_t callback_count_ = 0;
   volatile bool dataUpdated_ = false;
+
   void notify(State from, State to) {
     for (size_t i = 0; i < callback_count_; ++i) {
       callbacks_[i](from, to, ctx_);

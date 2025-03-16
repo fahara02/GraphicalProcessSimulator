@@ -262,21 +262,36 @@ struct PulseControl {
   bool pulse_state;
 };
 } // namespace StepperMotor
+namespace Objects {
 
-namespace ObjectCounter {
-enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t {
   INIT = 0,
-  READY,
-  RUNNING,
-  OBJECT_PLACED,
-  OBJECT_SENSED,
-  PICKING,
-  FAULT,
-  E_STOP,
-  RESET
+  PLACED,
+  SENSED,
+  AT_PICKER,
+  PICKED,
+  FAILED
 };
 
+struct Data {
+  uint32_t placement_time_ms = 0;      // Time when object was placed (ms)
+  uint32_t sensor_trigger_time_ms = 0; // Time when sensor should trigger (ms)
+  uint32_t picker_arrival_time_ms = 0; // Time when object reaches picker (ms)
+  uint32_t pick_attempt_time_ms = 0;
+  uint32_t pick_deadline_time_ms = 0;
+};
+
+} // namespace Objects
+namespace ObjectCounter {
+enum class Mode : uint8_t { AUTO, MANUAL };
+enum class State : uint8_t { INIT = 0, READY, RUNNING, FAULT, E_STOP, RESET };
+
+struct Object {
+  Objects::State state;
+  Objects::Data data;
+  bool triggered_sensor = false;
+  bool reached_picker = false;
+};
 enum class Event : uint8_t {
   OK = 0,
   NONE,
@@ -295,6 +310,7 @@ enum class CommandType : uint8_t {
   TRIGGER_SENSOR,
   ACTIVATE_PICKER,
   SOUND_ALARM,
+  CLEAR_ALARM,
   ENABLE_MANUAL_MODE
 
 };
@@ -304,6 +320,7 @@ struct CommandData {
   uint32_t duration_ms = 0;
   uint8_t retry_count = 0;
   bool requires_acknowledgment = false;
+  bool alarm = false;
 };
 struct Command {
   bool check_exit = false;
@@ -313,32 +330,34 @@ struct Command {
   CommandData exit_data;
   CommandData entry_data;
 };
-// struct Config {
-//   uint16_t object_length_mm = 50;
-//   uint16_t object_height_mm = 50;
-//   uint16_t conveyer_length_mm = 2000;
-//   uint16_t conveyer_velocity_mmps = 120;
-//   uint16_t sensor_position_mm = 500; // Position from start
-//   uint16_t picker_position_mm = 800; // Position from start
+struct Config {
+  static constexpr uint16_t object_length_mm = 50;
+  static constexpr uint16_t conveyer_velocity_mmps = 120;
+  static constexpr uint16_t sensor_position_mm = 500;
+  static constexpr uint16_t picker_position_mm = 800;
+  static constexpr int32_t object_placement_rate_sec = 5;
+  static constexpr uint32_t simulated_pick_delay_ms = 20;
+  static constexpr uint8_t max_objects = 10;
 
-//   uint16_t emergency_stop_deadline = 50;
-//   int32_t objectPlacementRate_sec = 5;
-//   int32_t simulated_pick_delay = 2;
-//   static constexpr uint16_t picker_position_limit_mm =
-//       picker_position_mm + object_length_mm;
+  // Derived timings (calculated once during initialization)
+  uint32_t sensor_trigger_delay_ms;      //
+  uint32_t picker_arrival_delay_ms;      //
+  uint32_t object_placement_interval_ms; //
+  uint32_t auto_picking_time_limit_ms;   //
+  uint32_t manual_picking_time_limit_ms; //
 
-//   static constexpr uint16_t picking_time_limit_ms =
-//       picker_position_limit_mm / conveyer_velocity_mmps;
-//   static constexpr uint32_t per_object_time_msec =
-//       1000 / objectPlacementRate_sec;
-//   static constexpr uint32_t object_arrival_duration_sp_ms =
-//       (sensor_position_mm - object_length_mm) / conveyer_velocity_mmps;
-//   static constexpr uint32_t object_arrival_duration_pp_ms =
-//       (picker_position_mm - object_length_mm) / conveyer_velocity_mmps;
-//   static constexpr uint32_t auto_picking_time_ms =
-//       object_arrival_duration_pp_ms + simulated_pick_delay;
-//   ;
-// };
+  Config() {
+    sensor_trigger_delay_ms =
+        (sensor_position_mm * 1000) / conveyer_velocity_mmps;
+    picker_arrival_delay_ms =
+        (picker_position_mm * 1000) / conveyer_velocity_mmps;
+    object_placement_interval_ms = object_placement_rate_sec * 1000;
+    auto_picking_time_limit_ms =
+        picker_arrival_delay_ms + simulated_pick_delay_ms;
+    manual_picking_time_limit_ms = 2000;
+    ;
+  }
+};
 struct Inputs {
   bool new_input = false;
   struct Timer {
@@ -367,12 +386,10 @@ struct Inputs {
   } user_command;
 };
 struct Data {
+  bool picker_busy = false;
   struct Timing {
-    // uint32_t current_object_placed_ms = 0;
-    // uint32_t current_obect_arrival_sp_ms = 0;
-    // uint32_t current_obect_arrival_pp_ms = 0;
-    uint32_t last_object_detected = 0;
-    uint32_t last_pick_attempt = 0;
+    uint32_t current_time_ms = 0;
+    uint32_t last_placement_time_ms = 0;
     uint32_t system_uptime = 0;
     uint32_t conveyor_runtime = 0;
   } timing;

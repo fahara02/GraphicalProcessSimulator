@@ -6,6 +6,7 @@
 #include "Process/Process.hpp"
 #include "PulseCounter.hpp"
 #include "RotaryEncoder.hpp"
+#include "StateMachines/ObjectCounterSM.hpp"
 #include "StateMachines/StepperMotorSM.hpp"
 #include "StateMachines/TrafficLightSM.hpp"
 #include "StateMachines/WaterLevelSM.hpp"
@@ -114,13 +115,15 @@ void cb4(int *data) { Serial.println(" Higher limit reached"); }
 // SM::TrafficLightSM trafficLight(context, TrafficLight::State::INIT,
 //                                 true); // Global object
 // unsigned long lastMillis;      // Global variable to track last update time
-// TrafficLight::State prevState; // Global variable to track previous state
+ObjectCounter::State prevState; // Global variable to track previous state
 // SM::WaterLevelSM waterLevel;
-GPSU::Process process;
+// GPSU::Process process;
+SM::ObjectCounterSM oc;
 void setup() {
 
   Serial.begin(115200);
-  process.init();
+  oc.init();
+  oc.update();
 
   // Initialize traffic light with timeouts: 5s red, 3s green, 2s yellow
 
@@ -176,9 +179,8 @@ void setup() {
   //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
   // expander.dumpRegisters();
 
-  // xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2,
-  // &runTaskhandle,
-  //                         0);
+  xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2, &runTaskhandle,
+                          0);
 
   // pinMode(12,OUTPUT);
   // digitalWrite(12,1);
@@ -231,46 +233,43 @@ void setup() {
 }
 void loop() {
   Serial.println("......");
+
   vTaskDelay(500);
 }
 
-// void TestTask(void *param) {
-//   while (true) {
-//     vTaskDelay(50);
-//     // Update the state machine to check transitions
-//     TrafficLight::Command cmd = trafficLight.update();
-//     const char *exitCommand =
-//         GPSU::Util::ToString::TLCommands(cmd.exit_command);
-//     const char *entryCommand =
-//         GPSU::Util::ToString::TLCommands(cmd.entry_command);
-//     const char *State =
-//     GPSU::Util::ToString::TLState(trafficLight.current());
+void TestTask(void *param) {
+  while (true) {
+    vTaskDelay(50);
+    // Update the state machine to check transitions
+    oc.setAutoUpdate();
+    ObjectCounter::Command cmd = oc.update();
+    const char *exitCommand =
+        GPSU::Util::ToString::OCCommands(cmd.exit_command);
+    const char *entryCommand =
+        GPSU::Util::ToString::OCCommands(cmd.entry_command);
+    const char *State = GPSU::Util::ToString::OCState(oc.current());
 
-//     if (cmd.check_exit) {
-//       Serial.printf("exit command is %s for State %s \n", exitCommand,
-//       State);
-//     }
-//     if (cmd.check_entry) {
-//       Serial.printf("entry command is %s for State %s \n", entryCommand,
-//       State);
-//     }
+    if (cmd.check_exit) {
+      Serial.printf("exit command is %s for State %s \n", exitCommand, State);
+    }
+    if (cmd.check_entry) {
+      Serial.printf("entry command is %s for State %s \n", entryCommand, State);
+    }
 
-//     // Check if the state has changed
-//     TrafficLight::State currentState = trafficLight.current();
-//     if (currentState != prevState) {
-//       const char *current =
-//           GPSU::Util::ToString::TLState(trafficLight.current());
-//       const char *previous =
-//           GPSU::Util::ToString::TLState(trafficLight.previous());
+    // Check if the state has changed
+    ObjectCounter::State currentState = oc.current();
+    if (currentState != prevState) {
+      const char *current = GPSU::Util::ToString::OCState(oc.current());
+      const char *previous = GPSU::Util::ToString::OCState(oc.previous());
 
-//       Serial.printf("State changed to: %s from state %s  int time %lu\n",
-//                     current, previous, millis());
+      Serial.printf("State changed to: %s from state %s  int time %lu\n",
+                    current, previous, millis());
 
-//       prevState = currentState;
-//     }
-//   }
-//   vTaskDelete(NULL);
-// }
+      prevState = currentState;
+    }
+  }
+  vTaskDelete(NULL);
+}
 // void TestTask(void *param) {
 //   while (true) {
 //     vTaskDelay(50);
