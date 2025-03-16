@@ -40,6 +40,7 @@ void Display::deinitProcessFlags() {
   setup_traffic = false;
   setup_waterlevel = false;
   setup_stepper = false;
+  setup_counter = false;
 }
 void Display::deleteSprites() {
   // except bg and label_
@@ -412,6 +413,10 @@ void Display::run_process(GPSU::ProcessType type) {
     Serial.println("Running state machine process");
     break;
   case GPSU::ProcessType::OBJECT_COUNTER:
+    deinitProcessFlags();
+    setup_counter = true;
+    deleteSprites();
+    createSprites();
     Serial.println("Running object counter process");
     break;
   case GPSU::ProcessType::MOTOR_CONTROL:

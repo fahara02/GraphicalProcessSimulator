@@ -23,6 +23,7 @@ public:
   void init();
   void setupProcess(ProcessType type);
   void startProcess(ProcessType type);
+  static constexpr uint16_t process_task_depth = 4096;
 
 protected:
   gpio_num_t sda_;
@@ -41,7 +42,8 @@ protected:
   std::unique_ptr<SM::ObjectCounterSM> ocsm_;
   ProcessType current_process_;
   MCP::Settings setting_;
-  static StackType_t sharedStack[2048];
+
+  static StackType_t sharedStack[process_task_depth];
   static StaticTask_t sharedTCB;
 
 private:

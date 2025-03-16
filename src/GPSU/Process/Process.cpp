@@ -6,8 +6,9 @@
 // io_->pinMode(MCP::PORT::GPIOB, INPUT);
 // io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
 namespace GPSU {
-StackType_t Process::sharedStack[2048]; // Define the stack array
-StaticTask_t Process::sharedTCB;        // Define the TCB
+StackType_t
+    Process::sharedStack[Process::process_task_depth]; // Define the stack array
+StaticTask_t Process::sharedTCB;                       // Define the TCB
 } // namespace GPSU
 
 namespace GPSU {
@@ -109,7 +110,8 @@ void Process::create_task(ProcessType type) {
 
   TaskFunction_t func = nullptr;
   const char *taskname = nullptr;
-
+  Serial.printf("Creating task for Process %s \n",
+                GPSU::Util::ToString::Process(type));
   switch (type) {
   case ProcessType::TRAFFIC_LIGHT:
     func = traffic_light_task;
@@ -131,13 +133,18 @@ void Process::create_task(ProcessType type) {
     taskname = "Unknown";
   }
   if (func) {
-    processTaskHandle = xTaskCreateStatic(func,        // Task function
-                                          taskname,    // Task name
-                                          2048,        // Stack depth
-                                          this,        // Parameters
-                                          1,           // Priority
-                                          sharedStack, // Shared stack
-                                          &sharedTCB); // Shared TCB
+    processTaskHandle =
+        xTaskCreateStatic(func,                        // Task function
+                          taskname,                    // Task name
+                          Process::process_task_depth, // Stack depth
+                          this,                        // Parameters
+                          1,                           // Priority
+                          sharedStack,                 // Shared stack
+                          &sharedTCB);                 // Shared TCB
+    if (!processTaskHandle) {
+
+      Serial.println("Error task creation failed");
+    }
   }
 }
 void Process::startProcess(ProcessType type) {}
@@ -247,22 +254,28 @@ void Process::object_counter_task(void *param) {
     //                                TrafficLight::Context>();
 
     // instance->tlsm_->updateData(ctx.inputs);
-    instance->ocsm_->setAutoUpdate();
-    instance->ocsm_->update();
-    state = instance->ocsm_->current();
-    const char *current =
-        GPSU::Util::ToString::OCState(instance->ocsm_->current());
-    const char *previous =
-        GPSU::Util::ToString::OCState(instance->ocsm_->previous());
+    // instance->ocsm_->setAutoUpdate();
+    if (instance->ocsm_.get()) {
+      instance->ocsm_->updateData();
+    } else {
+      Serial.println("error ocsm not initialised");
+    }
 
-    Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
-                  previous, millis());
-    GUI::Command cmd;
-    cmd.type = GUI::CommandType::UPDATE_COUNTER;
-    cmd.states.oc_state = state;
-    cmd.inputs.oc_inputs = ctx.inputs;
-    cmd.data.oc_data = ctx.data;
-    instance->display_.sendDisplayCommand(cmd);
+    // state = instance->ocsm_->current();
+    // const char *current =
+    //     GPSU::Util::ToString::OCState(instance->ocsm_->current());
+    // const char *previous =
+    //     GPSU::Util::ToString::OCState(instance->ocsm_->previous());
+
+    // Serial.printf("State changed to: %s from state %s  int time %lu\n",
+    // current,
+    //               previous, millis());
+    // GUI::Command cmd;
+    // cmd.type = GUI::CommandType::UPDATE_COUNTER;
+    // cmd.states.oc_state = state;
+    // cmd.inputs.oc_inputs = ctx.inputs;
+    // cmd.data.oc_data = ctx.data;
+    // instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
   }
@@ -310,6 +323,7 @@ void Process::processObjectCounter(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
     proc->current_process_ = ProcessType::OBJECT_COUNTER;
+    proc->initialiseProcess(ProcessType::OBJECT_COUNTER);
     proc->display_.run_process(GPSU::ProcessType::OBJECT_COUNTER);
     proc->create_task(ProcessType::OBJECT_COUNTER);
   }
