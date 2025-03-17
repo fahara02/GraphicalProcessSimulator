@@ -211,8 +211,8 @@ void Process::traffic_light_task(void *param) {
     GUI::Command cmd;
     cmd.type = GUI::CommandType::UPDATE_TRAFFIC_LIGHT;
     cmd.states.tl_state = state;
-    cmd.inputs.tl_inputs = ctx.inputs;
-    cmd.data.tl_data = ctx.data;
+    cmd.contexts.tl_context.inputs = ctx.inputs;
+    cmd.contexts.tl_context.data = ctx.data;
     instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
@@ -287,17 +287,11 @@ void Process::stepper_task(void *param) {
 void Process::object_counter_task(void *param) {
   auto instance = static_cast<GPSU::Process *>(param);
   ObjectCounter::State state;
-  ObjectCounter::Context ctx;
+
   while (true) {
 
-    // ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
-    //                                TrafficLight::Context>();
-
-    // instance->tlsm_->updateData(ctx.inputs);
-    // instance->ocsm_->setAutoUpdate();
-
     ObjectCounter::Command oc_cmd = instance->ocsm_->updateData();
-
+    const auto &ctx = instance->ocsm_->getContext();
     state = instance->ocsm_->current();
     const char *current =
         GPSU::Util::ToString::OCState(instance->ocsm_->current());
@@ -309,9 +303,7 @@ void Process::object_counter_task(void *param) {
     GUI::Command cmd;
     cmd.type = GUI::CommandType::UPDATE_COUNTER;
     cmd.states.oc_state = state;
-    cmd.inputs.oc_inputs = ctx.inputs;
-    cmd.data.oc_data = ctx.data;
-    cmd.configs.oc_config = ctx.config;
+    cmd.contexts.oc_context = ctx;
     cmd.commands.oc_command = oc_cmd;
     instance->display_.sendDisplayCommand(cmd);
 

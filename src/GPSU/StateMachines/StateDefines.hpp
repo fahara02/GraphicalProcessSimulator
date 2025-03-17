@@ -1,6 +1,8 @@
 #ifndef STATE_DEFINES_HPP
 #define STATE_DEFINES_HPP
+#include "Arduino.h"
 #include "stdint.h"
+
 namespace TrafficLight {
 enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t {
@@ -65,6 +67,35 @@ struct Data {
   uint32_t current_time_ms = 0;
   bool timer_expired = false;
 };
+
+struct Context {
+  using Config = TrafficLight::Config;
+  using Data = TrafficLight::Data;
+  using Inputs = TrafficLight::Inputs;
+  using Event = TrafficLight::Event;
+  using Mode = TrafficLight::Mode;
+
+  State previous_state;
+  Config config;
+  Data data;
+  Inputs inputs;
+  Event event;
+  Mode mode = Mode::AUTO;
+
+  // Assignment operator
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      previous_state = other.previous_state;
+      config = other.config;
+      data = other.data;
+      inputs = other.inputs;
+      event = other.event;
+      mode = other.mode;
+    }
+    return *this;
+  }
+};
+
 } // namespace TrafficLight
 namespace WaterLevel {
 enum class Mode : uint8_t { AUTO, MANUAL };
@@ -149,6 +180,33 @@ struct Data {
   unsigned long filling_start_time = 0;
   int32_t current_level = 0;
   int32_t current_target_level = 0;
+};
+
+struct Context {
+  using Config = WaterLevel::Config;
+  using Data = WaterLevel::Data;
+  using Inputs = WaterLevel::Inputs;
+  using Event = WaterLevel::Event;
+  using Mode = TrafficLight::Mode;
+  State previous_state;
+  Config config;
+  Data data;
+  Inputs inputs;
+  Event event;
+  Mode mode = Mode::AUTO;
+
+  // Assignment operator
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      previous_state = other.previous_state;
+      config = other.config;
+      data = other.data;
+      inputs = other.inputs;
+      event = other.event;
+      mode = other.mode;
+    }
+    return *this;
+  }
 };
 } // namespace WaterLevel
 namespace StepperMotor {
@@ -261,6 +319,35 @@ struct PulseControl {
   uint16_t pulse_delay; // µs between pulses
   bool pulse_state;
 };
+struct Context {
+  using Config = StepperMotor::Config;
+  using Data = StepperMotor::Data;
+  using Inputs = StepperMotor::Inputs;
+  using Event = StepperMotor::Event;
+  using Pulse = StepperMotor::PulseControl;
+  using Mode = TrafficLight::Mode;
+  State previous_state;
+  Config config;
+  Data data;
+  Inputs inputs;
+  Event event;
+  Pulse pulse;
+  Mode mode = Mode::AUTO;
+
+  // Assignment operator
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      previous_state = other.previous_state;
+      config = other.config;
+      data = other.data;
+      inputs = other.inputs;
+      event = other.event;
+      pulse = other.pulse;
+      mode = other.mode;
+    }
+    return *this;
+  }
+};
 } // namespace StepperMotor
 namespace Objects {
 
@@ -293,6 +380,7 @@ struct Object {
   bool placed_in_conveyor = false;
   bool triggered_sensor = false;
   bool reached_picker = false;
+  uint16_t x_position_mm = 0;
 };
 enum class Event : uint8_t {
   OK = 0,
@@ -407,5 +495,104 @@ struct Data {
     float average_cycle_time = 0.0f;
   } production;
 };
+
+struct Context {
+  using Config = ObjectCounter::Config;
+  using Data = ObjectCounter::Data;
+  using Inputs = ObjectCounter::Inputs;
+  using Event = ObjectCounter::Event;
+  using Mode = ObjectCounter::Mode;
+  using State = ObjectCounter::State;
+
+  State previous_state;
+  Config config;
+  Data data;
+  Inputs inputs;
+  Event event;
+  Mode mode = Mode::AUTO;
+  Object objects[Config::max_objects];
+  uint8_t object_count = 0; // Number of active objects
+  uint8_t id_counter = 0;
+  // Assignment operator
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      previous_state = other.previous_state;
+      config = other.config;
+      data = other.data;
+      inputs = other.inputs;
+      event = other.event;
+      mode = other.mode;
+      for (uint8_t i = 0; i < Config::max_objects; i++)
+        objects[i] = other.objects[i];
+      object_count = other.object_count;
+    }
+    return *this;
+  }
+  void addObject(uint32_t current_conveyor_runtime) {
+    if (object_count >= Config::max_objects)
+      return;
+    Object obj;
+    obj.id = id_counter;
+    obj.state = Objects::State::PLACED;
+    obj.placed_in_conveyor = true;
+    obj.data = {current_conveyor_runtime,
+                current_conveyor_runtime + config.sensor_trigger_delay_ms,
+                current_conveyor_runtime + config.picker_arrival_delay_ms, 0,
+                0};
+    Serial.printf("Object id= %d  is Placed \n", obj.id);
+    objects[object_count++] = obj;
+    id_counter += 1;
+  }
+
+  void updateObjects(uint32_t current_conveyor_runtime) {
+    for (uint8_t i = 0; i < object_count; i++) {
+      // Transition from PLACED to SENSED
+      if (!objects[i].triggered_sensor &&
+          current_conveyor_runtime >= objects[i].data.sensor_trigger_time_ms) {
+        objects[i].state = Objects::State::SENSED;
+        event = Event::SENSOR_TRIGGERED;
+        inputs.sensors.photoeye_active = true;
+        objects[i].triggered_sensor = true;
+        Serial.printf("Object id= %d  is triggered \n", objects[i].id);
+        data.production.total_objects_detected++;
+      }
+      // Transition from SENSED to AT_PICKER and start pick processing
+      if (!objects[i].reached_picker &&
+          current_conveyor_runtime >= objects[i].data.picker_arrival_time_ms) {
+        objects[i].state = Objects::State::AT_PICKER;
+        objects[i].reached_picker = true;
+        event = Event::AT_PICKER; // Set event
+        Serial.printf("Object id= %d  is at Picker \n", objects[i].id);
+        startPickerProcessing(objects[i], current_conveyor_runtime);
+      }
+    }
+  }
+  void startPickerProcessing(Object &obj, uint32_t current_conveyor_runtime) {
+    obj.data.pick_attempt_time_ms =
+        current_conveyor_runtime +
+        (mode == Mode::AUTO ? config.simulated_pick_delay_ms : 0);
+
+    obj.data.pick_deadline_time_ms =
+        current_conveyor_runtime + (mode == Mode::AUTO
+                                        ? config.auto_picking_time_limit_ms
+                                        : config.manual_picking_time_limit_ms);
+  }
+
+  void removeCompletedObjects() {
+    uint8_t newCount = 0;
+    for (uint8_t i = 0; i < object_count; ++i) {
+      if (objects[i].state == Objects::State::PICKED ||
+          objects[i].state == Objects::State::FAILED) {
+        Serial.printf("Object id= %d  is removed from active list\n",
+                      objects[i].id);
+      } else {
+        objects[newCount++] = objects[i];
+        Serial.printf("Object id= %d  is kept in active list\n", objects[i].id);
+      }
+    }
+    object_count = newCount;
+  }
+};
+
 } // namespace ObjectCounter
 #endif

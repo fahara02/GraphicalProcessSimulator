@@ -134,7 +134,7 @@ public:
       }
     }
   }
-  Context &getContext() const { return ctx_; }
+  const Context &getContext() const { return ctx_; }
   void setContext(Context ctx) { ctx_ = ctx; }
   void setAutoUpdate() { dataUpdated_ = true; }
 

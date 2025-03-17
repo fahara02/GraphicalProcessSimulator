@@ -7,33 +7,7 @@
 
 namespace TrafficLight {
 
-struct Context {
-  using Config = TrafficLight::Config;
-  using Data = TrafficLight::Data;
-  using Inputs = TrafficLight::Inputs;
-  using Event = TrafficLight::Event;
-  using Mode = TrafficLight::Mode;
 
-  State previous_state;
-  Config config;
-  Data data;
-  Inputs inputs;
-  Event event;
-  Mode mode = Mode::AUTO;
-
-  // Assignment operator
-  Context &operator=(const Context &other) {
-    if (this != &other) {
-      previous_state = other.previous_state;
-      config = other.config;
-      data = other.data;
-      inputs = other.inputs;
-      event = other.event;
-      mode = other.mode;
-    }
-    return *this;
-  }
-};
 
 struct Traits {
   using Context = TrafficLight::Context;

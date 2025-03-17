@@ -6,33 +6,6 @@
 
 namespace WaterLevel {
 
-struct Context {
-  using Config = WaterLevel::Config;
-  using Data = WaterLevel::Data;
-  using Inputs = WaterLevel::Inputs;
-  using Event = WaterLevel::Event;
-  using Mode = TrafficLight::Mode;
-  State previous_state;
-  Config config;
-  Data data;
-  Inputs inputs;
-  Event event;
-  Mode mode = Mode::AUTO;
-
-  // Assignment operator
-  Context &operator=(const Context &other) {
-    if (this != &other) {
-      previous_state = other.previous_state;
-      config = other.config;
-      data = other.data;
-      inputs = other.inputs;
-      event = other.event;
-      mode = other.mode;
-    }
-    return *this;
-  }
-};
-
 struct Traits {
   using Context = WaterLevel::Context;
   using Config = WaterLevel::Config;

@@ -33,7 +33,7 @@ void Display::init() {
     label_->createSprite(width - TOP_MARGIN_PX, height - BOTTOM_MARGIN_PX);
 
     displayQueue = xQueueCreate(10, sizeof(Command));
-    xTaskCreate(&Display::display_loop, "display_loop", 2048, this, 1, NULL);
+    xTaskCreate(&Display::display_loop, "display_loop", 4196, this, 1, NULL);
     initialised = true;
   }
 }
@@ -92,8 +92,8 @@ void Display::createSprites() {
   if (setup_counter) {
     layer_1->createSprite(width, height - 50);
     // layer_1->setSwapBytes(true);
-    layer_2->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
-    layer_2->setSwapBytes(true);
+    layer_2->createSprite(width, height - 50);
+    // layer_2->setSwapBytes(true);
   }
 }
 void Display::sendDisplayCommand(const Command &cmd) {
@@ -285,7 +285,12 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
 void Display::processScreenSetup() {
 
   bg_->fillSprite(TFT_BLACK);
-  bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  if (setup_counter) {
+    bg_->fillSprite(static_cast<uint16_t>(Colors::black));
+  } else {
+    bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  }
+
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
@@ -296,13 +301,9 @@ void Display::processScreenSetup() {
   }
 }
 void Display::processScreenExecute(int angle) {
-  if (setup_counter) {
-    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                          static_cast<uint16_t>(Colors::black));
-  } else {
-    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                          static_cast<uint16_t>(Colors::black));
-  }
+
+  layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                        static_cast<uint16_t>(Colors::black));
 
   if (setup_stepper) {
     canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
@@ -343,6 +344,7 @@ void Display::updateTrafficLight(Command cmd) {
   }
   processScreenExecute();
 }
+
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
@@ -350,22 +352,67 @@ void Display::updateObjectCounter(Command cmd) {
   const char *state_string = GPSU::Util::ToString::OCState(state);
   label_->drawString(state_string, 5, 20, MENU_FONT);
 
-  // Draw the conveyor rectangle
-  // layer_1->fillRoundRect(conveyorX, conveyorY, conveyorWidth, conveyorHeight,
-  //                        10, TFT_WHITE);
+  // Draw conveyor background
+  layer_1->fillRoundRect(0, 55, 240, 30, 10, TFT_DARKGREY);
+  Gradient::drawCustomGradient(layer_1.get(), 0, 60, 230, 20, Gradient::grays);
 
-  // bg_->fillRoundRect(10, 100, 240, 30, 10, TFT_BLACK);
-  // bg_->fillRoundRect(10, 105, 230, 20, 10, TFT_WHITE);
-  // Draw conveyor directly on layer_1 with full width
-  // layer_1->fillSprite(static_cast<uint16_t>(Colors::logo));
-  if (!layer_1->created()) {
-    Serial.println("Error layer 1 not created!!!!!!!!");
+  // Clear previous objects from layer_2
+  // layer_2->fillSprite(TFT_BLACK);
+
+  // Conveyor dimensions
+  const uint16_t conveyor_pixel_width = 230; // Matches gradient width
+  const uint16_t conveyor_length_mm =
+      cmd.contexts.oc_context.config.conveyer_length;
+  Serial.printf("object count is %d", cmd.contexts.oc_context.object_count);
+  // Draw each object
+  for (uint8_t i = 0; i < cmd.contexts.oc_context.object_count; ++i) {
+    const auto &obj = cmd.contexts.oc_context.objects[i];
+
+    // Scale position and length to pixels
+    uint16_t scaled_x = (obj.x_position_mm / 4);
+    uint16_t object_length_px = 12;
+    Serial.printf("object position is %d", scaled_x);
+
+    // Position object on conveyor (adjust y as needed)
+    uint16_t y_pos = 70; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
+    layer_2->fillRect(scaled_x, 10, 50, 50, TFT_BLUE);
   }
-  layer_1->fillRoundRect(0, 0, 220, 30, 10, TFT_BLACK);
-  layer_1->fillRoundRect(0, 5, 210, 20, 10, TFT_WHITE);
 
+  // Draw layers to main display
+  layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                        static_cast<uint16_t>(Colors::black));
   processScreenExecute();
 }
+// void Display::updateObjectCounter(Command cmd) {
+//   processScreenSetup();
+//   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
+//   ObjectCounter::State state = cmd.states.oc_state;
+//   const char *state_string = GPSU::Util::ToString::OCState(state);
+//   label_->drawString(state_string, 5, 20, MENU_FONT);
+
+//   constexpr uint16_t conveyer_length =
+//       cmd.contexts.oc_context.config.conveyer_length;
+//   constexpr uint16_t scale_px = conveyer_length / 240; //(4 mm=1 px);
+
+//   constexpr uint16_t object_length =
+//       (cmd.contexts.oc_context.config.object_length_mm) / scale_px;
+//   constexpr uint16_t object_width = object_length;
+
+//   layer_1->fillRoundRect(0, 55, 240, 30, 10, TFT_DARKGREY);
+//   // layer_1->fillRoundRect(0, 60, 230, 20, 10, TFT_WHITE);
+//   Gradient::drawCustomGradient(layer_1.get(), 0, 60, 230, 20,
+//   Gradient::grays);
+
+//   ObjectCounter::Object &obj=cmd.contexts.oc_context.objects.
+
+//   uint16_t position_x = cmd.contexts.oc_context.objects.x;
+//   uint16_t scaled_pos = (position_x / scale_px);
+//   layer_2->fillRect(scaled_pos, 50, object_length, 30, TFT_BLUE);
+//   layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+//                         static_cast<uint16_t>(Colors::black));
+
+//   processScreenExecute();
+// }
 
 // // Adjust conveyor rectangle to fit within vertical display
 // uint16_t conveyorX = 0;                // Start at left edge

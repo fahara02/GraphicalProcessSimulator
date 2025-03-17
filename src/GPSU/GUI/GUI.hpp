@@ -3,6 +3,7 @@
 
 #include "Assets/AssetImages.hpp"
 #include "GUIConstants.hpp"
+#include "Gradient.hpp"
 #include "MenuSelector.hpp"
 #include "Process/ProcessDefines.hpp"
 #include "StateMachines/StateDefines.hpp"
@@ -12,6 +13,7 @@
 #include <tuple>
 
 namespace GUI {
+
 enum class CommandType {
   SHOW_STARTUP,
   SHOW_MENU,            // Display the main menu
@@ -41,23 +43,12 @@ struct Command {
     ObjectCounter::State oc_state;
   } states;
   struct {
-    TrafficLight::Config tl_config;
-    WaterLevel::Config wl_config;
-    StepperMotor::Config st_config;
-    ObjectCounter::Config oc_config;
-  } configs;
-  struct {
-    TrafficLight::Inputs tl_inputs;
-    WaterLevel::Inputs wl_inputs;
-    StepperMotor::Inputs st_inputs;
-    ObjectCounter::Inputs oc_inputs;
-  } inputs;
-  struct {
-    TrafficLight::Data tl_data;
-    WaterLevel::Data wl_data;
-    StepperMotor::Data st_data;
-    ObjectCounter::Data oc_data;
-  } data;
+    TrafficLight::Context tl_context;
+    WaterLevel::Context wl_context;
+    StepperMotor::Context st_context;
+    ObjectCounter::Context oc_context;
+  } contexts;
+
   struct {
     TrafficLight::Command tl_command;
     WaterLevel::Command wl_command;

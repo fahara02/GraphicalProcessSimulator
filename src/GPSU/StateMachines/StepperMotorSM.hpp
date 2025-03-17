@@ -6,35 +6,7 @@
 #include "Utility/gpsuUtility.hpp"
 namespace StepperMotor {
 
-struct Context {
-  using Config = StepperMotor::Config;
-  using Data = StepperMotor::Data;
-  using Inputs = StepperMotor::Inputs;
-  using Event = StepperMotor::Event;
-  using Pulse = StepperMotor::PulseControl;
-  using Mode = TrafficLight::Mode;
-  State previous_state;
-  Config config;
-  Data data;
-  Inputs inputs;
-  Event event;
-  Pulse pulse;
-  Mode mode = Mode::AUTO;
 
-  // Assignment operator
-  Context &operator=(const Context &other) {
-    if (this != &other) {
-      previous_state = other.previous_state;
-      config = other.config;
-      data = other.data;
-      inputs = other.inputs;
-      event = other.event;
-      pulse = other.pulse;
-      mode = other.mode;
-    }
-    return *this;
-  }
-};
 
 struct Traits {
   using Context = StepperMotor::Context;
