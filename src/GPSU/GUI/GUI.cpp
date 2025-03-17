@@ -93,7 +93,7 @@ void Display::createSprites() {
     layer_1->createSprite(width, height - 50);
     // layer_1->setSwapBytes(true);
     layer_2->createSprite(width, height - 50);
-    // layer_2->setSwapBytes(true);
+    layer_2->setSwapBytes(true);
   }
 }
 void Display::sendDisplayCommand(const Command &cmd) {
@@ -371,12 +371,16 @@ void Display::updateObjectCounter(Command cmd) {
     // Scale position and length to pixels
     uint16_t scaled_x = (obj.x_position_mm / 4);
     uint16_t object_length_px = 12;
-    Serial.printf("object id%d position = %d mm\n", obj.id, scaled_x);
+    int id = obj.id;
+    Serial.printf("object id%d position = %d mm\n", id, scaled_x);
 
     // Position object on conveyor (adjust y as needed)
     uint16_t y_pos = 20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
     // layer_2->fillRect(scaled_x, y_pos, 30, 30, TFT_BLUE);
-    drawData data = {scaled_x, y_pos, 30, 30};
+
+    drawData data = {scaled_x, y_pos, 30, 30, id};
+    // label_->setTextColor(TFT_RED, TFT_BLACK);
+    //  label_->drawString(String(data.id), data.x + 2, 70, 2);
     drawBox(layer_2.get(), data, state);
   }
 
@@ -391,6 +395,7 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data,
   using State = Objects::State;
   bool draw_object = false;
   uint32_t color = 0;
+  const uint16_t *imgdata = nullptr;
 
   switch (state) {
   case State::INIT:
@@ -398,28 +403,34 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data,
   case State::PLACED:
     color = TFT_BLUE;
     draw_object = true;
+    imgdata = Asset::blue_box;
     break;
   case State::SENSED:
-    color = TFT_WHITE;
+    color = TFT_YELLOW;
     draw_object = true;
+    imgdata = Asset::yellow_box;
     break;
   case State::AT_PICKER:
     color = TFT_DARKGREEN;
     draw_object = true;
+    imgdata = Asset::green_box;
     break;
   case State::PICKED:
-    color = TFT_YELLOW;
+    color = TFT_DARKGREY;
     draw_object = true;
+    imgdata = Asset::red_box;
     break;
   case State::FAILED:
     color = TFT_RED;
     draw_object = true;
+    imgdata = Asset::blue_box;
     break;
   default:
     break;
   }
   if (draw_object) {
-    sprite->fillRect(data.x, data.y, data.w, data.h, color);
+    // sprite->fillRect(data.x, data.y, data.w, data.h, color);
+    sprite->pushImage(data.x, data.y, data.w, data.h, Asset::big_box);
   }
 }
 

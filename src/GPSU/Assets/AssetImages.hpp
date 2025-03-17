@@ -6,12 +6,18 @@
 
 namespace Asset {
 
+#include "big_box.hpp"
 #include "blank_traffic.hpp"
+#include "blue_box.hpp"
+#include "green_box.hpp"
+#include "milk.hpp"
+#include "red_box.hpp"
 #include "stepper.hpp"
 #include "traffic_green.hpp"
 #include "traffic_red.hpp"
 #include "traffic_yellow.hpp"
 #include "watertank_blank.hpp"
+#include "yellow_box.hpp"
 
 } // namespace Asset
 #endif

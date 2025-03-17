@@ -128,6 +128,7 @@ private:
     int32_t y;
     int32_t w;
     int32_t h;
+    int id;
   };
   void drawBox(TFT_eSprite *sprite, drawData &data, Objects::State state);
 };
