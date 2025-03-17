@@ -42,7 +42,7 @@ void Display::reset_rotation() {
   canvas_->setRotation(0);
   rotation_ = 0;
 }
-void Display::change_to_vertical() {
+void Display::change_to_horizontal() {
   rotation_ = 1;
   canvas_->setRotation(1);
 }
@@ -90,8 +90,8 @@ void Display::createSprites() {
     layer_2->setSwapBytes(true);
   }
   if (setup_counter) {
-    layer_1->createSprite(IMG_WIDTH_V, IMG_HEIGHT_V);
-    layer_1->setSwapBytes(true);
+    layer_1->createSprite(width, height - 50);
+    // layer_1->setSwapBytes(true);
     layer_2->createSprite(IMG2_WIDTH, IMG2_HEIGHT);
     layer_2->setSwapBytes(true);
   }
@@ -147,27 +147,24 @@ void Display::display_loop(void *param) {
 //------------------------------------------------------------------------------
 void Display::run_process(GPSU::ProcessType type) {
   current_process_ = type;
-
-  // if (type == GPSU::ProcessType::OBJECT_COUNTER) {
-  //   change_to_vertical();
-  // } else {
-  //   reset_rotation();
-  // }
   deinitProcessFlags();
   switch (type) {
   case GPSU::ProcessType::TRAFFIC_LIGHT:
+
     setup_traffic = true;
     deleteSprites();
     createSprites();
     Serial.println("Running traffic light process");
     break;
   case GPSU::ProcessType::WATER_LEVEL:
+
     setup_waterlevel = true;
     deleteSprites();
     createSprites();
     Serial.println("Running water level process");
     break;
   case GPSU::ProcessType::STEPPER_MOTOR:
+
     setup_stepper = true;
     deleteSprites();
     createSprites();
@@ -179,10 +176,12 @@ void Display::run_process(GPSU::ProcessType type) {
     Serial.println("Running state machine process");
     break;
   case GPSU::ProcessType::OBJECT_COUNTER:
-    change_to_vertical();
+
+    setup_counter = true;
+    change_to_horizontal();
     deleteSprites();
     createSprites();
-    setup_counter = true;
+
     Serial.println("Running object counter process");
     break;
   case GPSU::ProcessType::MOTOR_CONTROL:
@@ -197,9 +196,6 @@ void Display::run_process(GPSU::ProcessType type) {
 }
 // StartUp menu of GUI
 void Display::showMenu() {
-
-  //   size_t selected_index = cursorIndex_;
-  //   size_t num_items = menuItemCount_;
   current_process_ = GPSU::ProcessType::ANY;
   // Clear the screen with a black background
   bg_->fillScreen(TFT_BLACK);
@@ -266,7 +262,7 @@ void Display::showMenu() {
 
 void Display::showProcessScreen(GPSU::ProcessType type) {
   if (type == GPSU::ProcessType::OBJECT_COUNTER) {
-    change_to_vertical();
+    change_to_horizontal();
   } else {
     reset_rotation();
   }
@@ -282,10 +278,7 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
 
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
-  layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                        static_cast<uint16_t>(Colors::black));
 
-  layer_2->pushToSprite(bg_.get(), 0, 0, static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
 }
 
@@ -293,21 +286,21 @@ void Display::processScreenSetup() {
 
   bg_->fillSprite(TFT_BLACK);
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
-  layer_1->fillSprite(TFT_BLACK);
-  if (setup_waterlevel || setup_stepper || setup_counter) {
-    layer_2->fillSprite(TFT_BLACK);
-  }
-
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
+  layer_1->fillSprite(TFT_BLACK);
+
+  if (setup_waterlevel || setup_stepper || setup_counter) {
+    layer_2->fillSprite(TFT_BLACK);
+  }
 }
 void Display::processScreenExecute(int angle) {
-  if (rotation_ == 0) {
+  if (setup_counter) {
     layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                           static_cast<uint16_t>(Colors::black));
   } else {
-    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX_V,
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                           static_cast<uint16_t>(Colors::black));
   }
 
@@ -322,6 +315,8 @@ void Display::processScreenExecute(int angle) {
   }
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
+  // layer_1->pushToSprite(bg_.get(), 0, 0,
+  // static_cast<uint16_t>(Colors::black));
   bg_->pushSprite(0, 0);
 }
 
@@ -348,7 +343,6 @@ void Display::updateTrafficLight(Command cmd) {
   }
   processScreenExecute();
 }
-
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
@@ -356,11 +350,47 @@ void Display::updateObjectCounter(Command cmd) {
   const char *state_string = GPSU::Util::ToString::OCState(state);
   label_->drawString(state_string, 5, 20, MENU_FONT);
 
-  uint16_t conveyar_length = cmd.configs.oc_config.conveyer_length;
-  layer_1->fillRoundRect(10, 100, conveyar_length, 100, 10, TFT_DARKGREY);
+  // Draw the conveyor rectangle
+  // layer_1->fillRoundRect(conveyorX, conveyorY, conveyorWidth, conveyorHeight,
+  //                        10, TFT_WHITE);
+
+  // bg_->fillRoundRect(10, 100, 240, 30, 10, TFT_BLACK);
+  // bg_->fillRoundRect(10, 105, 230, 20, 10, TFT_WHITE);
+  // Draw conveyor directly on layer_1 with full width
+  // layer_1->fillSprite(static_cast<uint16_t>(Colors::logo));
+  if (!layer_1->created()) {
+    Serial.println("Error layer 1 not created!!!!!!!!");
+  }
+  layer_1->fillRoundRect(0, 0, 220, 30, 10, TFT_BLACK);
+  layer_1->fillRoundRect(0, 5, 210, 20, 10, TFT_WHITE);
 
   processScreenExecute();
 }
+
+// // Adjust conveyor rectangle to fit within vertical display
+// uint16_t conveyorX = 0;                // Start at left edge
+// uint16_t conveyorY = 20;               // Start below the text
+// uint16_t conveyorWidth = displayWidth; // Full width of display
+// uint16_t conveyorHeight = 100; // Adjusted to fit within remaining height
+
+// // Ensure the conveyor doesn't exceed display height
+// if (conveyorY + conveyorHeight > displayHeight) {
+//   conveyorHeight = displayHeight - conveyorY; // Adjust height dynamically
+// }
+
+// void Display::updateObjectCounter(Command cmd) {
+//   processScreenSetup();
+//   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
+//   ObjectCounter::State state = cmd.states.oc_state;
+//   const char *state_string = GPSU::Util::ToString::OCState(state);
+//   label_->drawString(state_string, 5, 20, MENU_FONT);
+
+//   // uint16_t conveyar_length = cmd.configs.oc_config.conveyer_length;
+//   uint16_t conveyar_length = MAX_WIDTH_H; // 240px
+//   layer_1->fillRoundRect(10, 60, conveyar_length, 100, 10, TFT_WHITE);
+
+//   processScreenExecute();
+// }
 
 // void Display::updateWaterLevelDisplay(const int state, int level) {
 //   processScreenSetup();

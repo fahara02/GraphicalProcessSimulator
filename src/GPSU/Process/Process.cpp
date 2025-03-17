@@ -107,6 +107,7 @@ void Process::switchToProcess(ProcessType new_type) {
 
   current_process_ = new_type;
   startProcess(current_process_);
+  // display_.run_process(current_process_);
   create_task(current_process_);
 }
 void Process::selectionChanged(size_t index, void *data) {
@@ -130,8 +131,9 @@ void Process::handleSelectionChanged(size_t index) {
 }
 void Process::handleItemSelected(size_t index) {
   ProcessType selected_type = static_cast<ProcessType>(index);
-  switchToProcess(selected_type);
   process_list[index].action(this);
+  switchToProcess(selected_type);
+
   GUI::Command cmd;
   cmd.type = GUI::CommandType::SHOW_PROCESS_SCREEN;
   cmd.process_type = current_process_;
@@ -355,7 +357,7 @@ void Process::processStateMachine(void *data) {
 void Process::processObjectCounter(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-
+    Serial.println("Setting up Object Counter Display resources");
     //  proc->initialiseProcess(ProcessType::OBJECT_COUNTER);
     proc->display_.run_process(GPSU::ProcessType::OBJECT_COUNTER);
   }

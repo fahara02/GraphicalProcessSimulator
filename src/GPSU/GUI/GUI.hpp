@@ -119,7 +119,7 @@ private:
   void createSprites();
   void deinitProcessFlags();
   void reset_rotation();
-  void change_to_vertical();
+  void change_to_horizontal();
 
   // helpers
   void drawAlignText(AlignMent align, const char *text, uint8_t font,

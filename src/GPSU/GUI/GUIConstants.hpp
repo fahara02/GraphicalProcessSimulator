@@ -4,8 +4,8 @@
 namespace GUI {
 static constexpr uint8_t MAX_WIDTH = 135;
 static constexpr uint8_t MAX_HEIGHT = 240;
-static constexpr uint8_t MAX_WIDTH_V = 240;
-static constexpr uint8_t MAX_HEIGHT_V = 135;
+static constexpr uint8_t MAX_WIDTH_H = 240;
+static constexpr uint8_t MAX_HEIGHT_H = 135;
 static constexpr uint8_t TOP_MARGIN_PX = 5;
 static constexpr uint8_t BOTTOM_MARGIN_PX = 5;
 static constexpr uint8_t LEFT_MARGIN_PX = 5;
@@ -13,8 +13,8 @@ static constexpr uint8_t RIGHT_MARGIN_PX = 5;
 static constexpr uint8_t PADDING_PX = 5;
 static constexpr uint8_t IMAGE_TOP_PX = 50;
 static constexpr uint8_t FRAME_TOP_PX = 50;
-static constexpr uint8_t IMAGE_TOP_PX_V = 10;
-static constexpr uint8_t FRAME_TOP_PX_V = 10;
+static constexpr uint8_t IMAGE_TOP_PX_H = 10;
+static constexpr uint8_t FRAME_TOP_PX_H = 10;
 
 static constexpr uint8_t LABEL_LEFT_PX = 5;
 static constexpr uint8_t LABEL_TOP_PX = 5;
@@ -22,8 +22,8 @@ static constexpr uint8_t LABEL_TOP_PX = 5;
 static constexpr uint8_t IMG_WIDTH = 130;
 static constexpr uint8_t IMG_HEIGHT = 144;
 
-static constexpr uint8_t IMG_WIDTH_V = 144;
-static constexpr uint8_t IMG_HEIGHT_V = 130;
+static constexpr uint8_t IMG_WIDTH_H = 144;
+static constexpr uint8_t IMG_HEIGHT_H = 130;
 static constexpr uint8_t IMG2_WIDTH = 130;
 static constexpr uint8_t IMG2_HEIGHT = 130;
 
