@@ -425,9 +425,9 @@ struct Command {
 struct Config {
   static constexpr uint16_t conveyer_length = 1000;
   static constexpr uint16_t object_length_mm = 50;
-  static constexpr uint16_t conveyer_velocity_mmps = 120;
-  static constexpr uint16_t sensor_position_mm = 500;
-  static constexpr uint16_t picker_position_mm = 800;
+  static constexpr uint16_t conveyer_velocity_mmps = 60;
+  static constexpr uint16_t sensor_position_mm = 200;
+  static constexpr uint16_t picker_position_mm = 400;
   static constexpr int32_t object_placement_rate_sec = 5;
   static constexpr uint32_t simulated_pick_delay_ms = 20;
   static constexpr uint8_t max_objects = 10;

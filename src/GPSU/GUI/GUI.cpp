@@ -363,19 +363,21 @@ void Display::updateObjectCounter(Command cmd) {
   const uint16_t conveyor_pixel_width = 230; // Matches gradient width
   const uint16_t conveyor_length_mm =
       cmd.contexts.oc_context.config.conveyer_length;
-  Serial.printf("object count is %d", cmd.contexts.oc_context.object_count);
+  Serial.printf("object count =%d\n", cmd.contexts.oc_context.object_count);
   // Draw each object
   for (uint8_t i = 0; i < cmd.contexts.oc_context.object_count; ++i) {
     const auto &obj = cmd.contexts.oc_context.objects[i];
-
+    Objects::State state = obj.state;
     // Scale position and length to pixels
     uint16_t scaled_x = (obj.x_position_mm / 4);
     uint16_t object_length_px = 12;
-    Serial.printf("object position is %d", scaled_x);
+    Serial.printf("object id%d position = %d mm\n", obj.id, scaled_x);
 
     // Position object on conveyor (adjust y as needed)
-    uint16_t y_pos = 70; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
-    layer_2->fillRect(scaled_x, 10, 50, 50, TFT_BLUE);
+    uint16_t y_pos = 20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
+    // layer_2->fillRect(scaled_x, y_pos, 30, 30, TFT_BLUE);
+    drawData data = {scaled_x, y_pos, 30, 30};
+    drawBox(layer_2.get(), data, state);
   }
 
   // Draw layers to main display
@@ -383,61 +385,43 @@ void Display::updateObjectCounter(Command cmd) {
                         static_cast<uint16_t>(Colors::black));
   processScreenExecute();
 }
-// void Display::updateObjectCounter(Command cmd) {
-//   processScreenSetup();
-//   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
-//   ObjectCounter::State state = cmd.states.oc_state;
-//   const char *state_string = GPSU::Util::ToString::OCState(state);
-//   label_->drawString(state_string, 5, 20, MENU_FONT);
 
-//   constexpr uint16_t conveyer_length =
-//       cmd.contexts.oc_context.config.conveyer_length;
-//   constexpr uint16_t scale_px = conveyer_length / 240; //(4 mm=1 px);
+void Display::drawBox(TFT_eSprite *sprite, drawData &data,
+                      Objects::State state) {
+  using State = Objects::State;
+  bool draw_object = false;
+  uint32_t color = 0;
 
-//   constexpr uint16_t object_length =
-//       (cmd.contexts.oc_context.config.object_length_mm) / scale_px;
-//   constexpr uint16_t object_width = object_length;
-
-//   layer_1->fillRoundRect(0, 55, 240, 30, 10, TFT_DARKGREY);
-//   // layer_1->fillRoundRect(0, 60, 230, 20, 10, TFT_WHITE);
-//   Gradient::drawCustomGradient(layer_1.get(), 0, 60, 230, 20,
-//   Gradient::grays);
-
-//   ObjectCounter::Object &obj=cmd.contexts.oc_context.objects.
-
-//   uint16_t position_x = cmd.contexts.oc_context.objects.x;
-//   uint16_t scaled_pos = (position_x / scale_px);
-//   layer_2->fillRect(scaled_pos, 50, object_length, 30, TFT_BLUE);
-//   layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-//                         static_cast<uint16_t>(Colors::black));
-
-//   processScreenExecute();
-// }
-
-// // Adjust conveyor rectangle to fit within vertical display
-// uint16_t conveyorX = 0;                // Start at left edge
-// uint16_t conveyorY = 20;               // Start below the text
-// uint16_t conveyorWidth = displayWidth; // Full width of display
-// uint16_t conveyorHeight = 100; // Adjusted to fit within remaining height
-
-// // Ensure the conveyor doesn't exceed display height
-// if (conveyorY + conveyorHeight > displayHeight) {
-//   conveyorHeight = displayHeight - conveyorY; // Adjust height dynamically
-// }
-
-// void Display::updateObjectCounter(Command cmd) {
-//   processScreenSetup();
-//   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
-//   ObjectCounter::State state = cmd.states.oc_state;
-//   const char *state_string = GPSU::Util::ToString::OCState(state);
-//   label_->drawString(state_string, 5, 20, MENU_FONT);
-
-//   // uint16_t conveyar_length = cmd.configs.oc_config.conveyer_length;
-//   uint16_t conveyar_length = MAX_WIDTH_H; // 240px
-//   layer_1->fillRoundRect(10, 60, conveyar_length, 100, 10, TFT_WHITE);
-
-//   processScreenExecute();
-// }
+  switch (state) {
+  case State::INIT:
+    break;
+  case State::PLACED:
+    color = TFT_BLUE;
+    draw_object = true;
+    break;
+  case State::SENSED:
+    color = TFT_WHITE;
+    draw_object = true;
+    break;
+  case State::AT_PICKER:
+    color = TFT_DARKGREEN;
+    draw_object = true;
+    break;
+  case State::PICKED:
+    color = TFT_YELLOW;
+    draw_object = true;
+    break;
+  case State::FAILED:
+    color = TFT_RED;
+    draw_object = true;
+    break;
+  default:
+    break;
+  }
+  if (draw_object) {
+    sprite->fillRect(data.x, data.y, data.w, data.h, color);
+  }
+}
 
 // void Display::updateWaterLevelDisplay(const int state, int level) {
 //   processScreenSetup();

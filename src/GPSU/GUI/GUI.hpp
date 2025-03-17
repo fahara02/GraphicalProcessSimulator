@@ -121,6 +121,15 @@ private:
   // void setUpSprites(GPSU::ProcessType type);
   void processScreenSetup();
   void processScreenExecute(int angle = 0);
+
+  // gui helpers
+  struct drawData {
+    int32_t x;
+    int32_t y;
+    int32_t w;
+    int32_t h;
+  };
+  void drawBox(TFT_eSprite *sprite, drawData &data, Objects::State state);
 };
 
 } // namespace GUI
