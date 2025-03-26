@@ -1,0 +1,29 @@
+// Define enums to match StateDefines.hpp
+@external enum Mode {
+    AUTO,
+    MANUAL
+}
+
+@external enum State {
+    INIT = 0,
+    RED_STATE,
+    GREEN_STATE,
+    YELLOW_STATE,
+    SYSTEM_FAULT
+}
+
+// Define Context to match StateDefines.hpp
+@external struct Context {
+    State current_state;
+    State previous_state;
+    Mode mode;
+}
+
+struct Command {
+    Context context;
+    uint16 data;
+};
+
+interface DisplayInterface {
+    oneway sendDisplayCommand(Command cmd);
+};

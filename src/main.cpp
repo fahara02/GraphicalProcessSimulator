@@ -5,7 +5,8 @@
 #include "MenuSelector.hpp"
 #include "Process/Process.hpp"
 #include "PulseCounter.hpp"
-#include "RotaryEncoder.hpp"
+// #include "RotaryEncoder.hpp"
+#include "Logger.hpp"
 #include "StateMachines/ObjectCounterSM.hpp"
 #include "StateMachines/StepperMotorSM.hpp"
 #include "StateMachines/TrafficLightSM.hpp"
@@ -26,83 +27,9 @@ gpio_num_t scl = GPIO_NUM_33;
 gpio_num_t reset = GPIO_NUM_13;
 TaskHandle_t runTaskhandle = nullptr;
 
-// GUI::Display &display = GUI::Display::getInstance();
-//  void action1() { Serial.println("Action 1 selected"); }
-//  void action2() { Serial.println("Action 2 selected"); }
-//  void action3() { Serial.println("Action 3 selected"); }
-
-// const MenuItem menuItems[] = {{"Item 1", action1},
-//                               {"Item 2", action2},
-//                               {"Item 3", action3},
-//                               {"Item 4", action3},
-//                               {"Item 5", action3}};
-// constexpr size_t MENU_ITEM_COUNT = sizeof(menuItems) / sizeof(menuItems[0]);
-// MenuSelector menu(menuItems, MENU_ITEM_COUNT, 4, pinA, pinB, btn);
-// void onSelectionChanged(size_t index) {
-//   // Serial.println(menu.get_selected_item()->label);
-//   Serial.print("Selected: ");
-//   Serial.println(menuItems[index].label);
-// }
-// void onItemSelected(size_t index) { Serial.println("Item confirmed"); }
-// TFT_eSPI tft = TFT_eSPI();
-// TFT_eSprite img = TFT_eSprite(&tft);
-
-const int pwmFreq = 5000;
-const int pwmResolution = 8;
-const int pwmLedChannelTFT = 0;
-
-#define green 0x33F0
-#define gray 0xBDD7
-double rad = 0.01745;
-
-int sx = 67;
-int sy = 76;
-int angle = 0;
-float x[360];
-float y[360];
-int r = 38;
-
-int sx2 = 34;
-int sy2 = 170;
-int angle2 = 150;
-float x2[360];
-float y2[360];
-int r2 = 22;
-
-int sx3 = 106;
-int sy3 = 204;
-int angle3 = 100;
-float x3[360];
-float y3[360];
-int r3 = 20;
-
-int n = 12;
-int fuelA = 0;
-int tempA = 0;
-int rpmA = 0;
-int percent = 0;
-
-static int send_req = 0;
-
-// COMPONENT::MCP23017 expander(sda, scl, reset);
-
-// Rotary::Encoder encoder = Rotary::Encoder(4, pinA, pinB);
-//  COMPONENT::pcnt_range_t ranges = COMPONENT::pcnt_range_t{-100, 100};
-//  COMPONENT::PulseCounter encoder = COMPONENT::PulseCounter();
-
-// MCP::MCPDevice<MCP::MCP_23X17::REG, MCP::MCP_MODEL::MCP23017> device;
 void RunTask(void *param);
 void TestTask(void *param);
-// MCP::MCPDevice expander(MCP::MCP_MODEL::MCP23017);
 
-// void cb1(void *param);
-// void cb2(void *param);
-void readEncoderISRcb() { Serial.println(" encoder button isr"); }
-void cb1(void *data) { Serial.println(" lower limit reached"); }
-void cb2(void *data) { Serial.println(" Higher limit reached"); }
-
-void cb3(int *data) { Serial.println(" lower limit reached"); }
-void cb4(int *data) { Serial.println(" Higher limit reached"); }
 // TrafficLight::Context context{
 //     TrafficLight::State::INIT, // previous_state
 //     {5000, 3000, 2000, false}, // config
@@ -200,23 +127,6 @@ void setup() {
   // img.setSwapBytes(true);
 
   // img.setFreeFont(&FreeSansBold9pt7b);
-
-  int i = 0;
-  int a = 136;
-
-  while (a != 44) {
-    x[i] = r * cos(rad * a) + sx;
-    y[i] = r * sin(rad * a) + sy;
-    x2[i] = r2 * cos(rad * a) + sx2;
-    y2[i] = r2 * sin(rad * a) + sy2;
-    x3[i] = r3 * cos(rad * a) + sx3;
-    y3[i] = r3 * sin(rad * a) + sy3;
-
-    i++;
-    a++;
-    if (a == 360)
-      a = 0;
-  }
 
   // device.printRegisters();
   //  for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);

@@ -7,8 +7,6 @@
 
 namespace TrafficLight {
 
-
-
 struct Traits {
   using Context = TrafficLight::Context;
   using Config = TrafficLight::Config;

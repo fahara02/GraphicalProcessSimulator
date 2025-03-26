@@ -25,9 +25,7 @@ enum class CommandType {
   UPDATE_STATE_MACHINE,
   UPDATE_MOTOR
 };
-// int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
-// int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
-// int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)
+
 struct Command {
   CommandType type;
   GPSU::ProcessType process_type;
@@ -36,12 +34,7 @@ struct Command {
     size_t items;
     const char *label;
   } cursor;
-  struct {
-    TrafficLight::State tl_state;
-    WaterLevel::State wl_state;
-    StepperMotor::State st_state;
-    ObjectCounter::State oc_state;
-  } states;
+
   struct {
     TrafficLight::Context tl_context;
     WaterLevel::Context wl_context;
@@ -49,12 +42,6 @@ struct Command {
     ObjectCounter::Context oc_context;
   } contexts;
 
-  struct {
-    TrafficLight::Command tl_command;
-    WaterLevel::Command wl_command;
-    StepperMotor::Command st_command;
-    ObjectCounter::Command oc_command;
-  } commands;
   uint16_t analog_ch0;
   uint16_t analog_ch1;
 };
@@ -136,3 +123,7 @@ private:
 } // namespace GUI
 
 #endif // GUI_HPP
+
+// int object_counter_state; //  (e.g., 0=empty, 1=incr, 2=decr ,3=error)
+// int state_machine_state;  //  (e.g., 0=init, 1=first, 2=second ,3=end)
+// int motor_control_state;  //  (e.g., 0=run, 1=stop, 2=fwd ,3=rev)

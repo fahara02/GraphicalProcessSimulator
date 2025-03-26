@@ -109,11 +109,11 @@ constexpr uint16_t BLUE = color565(0, 0, 255);
 // Generate gradients using the interpolator
 constexpr auto grays = generateGradient<50>(ColorInterpolator<BLACK, WHITE>{});
 constexpr auto redToBlue = generateGradient<50>(ColorInterpolator<RED, BLUE>{});
-constexpr auto lines = generateGradient<11>(SymmetricGradientColorFunc{});
-
+constexpr auto lines = generateGradient<50>(SymmetricGradientColorFunc{});
+template <size_t Steps>
 static inline void
 drawCustomGradient(TFT_eSPI *tft, int x, int y, int w, int h,
-                   const std::array<uint16_t, 50> &gradient) {
+                   const std::array<uint16_t, Steps> &gradient) {
   float step = static_cast<float>(w) / gradient.size();
   for (size_t i = 0; i < gradient.size(); ++i) {
     tft->fillRect(x + i * step, y, ceil(step), h, gradient[i]);

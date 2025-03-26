@@ -69,28 +69,33 @@ struct Data {
 };
 
 struct Context {
+  using State = TrafficLight::State;
   using Config = TrafficLight::Config;
   using Data = TrafficLight::Data;
   using Inputs = TrafficLight::Inputs;
   using Event = TrafficLight::Event;
   using Mode = TrafficLight::Mode;
-
+  using Command = TrafficLight::Command;
+  State current_state;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
+  Command new_cmd;
 
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
+      current_state = other.current_state;
       previous_state = other.previous_state;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
       event = other.event;
       mode = other.mode;
+      new_cmd = other.new_cmd;
     }
     return *this;
   }
@@ -183,27 +188,33 @@ struct Data {
 };
 
 struct Context {
+  using State = WaterLevel::State;
   using Config = WaterLevel::Config;
   using Data = WaterLevel::Data;
   using Inputs = WaterLevel::Inputs;
   using Event = WaterLevel::Event;
-  using Mode = TrafficLight::Mode;
+  using Mode = WaterLevel::Mode;
+  using Command = WaterLevel::Command;
+  State current_state;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
+  Command new_cmd;
 
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
+      current_state = other.current_state;
       previous_state = other.previous_state;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
       event = other.event;
       mode = other.mode;
+      new_cmd = other.new_cmd;
     }
     return *this;
   }
@@ -320,12 +331,16 @@ struct PulseControl {
   bool pulse_state;
 };
 struct Context {
+  using State = StepperMotor::State;
   using Config = StepperMotor::Config;
   using Data = StepperMotor::Data;
   using Inputs = StepperMotor::Inputs;
   using Event = StepperMotor::Event;
   using Pulse = StepperMotor::PulseControl;
-  using Mode = TrafficLight::Mode;
+  using Mode = StepperMotor::Mode;
+  using Command = StepperMotor::Command;
+
+  State current_state;
   State previous_state;
   Config config;
   Data data;
@@ -333,10 +348,12 @@ struct Context {
   Event event;
   Pulse pulse;
   Mode mode = Mode::AUTO;
+  Command new_cmd;
 
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
+      current_state = other.current_state;
       previous_state = other.previous_state;
       config = other.config;
       data = other.data;
@@ -344,6 +361,7 @@ struct Context {
       event = other.event;
       pulse = other.pulse;
       mode = other.mode;
+      new_cmd = other.new_cmd;
     }
     return *this;
   }
@@ -497,31 +515,36 @@ struct Data {
 };
 
 struct Context {
+  using State = ObjectCounter::State;
   using Config = ObjectCounter::Config;
   using Data = ObjectCounter::Data;
   using Inputs = ObjectCounter::Inputs;
   using Event = ObjectCounter::Event;
   using Mode = ObjectCounter::Mode;
-  using State = ObjectCounter::State;
+  using Command = ObjectCounter::Command;
 
+  State current_state;
   State previous_state;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
+  Command new_cmd;
   Object objects[Config::max_objects];
   uint8_t object_count = 0; // Number of active objects
   uint8_t id_counter = 0;
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
+      current_state = other.current_state;
       previous_state = other.previous_state;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
       event = other.event;
       mode = other.mode;
+      new_cmd = other.new_cmd;
       for (uint8_t i = 0; i < Config::max_objects; i++)
         objects[i] = other.objects[i];
       object_count = other.object_count;

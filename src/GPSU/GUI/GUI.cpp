@@ -72,8 +72,12 @@ void Display::deleteSprites() {
 void Display::createSprites() {
   int16_t width = canvas_->width();
   int16_t height = canvas_->height();
+  if (setup_counter) {
+    bg_->createSprite(240, 133);
+  } else {
+    bg_->createSprite(width, height);
+  }
 
-  bg_->createSprite(width, height);
   label_->createSprite(width - TOP_MARGIN_PX, height - BOTTOM_MARGIN_PX);
 
   if (setup_traffic) {
@@ -90,8 +94,9 @@ void Display::createSprites() {
     layer_2->setSwapBytes(true);
   }
   if (setup_counter) {
+    bg_->setSwapBytes(true);
     layer_1->createSprite(width, height - 50);
-    // layer_1->setSwapBytes(true);
+    layer_1->setSwapBytes(true);
     layer_2->createSprite(width, height - 50);
     layer_2->setSwapBytes(true);
   }
@@ -287,6 +292,7 @@ void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK);
   if (setup_counter) {
     bg_->fillSprite(static_cast<uint16_t>(Colors::black));
+    bg_->pushImage(0, 0, 240, 130, Asset::plant2);
   } else {
     bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   }
@@ -294,6 +300,7 @@ void Display::processScreenSetup() {
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
+
   layer_1->fillSprite(TFT_BLACK);
 
   if (setup_waterlevel || setup_stepper || setup_counter) {
@@ -324,7 +331,7 @@ void Display::processScreenExecute(int angle) {
 void Display::updateTrafficLight(Command cmd) {
   processScreenSetup();
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
-  TrafficLight::State state = cmd.states.tl_state;
+  TrafficLight::State state = cmd.contexts.tl_context.current_state;
   switch (state) {
   case TrafficLight::State::INIT: // Init
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
@@ -347,14 +354,18 @@ void Display::updateTrafficLight(Command cmd) {
 
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
+  label_->setTextColor(TFT_RED, TFT_BLACK);
   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
-  ObjectCounter::State state = cmd.states.oc_state;
+  ObjectCounter::State state = cmd.contexts.oc_context.current_state;
   const char *state_string = GPSU::Util::ToString::OCState(state);
   label_->drawString(state_string, 5, 20, MENU_FONT);
 
   // Draw conveyor background
-  layer_1->fillRoundRect(0, 55, 240, 30, 10, TFT_DARKGREY);
-  Gradient::drawCustomGradient(layer_1.get(), 0, 60, 230, 20, Gradient::grays);
+  layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, TFT_BLUE, TFT_BLACK);
+  layer_1->fillSmoothRoundRect(0, 60, 230, 20, 10, TFT_DARKGREY, TFT_BLACK);
+
+  // Gradient::drawCustomGradient<50>(layer_1.get(), 0, 60, 230, 20,
+  //                                  Gradient::lines);
 
   // Clear previous objects from layer_2
   // layer_2->fillSprite(TFT_BLACK);
@@ -403,34 +414,34 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data,
   case State::PLACED:
     color = TFT_BLUE;
     draw_object = true;
-    imgdata = Asset::blue_box;
+
     break;
   case State::SENSED:
     color = TFT_YELLOW;
     draw_object = true;
-    imgdata = Asset::yellow_box;
+
     break;
   case State::AT_PICKER:
     color = TFT_DARKGREEN;
     draw_object = true;
-    imgdata = Asset::green_box;
+
     break;
   case State::PICKED:
     color = TFT_DARKGREY;
     draw_object = true;
-    imgdata = Asset::red_box;
+
     break;
   case State::FAILED:
     color = TFT_RED;
     draw_object = true;
-    imgdata = Asset::blue_box;
+
     break;
   default:
     break;
   }
   if (draw_object) {
     // sprite->fillRect(data.x, data.y, data.w, data.h, color);
-    sprite->pushImage(data.x, data.y, data.w, data.h, Asset::big_box);
+    sprite->pushImage(data.x, data.y, 40, 40, Asset::box);
   }
 }
 

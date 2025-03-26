@@ -200,7 +200,7 @@ void Process::traffic_light_task(void *param) {
     // instance->tlsm_->updateData(ctx.inputs);
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
-    state = instance->tlsm_->current();
+    ctx.current_state = instance->tlsm_->current();
     const char *current =
         GPSU::Util::ToString::TLState(instance->tlsm_->current());
     const char *previous =
@@ -210,9 +210,7 @@ void Process::traffic_light_task(void *param) {
                   previous, millis());
     GUI::Command cmd;
     cmd.type = GUI::CommandType::UPDATE_TRAFFIC_LIGHT;
-    cmd.states.tl_state = state;
-    cmd.contexts.tl_context.inputs = ctx.inputs;
-    cmd.contexts.tl_context.data = ctx.data;
+    cmd.contexts.tl_context = ctx;
     instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
@@ -302,9 +300,7 @@ void Process::object_counter_task(void *param) {
                   previous, millis());
     GUI::Command cmd;
     cmd.type = GUI::CommandType::UPDATE_COUNTER;
-    cmd.states.oc_state = state;
     cmd.contexts.oc_context = ctx;
-    cmd.commands.oc_command = oc_cmd;
     instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second

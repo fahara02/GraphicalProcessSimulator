@@ -49,14 +49,15 @@ protected:
   static StaticTask_t sharedTCB;
 
 private:
-  TrafficLight ::Context tl_ctx = TrafficLight ::Context{
-      TrafficLight::State::INIT, // previous_state
-      {5000, 3000, 2000, false}, // config
-      {0},                       // data
-      {{0}, {false}},            // inputs
-      TrafficLight::Event::OK,   // Event
-      TrafficLight::Mode::AUTO   // Mode
-  };
+  TrafficLight ::Context tl_ctx =
+      TrafficLight ::Context{TrafficLight::State::INIT, // current_state
+                             TrafficLight::State::INIT, // previous_state
+                             {5000, 3000, 2000, false}, // config
+                             {0},                       // data
+                             {{0}, {false}},            // inputs
+                             TrafficLight::Event::OK,   // Event
+                             TrafficLight::Mode::AUTO,  // Mode
+                             TrafficLight::Command{}};
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;
   static void processTrafficLight(void *data);

@@ -46,8 +46,8 @@ public:
   using Context = typename Traits::Context;
   using Inputs = typename Traits::Context::Inputs;
   using Event = typename Traits::Context::Event;
-  using State = typename Traits::State;
-  using Command = typename Traits::Command;
+  using State = typename Traits::Context::State;
+  using Command = typename Traits::Context::Command;
   using Transition = typename Traits::Transition;
 
   explicit StateMachine(const Context &ctx, State initial, bool enableTimer,
@@ -71,7 +71,9 @@ public:
           cmd = executeTransition(*t);
           previous_.store(current());
           current_.store(t->to);
+          ctx_.current_state = current_.load();
           ctx_.previous_state = previous_.load();
+          ctx_.new_cmd = cmd;
           notify(previous_, current_);
           handleTimer(cmd);
           return cmd;
@@ -80,9 +82,9 @@ public:
     }
     return cmd;
   }
+  Context context() const { return ctx_; }
   State current() const { return current_.load(); }
   State previous() const { return previous_.load(); }
-  Context context() const { return ctx_; }
 
   void register_callback(void (*cb)(State, State, Context &)) {
     if (callback_count_ < callbacks_.size()) {
