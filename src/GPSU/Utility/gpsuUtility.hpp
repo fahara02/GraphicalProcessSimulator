@@ -27,7 +27,7 @@ public:
         return "State-Machine";
         break;
       case ProcessType ::OBJECT_COUNTER:
-        return "Object-Counter";
+        return "Item-Counter";
         break;
       case ProcessType ::MOTOR_CONTROL:
         return "Motor-Control";
@@ -54,8 +54,8 @@ public:
         return "UNKNOWN";
       }
     }
-    static const char *TLCommands(TrafficLight::CommandType command) {
-      using Command = TrafficLight::CommandType;
+    static const char *TLCommands(TrafficLight::CmdType command) {
+      using Command = TrafficLight::CmdType;
       switch (command) {
       case Command::NONE:
         return "NONE";
@@ -121,29 +121,29 @@ public:
         return "UNKNOWN";
       }
     }
-    static const char *OCCommands(ObjectCounter::CommandType cmd) {
-      using Command = ObjectCounter::CommandType;
+    static const char *OCCommands(ObjectCounter::CmdType cmd) {
+      using Command = ObjectCounter::CmdType;
       switch (cmd) {
       case Command::NONE:
         return "NONE";
       case Command::RESET:
         return "RESET";
-      case Command::START_CONVEYOR:
-        return "START_CONVEYOR";
-      case Command::STOP_CONVEYOR:
-        return "STOP_CONVEYOR";
-      case Command::NEW_OBJECT:
-        return "NEW_OBJECT";
-      case Command::TRIGGER_SENSOR:
-        return "TRIGGER_SENSOR";
-      case Command::ACTIVATE_PICKER:
+      case Command::START:
+        return "START";
+      case Command::STOP:
+        return "STOP";
+      case Command::NEW_OBJ:
+        return "NEW_OBJ";
+      case Command::SENSE:
+        return "SENSE";
+      case Command::PICK:
         return "ACTIVATE_PICKER";
-      case Command::SOUND_ALARM:
-        return "SOUND_ALARM";
+      case Command::ALARM:
+        return "ALARM";
       case Command::CLEAR_ALARM:
         return "CLEAR_ALARM";
-      case Command::ENABLE_MANUAL_MODE:
-        return "ENABLE_MANUAL_MODE";
+      case Command::MANUAL_MODE:
+        return "MANUAL_MODE";
       default:
         return "UNKNOWN";
       }

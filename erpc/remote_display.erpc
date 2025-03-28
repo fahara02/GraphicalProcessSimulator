@@ -14,8 +14,8 @@
 
 // Define Context to match StateDefines.hpp
 @external struct Context {
-    State current_state;
-    State previous_state;
+    State curr;
+    State prev
     Mode mode;
 }
 

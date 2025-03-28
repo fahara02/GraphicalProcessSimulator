@@ -5,15 +5,11 @@
 // io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
 // io_->pinMode(MCP::PORT::GPIOB, INPUT);
 // io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
+
 namespace GPSU {
 StackType_t
     Process::sharedStack[Process::process_task_depth]; // Define the stack array
-StaticTask_t Process::sharedTCB;                       // Define the TCB
-} // namespace GPSU
-
-namespace GPSU {
-
-// Correct the process_list initialization
+StaticTask_t Process::sharedTCB;
 const MenuItem Process::process_list[] = {
     {"TRAFFIC_LIGHT", &Process::processTrafficLight},
     {"WATER_LEVEL", &Process::processWaterLevel},
@@ -45,7 +41,7 @@ void Process::init() {
   menu_->set_item_selected_cb(&Process::itemSelected, this);
   menu_->init();
   GUI::Command cmd;
-  cmd.type = GUI::CommandType::SHOW_MENU;
+  cmd.type = GUI::CmdType::SHOW_MENU;
   display_.sendDisplayCommand(cmd);
 }
 void Process::startProcess(ProcessType type) {
@@ -71,7 +67,7 @@ void Process::startProcess(ProcessType type) {
     ocsm_->init();
     break;
   default:
-    // Handle unknown process type if necessary
+
     break;
   }
 }
@@ -126,7 +122,7 @@ void Process::handleSelectionChanged(size_t index) {
   display_.setCursorIndex(selected_index);
   cmd.cursor.index = selected_index;
   cmd.cursor.items = process_count;
-  cmd.type = GUI::CommandType::SHOW_MENU;
+  cmd.type = GUI::CmdType::SHOW_MENU;
   display_.sendDisplayCommand(cmd);
 }
 void Process::handleItemSelected(size_t index) {
@@ -135,7 +131,7 @@ void Process::handleItemSelected(size_t index) {
   switchToProcess(selected_type);
 
   GUI::Command cmd;
-  cmd.type = GUI::CommandType::SHOW_PROCESS_SCREEN;
+  cmd.type = GUI::CmdType::SHOW_PROCESS_SCREEN;
   cmd.process_type = current_process_;
 
   display_.sendDisplayCommand(cmd);
@@ -183,7 +179,7 @@ void Process::create_task(ProcessType type) {
                           &sharedTCB);                 // Shared TCB
     if (!processTaskHandle) {
 
-      Serial.println("Error task creation failed");
+      LOG::ERROR("Process", "Error task creation failed");
     }
   }
 }
@@ -200,16 +196,15 @@ void Process::traffic_light_task(void *param) {
     // instance->tlsm_->updateData(ctx.inputs);
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
-    ctx.current_state = instance->tlsm_->current();
+    ctx.curr = instance->tlsm_->current();
     const char *current =
         GPSU::Util::ToString::TLState(instance->tlsm_->current());
     const char *previous =
         GPSU::Util::ToString::TLState(instance->tlsm_->previous());
 
-    Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
-                  previous, millis());
+    LOG::INFO("Process", "State changed from %s to: %s \n", current, previous);
     GUI::Command cmd;
-    cmd.type = GUI::CommandType::UPDATE_TRAFFIC_LIGHT;
+    cmd.type = GUI::CmdType::UPDATE_TRAFFIC_LIGHT;
     cmd.contexts.tl_context = ctx;
     instance->display_.sendDisplayCommand(cmd);
 
@@ -250,7 +245,7 @@ void Process::water_level_task(void *param) {
 
     //   tank_state.store(state);
     //   GUI::Command cmd;
-    //   cmd.type = GUI::CommandType::UPDATE_WATER_LEVEL;
+    //   cmd.type = GUI::CmdType::UPDATE_WATER_LEVEL;
     //   cmd.water_level_state = state;
     //   cmd.analog_ch0 = level;
     //   display_.sendDisplayCommand(cmd);
@@ -273,7 +268,7 @@ void Process::stepper_task(void *param) {
     // }
 
     // GUI::Command cmd;
-    // cmd.type = GUI::CommandType::UPDATE_STEPPER;
+    // cmd.type = GUI::CmdType::UPDATE_STEPPER;
     // stepper_step = step;
     // cmd.stteper_motor_state = 1; // running
     // cmd.analog_ch0 = dir;
@@ -299,7 +294,7 @@ void Process::object_counter_task(void *param) {
     Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
                   previous, millis());
     GUI::Command cmd;
-    cmd.type = GUI::CommandType::UPDATE_COUNTER;
+    cmd.type = GUI::CmdType::UPDATE_COUNTER;
     cmd.contexts.oc_context = ctx;
     instance->display_.sendDisplayCommand(cmd);
 
@@ -345,7 +340,7 @@ void Process::processStateMachine(void *data) {
 void Process::processObjectCounter(void *data) {
   Process *proc = static_cast<Process *>(data);
   if (proc) {
-    Serial.println("Setting up Object Counter Display resources");
+    Serial.println("Setting up Item Counter Display resources");
     //  proc->initialiseProcess(ProcessType::OBJECT_COUNTER);
     proc->display_.run_process(GPSU::ProcessType::OBJECT_COUNTER);
   }

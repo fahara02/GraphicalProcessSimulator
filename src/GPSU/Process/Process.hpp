@@ -1,6 +1,7 @@
 #ifndef PROCESS_HPP
 #define PROCESS_HPP
 #include "GUI/GUI.hpp"
+#include "Logger.hpp"
 #include "MCP23017.hpp"
 #include "MenuSelector.hpp"
 #include "PulseCounter.hpp"
@@ -50,7 +51,7 @@ protected:
 
 private:
   TrafficLight ::Context tl_ctx =
-      TrafficLight ::Context{TrafficLight::State::INIT, // current_state
+      TrafficLight ::Context{TrafficLight::State::INIT, // curr
                              TrafficLight::State::INIT, // previous_state
                              {5000, 3000, 2000, false}, // config
                              {0},                       // data
@@ -78,19 +79,19 @@ private:
   static void itemSelected(size_t index, void *data);
   void handleSelectionChanged(size_t index);
   void handleItemSelected(size_t index);
-  void initialiseProcess(ProcessType type);
+
   template <ProcessType type, typename Context> Context mapUserCommand() {
 
     if (type == ProcessType::TRAFFIC_LIGHT) {
       Context ctx;
       // uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
 
-      // ctx.inputs.user_command.turn_on_red = (pinStatus >> 1) & 0x01;    //
-      // GPB1 ctx.inputs.user_command.turn_on_green = (pinStatus >> 2) & 0x01;
-      // // GPB2 ctx.inputs.user_command.turn_on_yellow = (pinStatus >> 3) &
-      // 0x01; // GPB3 ctx.inputs.user_command.button_pressed = (pinStatus >> 4)
-      // & 0x01; // GPB4 ctx.inputs.new_input = true;
-      ctx.inputs.new_input = true;
+      // ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01;    //
+      // GPB1 ctx.inputs.ui.turn_on_green = (pinStatus >> 2) & 0x01;
+      // // GPB2 ctx.inputs.ui.turn_on_yellow = (pinStatus >> 3) &
+      // 0x01; // GPB3 ctx.inputs.ui.button_pressed = (pinStatus >> 4)
+      // & 0x01; // GPB4 ctx.inputs.new_data = true;
+      ctx.inputs.new_data = true;
       return ctx;
     }
     return Context{};

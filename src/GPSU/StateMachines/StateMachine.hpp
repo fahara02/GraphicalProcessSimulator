@@ -1,5 +1,6 @@
 
 #pragma once
+#include "Logger.hpp"
 #include "esp_log.h"
 #include <array>
 #include <atomic>
@@ -62,17 +63,17 @@ public:
       return cmd;
     }
     dataUpdated_ = false;
-    const auto current_state = static_cast<std::size_t>(current());
-    if (current_state < Traits::transitions_by_state.size()) {
-      const auto &group = Traits::transitions_by_state[current_state];
+    const auto curr = static_cast<std::size_t>(current());
+    if (curr < Traits::transitions_by_state.size()) {
+      const auto &group = Traits::transitions_by_state[curr];
       for (std::size_t i = 0; i < group.count; ++i) {
         const auto *t = group.transitions[i];
         if (t->condition && t->condition(ctx_)) {
           cmd = executeTransition(*t);
           previous_.store(current());
           current_.store(t->to);
-          ctx_.current_state = current_.load();
-          ctx_.previous_state = previous_.load();
+          ctx_.curr = current_.load();
+          ctx_.prev = previous_.load();
           ctx_.new_cmd = cmd;
           notify(previous_, current_);
           handleTimer(cmd);
@@ -111,7 +112,7 @@ public:
       initialised = true;
       dataUpdated_ = true;
       if (enable_timer_) {
-        Serial.println("Creating Timer 1");
+        LOG::INFO("SM", "Creating Timer 1");
         esp_timer_create_args_t timer1_args = {.callback = &timer1Callback,
                                                .arg = this,
                                                .dispatch_method =
@@ -119,11 +120,11 @@ public:
                                                .name = "sm_timer1"};
         esp_err_t err = esp_timer_create(&timer1_args, &timer_);
         if (err != ESP_OK || !timer_) {
-          Serial.println("Timer1 creation failed");
+          LOG::ERROR("SM", "Timer1 creation failed");
         }
       }
       if (enable_timer2_) {
-        Serial.println("Creating Timer 2");
+        LOG::INFO("SM", "Creating Timer 2");
         esp_timer_create_args_t timer2_args = {.callback = &timer2Callback,
                                                .arg = this,
                                                .dispatch_method =
@@ -131,7 +132,7 @@ public:
                                                .name = "sm_timer2"};
         esp_err_t err = esp_timer_create(&timer2_args, &timer2_);
         if (err != ESP_OK || !timer2_) {
-          Serial.println("Timer2 creation failed");
+          LOG::ERROR("SM", "Timer2 creation failed");
         }
       }
     }
@@ -148,7 +149,8 @@ protected:
       esp_timer_stop(timer_); // Stop if already running
       esp_err_t err = esp_timer_start_once(timer_, timeout_us);
       if (err != ESP_OK) {
-        Serial.println("Timer1 restart failed");
+
+        LOG::ERROR("SM", "Timer1 restart failed");
       }
     }
   }
@@ -191,10 +193,10 @@ private:
   void resetTimerExpired(int timer_id = 0) {
     if (timer_id == 0) {
       timerExpired_ = false;
-      ctx_.inputs.timer.internal_timer1_expired = false;
+      ctx_.inputs.timer.t1_expired = false;
     } else {
       timer2Expired_ = false;
-      ctx_.inputs.timer.internal_timer2_expired = false;
+      ctx_.inputs.timer.t2_expired = false;
     }
   }
 
@@ -239,7 +241,7 @@ private:
   static void timer1Callback(void *arg) {
     StateMachine *sm = static_cast<StateMachine *>(arg);
     sm->timerExpired_ = true;
-    sm->ctx_.inputs.timer.internal_timer1_expired = true;
+    sm->ctx_.inputs.timer.t1_expired = true;
     sm->dataUpdated_ = true;
     if (sm->enable_timer_) {
       sm->updateData(sm->ctx_.inputs);
@@ -249,7 +251,7 @@ private:
   static void timer2Callback(void *arg) {
     StateMachine *sm = static_cast<StateMachine *>(arg);
     sm->timer2Expired_ = true;
-    sm->ctx_.inputs.timer.internal_timer2_expired = true;
+    sm->ctx_.inputs.timer.t2_expired = true;
     sm->dataUpdated_ = true;
     if (sm->enable_timer2_) {
       sm->updateData(sm->ctx_.inputs);
@@ -259,10 +261,10 @@ private:
     // Handle Timer 1
     if (enable_timer_) {
       resetTimerExpired(0);
-      if (cmd.check_entry && cmd.entry_data.timeout1_ms > 0) {
-        esp_err_t err = startTimer(cmd.entry_data.timeout1_ms * 1000, 0);
+      if (cmd.check_entry && cmd.entry_data.timeout1 > 0) {
+        esp_err_t err = startTimer(cmd.entry_data.timeout1 * 1000, 0);
         if (err != ESP_OK) {
-          Serial.println("Timer1 start failed");
+          LOG::ERROR("SM", "Timer1 start failed");
         }
       } else {
         stopTimer(0);
@@ -272,10 +274,10 @@ private:
     // Handle Timer 2
     if (enable_timer2_) {
       resetTimerExpired(1);
-      if (cmd.check_entry && cmd.entry_data.timeout2_ms > 0) {
-        esp_err_t err = startTimer(cmd.entry_data.timeout2_ms * 1000, 1);
+      if (cmd.check_entry && cmd.entry_data.timeout2 > 0) {
+        esp_err_t err = startTimer(cmd.entry_data.timeout2 * 1000, 1);
         if (err != ESP_OK) {
-          Serial.println("Timer2 start failed");
+          LOG::ERROR("SM", "Timer2 start failed");
         }
       } else {
         stopTimer(1);
@@ -284,25 +286,3 @@ private:
   }
 };
 } // namespace SM
-
-// Command update() {
-//   Command cmd = Command{};
-//   if (!dataUpdated_)
-//     return cmd;
-//   dataUpdated_ = false;
-
-//   // Modified loop: iterate using transition count and pointer
-//   for (size_t i = 0; i < transitionCount_; ++i) { // Iterate by index
-//     const auto &t = transitions_[i];              // Access via pointer
-//     if (t.from == current() && t.condition && t.condition(ctx_)) {
-//       Command cmd = executeTransition(t);
-//       previous_.store(current());
-//       current_.store(t.to);
-//       ctx_.previous_state = previous_.load();
-//       notify(previous_, current_);
-//       return cmd;
-//     }
-//   }
-
-//   return cmd;
-// }

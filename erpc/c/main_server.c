@@ -61,7 +61,7 @@ int main()
 
     printf("Server stopped.\n");
 
-    /* Deinit objects */
+    /* Deinit items */
     destroy_TextService_service(service);
     erpc_server_deinit(server);
     erpc_mbf_dynamic_deinit(message_buffer_factory);

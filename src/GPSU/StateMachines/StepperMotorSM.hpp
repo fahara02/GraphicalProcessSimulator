@@ -6,8 +6,6 @@
 #include "Utility/gpsuUtility.hpp"
 namespace StepperMotor {
 
-
-
 struct Traits {
   using Context = StepperMotor::Context;
   using Config = StepperMotor::Config;
@@ -33,7 +31,7 @@ struct Traits {
     ExitAction exit_action;
   };
   static inline bool move(const Context &ctx) {
-    return ctx.inputs.user_command.start_move;
+    return ctx.inputs.ui.start_move;
   }
   static inline bool cw(const Context &ctx) {
     return ctx.inputs.sensors.direction_state;
@@ -45,7 +43,7 @@ struct Traits {
     return ctx.inputs.sensors.ccw_limit;
   }
   static inline bool home(const Context &ctx) {
-    return ctx.inputs.user_command.home_request;
+    return ctx.inputs.ui.home_request;
   }
   static inline bool move_cw(const Context &ctx) {
     return move(ctx) && cw(ctx) && !ccw_limit(ctx);
@@ -61,39 +59,39 @@ struct Traits {
            ctx.config.position_tolerance;
   }
   static inline bool stop_requested(const Context &ctx) {
-    return ctx.inputs.user_command.stop;
+    return ctx.inputs.ui.stop;
   }
   static inline bool home_complete(const Context &ctx) {
     return ctx.inputs.sensors.home_switch;
   }
   static inline bool clear_error(const Context &ctx) {
-    return ctx.inputs.user_command.clear_error;
+    return ctx.inputs.ui.clear_error;
   }
   struct entryActions {
     static Command start_move_cw(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::START_MOVE;
+      cmd.entry_command = CmdType::START_MOVE;
       cmd.entry_data.direction = true; // CW
       cmd.entry_data.speed_rpm = ctx.config.max_rpm;
-      cmd.entry_data.target_position = ctx.inputs.user_command.target_position;
+      cmd.entry_data.target_position = ctx.inputs.ui.target_position;
       return cmd;
     }
 
     static Command start_move_ccw(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::START_MOVE;
+      cmd.entry_command = CmdType::START_MOVE;
       cmd.entry_data.direction = false; // CCW
       cmd.entry_data.speed_rpm = ctx.config.max_rpm;
-      cmd.entry_data.target_position = ctx.inputs.user_command.target_position;
+      cmd.entry_data.target_position = ctx.inputs.ui.target_position;
       return cmd;
     }
 
     static Command start_homing(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::HOME;
+      cmd.entry_command = CmdType::HOME;
       cmd.entry_data.direction = false;                  // Move CCW to home
       cmd.entry_data.speed_rpm = ctx.config.max_rpm / 2; // Slower homing speed
       return cmd;
@@ -102,7 +100,7 @@ struct Traits {
     static Command emergency_stop(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::EMERGENCY_STOP;
+      cmd.entry_command = CmdType::EMERGENCY_STOP;
       return cmd;
     }
   };
@@ -111,7 +109,7 @@ struct Traits {
     static Command stop_motor(const Context &ctx) {
       Command cmd;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::STOP;
+      cmd.exit_command = CmdType::STOP;
       return cmd;
     }
   };

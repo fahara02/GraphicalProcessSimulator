@@ -14,7 +14,7 @@
 
 namespace GUI {
 
-enum class CommandType {
+enum class CmdType {
   SHOW_STARTUP,
   SHOW_MENU,            // Display the main menu
   SHOW_PROCESS_SCREEN,  // Show the initial screen for a selected process
@@ -27,7 +27,7 @@ enum class CommandType {
 };
 
 struct Command {
-  CommandType type;
+  CmdType type;
   GPSU::ProcessType process_type;
   struct {
     size_t index;
@@ -117,7 +117,7 @@ private:
     int32_t h;
     int id;
   };
-  void drawBox(TFT_eSprite *sprite, drawData &data, Objects::State state);
+  void drawBox(TFT_eSprite *sprite, drawData &data, Items::State state);
 };
 
 } // namespace GUI

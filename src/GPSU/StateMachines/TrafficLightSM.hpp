@@ -50,59 +50,56 @@ struct Traits {
     return auto_mode(ctx);
   }
   static inline bool manual_red(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.user_command.turn_on_red;
+    return !auto_mode(ctx) && ctx.inputs.ui.turn_on_red;
   }
   static inline bool manual_yellow(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.user_command.turn_on_yellow;
+    return !auto_mode(ctx) && ctx.inputs.ui.turn_on_yellow;
   }
 
   static inline bool manual_green(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.user_command.turn_on_green;
+    return !auto_mode(ctx) && ctx.inputs.ui.turn_on_green;
   }
 
   static inline bool timeoutRed(const Context &ctx) {
-    return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer1_expired ||
-            ctx.data.current_time_ms >= ctx.config.redTimeout_ms);
+    return auto_mode(ctx) && (ctx.inputs.timer.t1_expired ||
+                              ctx.data.now >= ctx.config.redTimeout_ms);
   }
   static inline bool timeoutGreen(const Context &ctx) {
-    return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer1_expired ||
-            ctx.data.current_time_ms >= ctx.config.greenTimeout_ms);
+    return auto_mode(ctx) && (ctx.inputs.timer.t1_expired ||
+                              ctx.data.now >= ctx.config.greenTimeout_ms);
   }
 
   static inline bool manualYellowToRed(const Context &ctx) {
-    return !auto_mode(ctx) && (ctx.inputs.user_command.turn_on_red) &&
-           (ctx.previous_state == State::GREEN_STATE);
+    return !auto_mode(ctx) && (ctx.inputs.ui.turn_on_red) &&
+           (ctx.prev == State::GREEN_STATE);
   }
   static inline bool manualYellowToGreen(const Context &ctx) {
-    return !auto_mode(ctx) && (ctx.inputs.user_command.turn_on_green) &&
-           (ctx.previous_state == State::RED_STATE);
+    return !auto_mode(ctx) && (ctx.inputs.ui.turn_on_green) &&
+           (ctx.prev == State::RED_STATE);
   }
   static inline bool timeoutYellowToRed(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer1_expired ||
-            ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
-           (ctx.previous_state == State::GREEN_STATE);
+           (ctx.inputs.timer.t1_expired ||
+            ctx.data.now >= ctx.config.yellowTimeout_ms) &&
+           (ctx.prev == State::GREEN_STATE);
   }
   static inline bool timeoutYellowToGreen(const Context &ctx) {
     return auto_mode(ctx) &&
-           (ctx.inputs.timer.internal_timer1_expired ||
-            ctx.data.current_time_ms >= ctx.config.yellowTimeout_ms) &&
-           (ctx.previous_state == State::RED_STATE);
+           (ctx.inputs.timer.t1_expired ||
+            ctx.data.now >= ctx.config.yellowTimeout_ms) &&
+           (ctx.prev == State::RED_STATE);
   }
   static inline bool buttonPress(const Context &ctx) {
-    return ctx.inputs.user_command.button_pressed;
+    return ctx.inputs.ui.button_pressed;
   }
   struct entryActions {
     static Command initToRed(const Context &ctx) {
 
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::TURN_ON_RED;
-      cmd.entry_data.timeout1_ms =
-          auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
-      Serial.printf("time out set for red %d \n", cmd.entry_data.timeout1_ms);
+      cmd.entry_command = CmdType::TURN_ON_RED;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      Serial.printf("time out set for red %d \n", cmd.entry_data.timeout1);
       cmd.entry_data.immediate_transition = false;
       return cmd;
     }
@@ -110,8 +107,8 @@ struct Traits {
 
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout1_ms =
+      cmd.entry_command = CmdType::TURN_ON_YELLOW;
+      cmd.entry_data.timeout1 =
           auto_mode(ctx) ? ctx.config.yellowTimeout_ms : 0;
       return cmd;
     }
@@ -119,24 +116,23 @@ struct Traits {
 
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::TURN_ON_GREEN;
+      cmd.entry_command = CmdType::TURN_ON_GREEN;
       cmd.entry_data.immediate_transition = true;
       return cmd;
     }
     static Command yellowToGreen(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::TURN_ON_GREEN;
-      cmd.entry_data.timeout1_ms =
-          auto_mode(ctx) ? ctx.config.greenTimeout_ms : 0;
+      cmd.entry_command = CmdType::TURN_ON_GREEN;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.greenTimeout_ms : 0;
 
       return cmd;
     }
     static Command greenToYellow(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout1_ms =
+      cmd.entry_command = CmdType::TURN_ON_YELLOW;
+      cmd.entry_data.timeout1 =
           auto_mode(ctx) ? ctx.config.yellowTimeout_ms : 0;
 
       return cmd;
@@ -144,9 +140,8 @@ struct Traits {
     static Command yellowToRed(const Context &ctx) {
       Command cmd;
       cmd.check_entry = true;
-      cmd.entry_command = CommandType::TURN_ON_RED;
-      cmd.entry_data.timeout1_ms =
-          auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      cmd.entry_command = CmdType::TURN_ON_RED;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
       return cmd;
     }
   };
@@ -156,33 +151,33 @@ struct Traits {
 
       Command cmd;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::TURN_OFF_RED;
+      cmd.exit_command = CmdType::TURN_OFF_RED;
       return cmd;
     }
     static Command redToGreen(const Context &ctx) {
 
       Command cmd;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::TURN_OFF_RED;
+      cmd.exit_command = CmdType::TURN_OFF_RED;
       cmd.exit_data.immediate_transition = false;
       return cmd;
     }
     static Command yellowToGreen(const Context &ctx) {
       Command cmd;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::TURN_OFF_YELLOW;
+      cmd.exit_command = CmdType::TURN_OFF_YELLOW;
       return cmd;
     }
     static Command greenToYellow(const Context &ctx) {
       Command cmd;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::TURN_OFF_GREEN;
+      cmd.exit_command = CmdType::TURN_OFF_GREEN;
       return cmd;
     }
     static Command yellowToRed(const Context &ctx) {
       Command cmd;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::TURN_OFF_YELLOW;
+      cmd.exit_command = CmdType::TURN_OFF_YELLOW;
       return cmd;
     }
   };
@@ -246,7 +241,7 @@ public:
       : StateMachine(context, state, internalTimer),
         use_internal_timer(internalTimer) {
     // ctx_.mode = mode;
-    register_callback(resetTransitionCallback);
+    register_callback(transitionCb);
   }
   TrafficLightSM(const Context &context, bool internalTimer = true)
       : TrafficLightSM(context, State::INIT, internalTimer) {}
@@ -255,12 +250,12 @@ public:
 
   void updateInternalState(const Inputs &input) {
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
-      if (input.timer.internal_timer1_expired) {
-        ctx_.data.current_time_ms = 0;
+      if (input.timer.t1_expired) {
+        ctx_.data.now = 0;
         update();
       }
     } else if (!use_internal_timer && ctx_.mode == Mode::AUTO) {
-      ctx_.data.current_time_ms += input.timer.external_delta_time_ms;
+      ctx_.data.now += input.timer.external_delta_time_ms;
       update();
     } else if (ctx_.mode == Mode::MANUAL) {
       update();
@@ -268,8 +263,8 @@ public:
     }
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
-  static void resetTransitionCallback(State from, State to, Context &ctx) {
-    ctx.data.current_time_ms = 0;
+  static void transitionCb(State from, State to, Context &ctx) {
+    ctx.data.now = 0;
   }
 
   const char *getStateString() const {

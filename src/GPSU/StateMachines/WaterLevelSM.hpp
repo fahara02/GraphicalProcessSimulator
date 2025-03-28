@@ -50,11 +50,11 @@ struct Traits {
     return ctx.inputs.sensors.raw_adc_value > ctx.config.sensor_min_sensitivity;
   }
   static inline bool startFillingCondition(const Context &ctx) {
-    return ctx.inputs.user_command.fill_request;
+    return ctx.inputs.ui.fill_request;
   }
   static inline bool fillingTimeout(const Context &ctx) {
     static unsigned long startTime = millis();
-    if (ctx.previous_state != State::START_FILLING)
+    if (ctx.prev != State::START_FILLING)
       startTime = millis();
     return (millis() - ctx.data.filling_start_time > 5000); // 5-second timeout
   }
@@ -80,10 +80,10 @@ struct Traits {
            (ctx.config.draining_mark - ctx.config.hysteresis);
   }
   static inline bool startDrainingCondition(const Context &ctx) {
-    return ctx.inputs.user_command.drain_request;
+    return ctx.inputs.ui.drain_request;
   }
   static inline bool stopCondition(const Context &ctx) {
-    return ctx.inputs.user_command.stop;
+    return ctx.inputs.ui.stop;
   }
   struct entryActions {
 
@@ -92,7 +92,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::TRIGGER_ALARM;
+      cmd.entry_command = CmdType::TRIGGER_ALARM;
       cmd.entry_data.pump_speed = 0;
       cmd.entry_data.open_fill_valve = false;
       cmd.entry_data.alarm = true;
@@ -103,7 +103,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::START_FILL;
+      cmd.entry_command = CmdType::START_FILL;
       cmd.entry_data.pump_speed = ctx.config.fill_rate; // Start filling
       cmd.entry_data.open_fill_valve = true;
       return cmd;
@@ -112,7 +112,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::START_DRAIN;
+      cmd.entry_command = CmdType::START_DRAIN;
       cmd.entry_data.pump_speed = ctx.config.drain_rate;
       cmd.entry_data.open_drain_valve = true;
       return cmd;
@@ -122,7 +122,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::STOP;
+      cmd.entry_command = CmdType::STOP;
       cmd.entry_data.pump_speed = 0;
       cmd.entry_data.open_fill_valve = false;
       cmd.entry_data.open_drain_valve = false;
@@ -132,7 +132,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::START_DRAIN;
+      cmd.entry_command = CmdType::START_DRAIN;
       cmd.entry_data.pump_speed = ctx.config.drain_rate;
       cmd.entry_data.open_drain_valve = true;
       return cmd;
@@ -142,9 +142,9 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::START_FILL;
+      cmd.entry_command = CmdType::START_FILL;
       cmd.entry_data.pump_speed = ctx.config.fill_rate;
-      cmd.entry_data.target_level = ctx.inputs.user_command.new_target_level;
+      cmd.entry_data.target_level = ctx.inputs.ui.new_target_level;
       cmd.entry_data.open_fill_valve = true;
       return cmd;
     }
@@ -153,9 +153,9 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.check_exit = false;
-      cmd.entry_command = CommandType::START_DRAIN;
+      cmd.entry_command = CmdType::START_DRAIN;
       cmd.entry_data.pump_speed = ctx.config.drain_rate;
-      cmd.entry_data.target_level = ctx.inputs.user_command.new_target_level;
+      cmd.entry_data.target_level = ctx.inputs.ui.new_target_level;
       cmd.entry_data.open_drain_valve = true;
       return cmd;
     }
@@ -165,7 +165,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = false;
       cmd.check_exit = true;
-      cmd.exit_command = CommandType::CLEAR_ALARM;
+      cmd.exit_command = CmdType::CLEAR_ALARM;
       cmd.exit_data.alarm = false; // Turn off the alarm
       return cmd;
     }
@@ -238,7 +238,7 @@ public:
 
   void updateInternalState(const Inputs &input) {
     ctx_.data.current_level = input.sensors.measured_level;
-    ctx_.data.current_target_level = input.user_command.new_target_level;
+    ctx_.data.current_target_level = input.ui.new_target_level;
     ctx_.inputs = input;
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }

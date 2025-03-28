@@ -37,7 +37,7 @@ int main()
     /* Stop server */
     stopServer();
 
-    /* Deinit objects */
+    /* Deinit items */
     deinitTextService_client();
     erpc_client_deinit(client_manager);
     erpc_mbf_dynamic_deinit(message_buffer_factory);

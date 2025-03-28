@@ -110,35 +110,35 @@ void Display::display_loop(void *param) {
   while (true) {
     if (xQueueReceive(self->displayQueue, &cmd, portMAX_DELAY) == pdPASS) {
       switch (cmd.type) {
-      case CommandType::SHOW_MENU:
+      case CmdType::SHOW_MENU:
         self->setCursorIndex(cmd.cursor.index);
         self->reset_rotation();
         self->deleteSprites();
         self->createSprites();
         self->showMenu();
         break;
-      case CommandType::SHOW_PROCESS_SCREEN:
+      case CmdType::SHOW_PROCESS_SCREEN:
 
         self->current_process_ = cmd.process_type;
         self->showProcessScreen(cmd.process_type);
         break;
-      case CommandType::UPDATE_TRAFFIC_LIGHT:
+      case CmdType::UPDATE_TRAFFIC_LIGHT:
         if (self->current_process_ == GPSU::ProcessType::TRAFFIC_LIGHT) {
           self->updateTrafficLight(cmd);
         }
         break;
-      case CommandType::UPDATE_WATER_LEVEL:
+      case CmdType::UPDATE_WATER_LEVEL:
         if (self->current_process_ == GPSU::ProcessType::WATER_LEVEL) {
           // self->updateWaterLevelDisplay(cmd.water_level_state,
           // cmd.analog_ch0);
         }
         break;
-      case CommandType::UPDATE_STEPPER:
+      case CmdType::UPDATE_STEPPER:
         if (self->current_process_ == GPSU::ProcessType::STEPPER_MOTOR) {
           // self->updateStepperDisplay(cmd.analog_ch0, cmd.analog_ch1);
         }
         break;
-      case CommandType::UPDATE_COUNTER:
+      case CmdType::UPDATE_COUNTER:
         if (self->current_process_ == GPSU::ProcessType::OBJECT_COUNTER) {
           self->updateObjectCounter(cmd);
         }
@@ -187,7 +187,7 @@ void Display::run_process(GPSU::ProcessType type) {
     deleteSprites();
     createSprites();
 
-    Serial.println("Running object counter process");
+    Serial.println("Running item counter process");
     break;
   case GPSU::ProcessType::MOTOR_CONTROL:
     deleteSprites();
@@ -331,7 +331,7 @@ void Display::processScreenExecute(int angle) {
 void Display::updateTrafficLight(Command cmd) {
   processScreenSetup();
   label_->drawString("TRAFFIC_LIGHT", 5, 5, MENU_FONT);
-  TrafficLight::State state = cmd.contexts.tl_context.current_state;
+  TrafficLight::State state = cmd.contexts.tl_context.curr;
   switch (state) {
   case TrafficLight::State::INIT: // Init
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
@@ -356,7 +356,7 @@ void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
   label_->setTextColor(TFT_RED, TFT_BLACK);
   label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
-  ObjectCounter::State state = cmd.contexts.oc_context.current_state;
+  ObjectCounter::State state = cmd.contexts.oc_context.curr;
   const char *state_string = GPSU::Util::ToString::OCState(state);
   label_->drawString(state_string, 5, 20, MENU_FONT);
 
@@ -367,25 +367,25 @@ void Display::updateObjectCounter(Command cmd) {
   // Gradient::drawCustomGradient<50>(layer_1.get(), 0, 60, 230, 20,
   //                                  Gradient::lines);
 
-  // Clear previous objects from layer_2
+  // Clear previous items from layer_2
   // layer_2->fillSprite(TFT_BLACK);
 
   // Conveyor dimensions
   const uint16_t conveyor_pixel_width = 230; // Matches gradient width
   const uint16_t conveyor_length_mm =
-      cmd.contexts.oc_context.config.conveyer_length;
-  Serial.printf("object count =%d\n", cmd.contexts.oc_context.object_count);
-  // Draw each object
-  for (uint8_t i = 0; i < cmd.contexts.oc_context.object_count; ++i) {
-    const auto &obj = cmd.contexts.oc_context.objects[i];
-    Objects::State state = obj.state;
+      cmd.contexts.oc_context.config.conv_length;
+  Serial.printf("item count =%d\n", cmd.contexts.oc_context.obj_cnt);
+  // Draw each item
+  for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {
+    const auto &obj = cmd.contexts.oc_context.items[i];
+    Items::State state = obj.state;
     // Scale position and length to pixels
-    uint16_t scaled_x = (obj.x_position_mm / 4);
+    uint16_t scaled_x = (obj.x_pos / 4);
     uint16_t object_length_px = 12;
     int id = obj.id;
-    Serial.printf("object id%d position = %d mm\n", id, scaled_x);
+    Serial.printf("item id%d position = %d mm\n", id, scaled_x);
 
-    // Position object on conveyor (adjust y as needed)
+    // Position item on conveyor (adjust y as needed)
     uint16_t y_pos = 20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
     // layer_2->fillRect(scaled_x, y_pos, 30, 30, TFT_BLUE);
 
@@ -401,9 +401,8 @@ void Display::updateObjectCounter(Command cmd) {
   processScreenExecute();
 }
 
-void Display::drawBox(TFT_eSprite *sprite, drawData &data,
-                      Objects::State state) {
-  using State = Objects::State;
+void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
+  using State = Items::State;
   bool draw_object = false;
   uint32_t color = 0;
   const uint16_t *imgdata = nullptr;
@@ -421,7 +420,7 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data,
     draw_object = true;
 
     break;
-  case State::AT_PICKER:
+  case State::ARRIVAL:
     color = TFT_DARKGREEN;
     draw_object = true;
 

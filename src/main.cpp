@@ -1,12 +1,12 @@
 #include "FS.h"
 #include "GUI/GUI.hpp"
 #include "IO_Controller.hpp"
+#include "Logger.hpp"
 #include "MCP23017.hpp"
 #include "MenuSelector.hpp"
 #include "Process/Process.hpp"
 #include "PulseCounter.hpp"
-// #include "RotaryEncoder.hpp"
-#include "Logger.hpp"
+#include "RotaryEncoder.hpp"
 #include "StateMachines/ObjectCounterSM.hpp"
 #include "StateMachines/StepperMotorSM.hpp"
 #include "StateMachines/TrafficLightSM.hpp"
@@ -40,7 +40,7 @@ void TestTask(void *param);
 // };
 
 // SM::TrafficLightSM trafficLight(context, TrafficLight::State::INIT,
-//                                 true); // Global object
+//                                 true); // Global item
 // unsigned long lastMillis;      // Global variable to track last update time
 ObjectCounter::State prevState; // Global variable to track previous state
                                 // SM::WaterLevelSM waterLevel;
@@ -49,6 +49,8 @@ GPSU::Process process;
 void setup() {
 
   Serial.begin(115200);
+  LOG::ENABLE_TIMESTAMPS();
+
   process.init();
   // oc.update();
 

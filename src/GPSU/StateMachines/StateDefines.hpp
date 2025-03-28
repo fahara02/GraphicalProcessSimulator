@@ -1,6 +1,7 @@
 #ifndef STATE_DEFINES_HPP
 #define STATE_DEFINES_HPP
 #include "Arduino.h"
+#include "Logger.hpp"
 #include "stdint.h"
 
 namespace TrafficLight {
@@ -17,7 +18,7 @@ enum class Event : uint8_t {
   TIMER_FAULT,
   LED_FAULT,
 };
-enum class CommandType : uint8_t {
+enum class CmdType : uint8_t {
   NONE = 0,
   RESET,
   TURN_ON_RED,
@@ -28,15 +29,15 @@ enum class CommandType : uint8_t {
   TURN_OFF_GREEN,
 };
 struct CommandData {
-  int timeout1_ms = 0;
-  int timeout2_ms = 0;
+  int timeout1 = 0;
+  int timeout2 = 0;
   bool immediate_transition = false;
 };
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command;
-  CommandType entry_command;
+  CmdType exit_command;
+  CmdType entry_command;
   CommandData exit_data;
   CommandData entry_data;
 };
@@ -49,22 +50,22 @@ struct Config {
   uint8_t max_errors = 3;
 };
 struct Inputs {
-  bool new_input = false;
+  bool new_data = false;
   struct Timer {
     int external_delta_time_ms = 0;
-    bool internal_timer1_expired = false;
-    bool internal_timer2_expired = false;
-    int current_time_ms = 0;
+    bool t1_expired = false;
+    bool t2_expired = false;
+    int now = 0;
   } timer;
-  struct UserCommand {
+  struct UI {
     bool turn_on_red = false;
     bool turn_on_yellow = false;
     bool turn_on_green = false;
     bool button_pressed = false;
-  } user_command;
+  } ui;
 };
 struct Data {
-  uint32_t current_time_ms = 0;
+  uint32_t now = 0;
   bool timer_expired = false;
 };
 
@@ -76,8 +77,7 @@ struct Context {
   using Event = TrafficLight::Event;
   using Mode = TrafficLight::Mode;
   using Command = TrafficLight::Command;
-  State current_state;
-  State previous_state;
+  State curr, prev;
   Config config;
   Data data;
   Inputs inputs;
@@ -88,8 +88,8 @@ struct Context {
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
-      current_state = other.current_state;
-      previous_state = other.previous_state;
+      curr = other.curr;
+      prev = other.prev;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
@@ -114,7 +114,7 @@ enum class State : uint8_t {
   OVERFLOW,
   SYSTEM_FAULT
 };
-enum class CommandType : uint8_t {
+enum class CmdType : uint8_t {
   NONE = 0,
   LEVEL_UPDATE,
   START_FILL,
@@ -126,8 +126,8 @@ enum class CommandType : uint8_t {
 
 };
 struct CommandData {
-  int timeout1_ms = 0;
-  int timeout2_ms = 0;
+  int timeout1 = 0;
+  int timeout2 = 0;
   int pump_speed = 0;
   int32_t target_level = 0;
   bool open_drain_valve = false;
@@ -137,8 +137,8 @@ struct CommandData {
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command;
-  CommandType entry_command;
+  CmdType exit_command;
+  CmdType entry_command;
   CommandData exit_data;
   CommandData entry_data;
 };
@@ -154,12 +154,12 @@ struct Config {
 };
 
 struct Inputs {
-  bool new_input = false;
+  bool new_data = false;
   struct Timer {
     int external_delta_time_ms = 0;
-    bool internal_timer1_expired = false;
-    bool internal_timer2_expired = false;
-    int current_time_ms = 0;
+    bool t1_expired = false;
+    bool t2_expired = false;
+    int now = 0;
   } timer;
   struct Sensors {
     int32_t raw_adc_value = 0;
@@ -167,12 +167,12 @@ struct Inputs {
     bool drain_valve_state = false;
     bool fill_valve_state = false;
   } sensors;
-  struct UserCommand {
+  struct UI {
     int32_t new_target_level = 0;
     bool fill_request = false;
     bool drain_request = false;
     bool stop = false;
-  } user_command;
+  } ui;
 };
 enum class Event : uint8_t {
   OK = 0,
@@ -195,8 +195,7 @@ struct Context {
   using Event = WaterLevel::Event;
   using Mode = WaterLevel::Mode;
   using Command = WaterLevel::Command;
-  State current_state;
-  State previous_state;
+  State curr, prev;
   Config config;
   Data data;
   Inputs inputs;
@@ -207,8 +206,8 @@ struct Context {
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
-      current_state = other.current_state;
-      previous_state = other.previous_state;
+      curr = other.curr;
+      prev = other.prev;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
@@ -224,7 +223,7 @@ namespace StepperMotor {
 enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t { IDLE = 0, MOVING_CW, MOVING_CCW, HOMING, ERROR };
 
-enum class CommandType : uint8_t {
+enum class CmdType : uint8_t {
   NONE = 0,
   START_MOVE,
   STOP,
@@ -235,8 +234,8 @@ enum class CommandType : uint8_t {
 };
 
 struct CommandData {
-  int timeout1_ms = 0;
-  int timeout2_ms = 0;
+  int timeout1 = 0;
+  int timeout2 = 0;
   int32_t target_position = 0;
   uint16_t speed_rpm = 60;
   bool direction = true; // CW=true, CCW=false
@@ -244,8 +243,8 @@ struct CommandData {
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command;
-  CommandType entry_command;
+  CmdType exit_command;
+  CmdType entry_command;
   CommandData exit_data;
   CommandData entry_data;
 };
@@ -266,12 +265,12 @@ struct Config {
 };
 
 struct Inputs {
-  bool new_input = false;
+  bool new_data = false;
   struct Timer {
     int external_delta_time_ms = 0;
-    bool internal_timer1_expired = false;
-    bool internal_timer2_expired = false;
-    int current_time_ms = 0;
+    bool t1_expired = false;
+    bool t2_expired = false;
+    int now = 0;
   } timer;
   struct Sensors {
     // PCNT inputs
@@ -288,13 +287,13 @@ struct Inputs {
     bool over_temp = false;
   } sensors;
 
-  struct UserCommand {
+  struct UI {
     int32_t target_position = 0;
     bool start_move = false;
     bool stop = false;
     bool home_request = false;
     bool clear_error = false;
-  } user_command;
+  } ui;
 };
 
 enum class Event : uint8_t {
@@ -340,8 +339,7 @@ struct Context {
   using Mode = StepperMotor::Mode;
   using Command = StepperMotor::Command;
 
-  State current_state;
-  State previous_state;
+  State curr, prev;
   Config config;
   Data data;
   Inputs inputs;
@@ -353,8 +351,8 @@ struct Context {
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
-      current_state = other.current_state;
-      previous_state = other.previous_state;
+      curr = other.curr;
+      prev = other.prev;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
@@ -367,151 +365,144 @@ struct Context {
   }
 };
 } // namespace StepperMotor
-namespace Objects {
+namespace Items {
 
 enum class State : uint8_t {
   INIT = 0,
   PLACED,
   SENSED,
-  AT_PICKER,
+  ARRIVAL,
   PICKED,
   FAILED
 };
 
 struct Data {
-  uint32_t placement_time_ms = 0;      // Time when object was placed (ms)
-  uint32_t sensor_trigger_time_ms = 0; // Time when sensor should trigger (ms)
-  uint32_t picker_arrival_time_ms = 0; // Time when object reaches picker (ms)
-  uint32_t pick_attempt_time_ms = 0;
-  uint32_t pick_deadline_time_ms = 0;
+  uint32_t place_time;   // Placement timestamp
+  uint32_t sense_time;   // Expected sensor trigger
+  uint32_t pick_time;    // Expected picker arrival
+  uint32_t pick_attempt; // Pick initiation time
+  uint32_t deadline;     // Latest allowed pick time
 };
 
-} // namespace Objects
+} // namespace Items
 namespace ObjectCounter {
 enum class Mode : uint8_t { AUTO, MANUAL };
 enum class State : uint8_t { INIT = 0, READY, RUNNING, FAULT, E_STOP, RESET };
 
-struct Object {
+struct Item {
   int id = 0;
-  Objects::State state;
-  Objects::Data data;
-  bool placed_in_conveyor = false;
-  bool triggered_sensor = false;
-  bool reached_picker = false;
-  uint16_t x_position_mm = 0;
+  Items::State state;
+  Items::Data data;
+  bool on_conv = false;
+  bool sensed = false;
+  bool at_pick = false;
+  uint16_t x_pos = 0;
 };
 enum class Event : uint8_t {
   OK = 0,
   NONE,
-  SENSOR_TRIGGERED,
-  AT_PICKER,
-  PICK_SUCCESS,
-  PICK_TIMEOUT,
-  E_STOP_ACTIVATED,
-  SAFETY_TIMEOUT,
-  SENSOR_RUNWAY
+  SENSED,
+  ARRIVAL,
+  PICK_OK,
+  ESTOP,
+  SAFETY_TO,
+  RUNWAY
 };
-enum class CommandType : uint8_t {
+enum class CmdType : uint8_t {
   NONE = 0,
   RESET,
-  START_CONVEYOR,
-  STOP_CONVEYOR,
-  NEW_OBJECT,
-  TRIGGER_SENSOR,
-  ACTIVATE_PICKER,
-  SOUND_ALARM,
+  START,
+  STOP,
+  NEW_OBJ,
+  SENSE,
+  PICK,
+  ALARM,
   CLEAR_ALARM,
-  ENABLE_MANUAL_MODE
+  MANUAL_MODE,
+  AUTO_MODE
 
 };
 struct CommandData {
-  int timeout1_ms = 0;
-  int timeout2_ms = 0;
-  uint32_t duration_ms = 0;
-  uint8_t retry_count = 0;
-  bool requires_acknowledgment = false;
+  int timeout1 = 0;
+  int timeout2 = 0;
+  uint32_t duration = 0;
+  uint8_t retries = 0;
+  bool needs_ack = false;
   bool alarm = false;
 };
 struct Command {
   bool check_exit = false;
   bool check_entry = false;
-  CommandType exit_command;
-  CommandType entry_command;
+  CmdType exit_command;
+  CmdType entry_command;
   CommandData exit_data;
   CommandData entry_data;
 };
 struct Config {
-  static constexpr uint16_t conveyer_length = 1000;
-  static constexpr uint16_t object_length_mm = 50;
-  static constexpr uint16_t conveyer_velocity_mmps = 60;
-  static constexpr uint16_t sensor_position_mm = 200;
-  static constexpr uint16_t picker_position_mm = 400;
-  static constexpr int32_t object_placement_rate_sec = 5;
-  static constexpr uint32_t simulated_pick_delay_ms = 20;
-  static constexpr uint8_t max_objects = 10;
+  static constexpr uint16_t conv_length = 1000;
+  static constexpr uint16_t obj_length = 50;
+  static constexpr uint16_t conv_mmps = 60;
+  static constexpr uint16_t sen_pos = 200;
+  static constexpr uint16_t pick_pos = 400;
+  static constexpr int32_t placement_rate = 5;
+  static constexpr uint32_t sim_pick_delay = 20;
+  static constexpr uint8_t max_objs = 10;
 
   // Derived timings (calculated once during initialization)
-  uint32_t sensor_trigger_delay_ms;      //
-  uint32_t picker_arrival_delay_ms;      //
-  uint32_t object_placement_interval_ms; //
-  uint32_t auto_picking_time_limit_ms;   //
-  uint32_t manual_picking_time_limit_ms; //
+  uint32_t sense_delay;    //
+  uint32_t pick_delay;     //
+  uint32_t place_interval; //
+  uint32_t auto_timeout;   //
+  uint32_t manual_timeout; //
 
   Config() {
-    sensor_trigger_delay_ms =
-        (sensor_position_mm * 1000) / conveyer_velocity_mmps;
-    picker_arrival_delay_ms =
-        (picker_position_mm * 1000) / conveyer_velocity_mmps;
-    object_placement_interval_ms = object_placement_rate_sec * 1000;
-    auto_picking_time_limit_ms =
-        picker_arrival_delay_ms + simulated_pick_delay_ms;
-    manual_picking_time_limit_ms = 2000;
+    sense_delay = (sen_pos * 1000) / conv_mmps;
+    pick_delay = (pick_pos * 1000) / conv_mmps;
+    place_interval = placement_rate * 1000;
+    auto_timeout = pick_delay + sim_pick_delay;
+    manual_timeout = 2000;
     ;
   }
 };
 struct Inputs {
-  bool new_input = false;
+  bool new_data = false;
   struct Timer {
-    // placement timer, resets after placement
-    bool internal_timer1_expired = false;
-    // timer from placement to end ,resets after picked or fail
-    bool internal_timer2_expired = false;
-    uint32_t current_placement_time_ms = 0;
-    uint32_t current_placed_object_ms = 0;
+    bool t1_expired = false; // placement timer, resets after placement
+    bool t2_expired = false; // timer item
+    uint32_t place_time = 0;
+    uint32_t obj_time = 0;
   } timer;
   struct Sensors {
-    bool photoeye_active = false;       // Main object detection sensor
-    bool pick_position_sensor = false;  // Picker mechanism position
-    bool emergency_stop_active = false; // E-stop button state
-    bool safety_guard_closed = true;    // Machine safety guard
+    bool photoeye = false; // Main item detection sensor
+    bool pick_pos = false; // Picker mechanism position
+    bool estop = false;    // E-stop button state
+    bool guard = true;     // Machine safety guard
   } sensors;
-  struct UserCommand {
-
+  struct UI {
     bool start = false;
     bool stop = false;
     bool reset = false;
-    bool acknowledge_sensor = false;
-    bool pick_arrived = false;
-    bool pick_now = false;    // Manual pick trigger
-    bool mode_switch = false; // Auto/Manual toggle
-  } user_command;
+    bool ack = false;
+    bool pick = false; // Manual pick trigger
+    bool mode = false; // Auto/Manual toggle
+  } ui;
 };
 struct Data {
-  bool picker_busy = false;
+  bool picking = false;
   struct Timing {
-    uint32_t current_time_ms = 0;
-    uint32_t last_placement_time_ms = 0;
-    uint32_t system_uptime = 0;
-    uint32_t conveyor_runtime = 0;
+    uint32_t now = 0;
+    uint32_t last_placed = 0;
+    uint32_t uptime = 0;
+    uint32_t runtime = 0;
   } timing;
 
-  struct ProductionData {
-    uint16_t total_objects_detected = 0;
-    uint16_t successful_picks = 0;
-    uint16_t failed_picks = 0;
-    uint16_t conveyor_starts = 0;
-    float average_cycle_time = 0.0f;
-  } production;
+  struct Stats {
+    uint16_t total = 0;
+    uint16_t ok = 0;
+    uint16_t failed = 0;
+    uint32_t start_time = 0;
+    float avg_cycle = 0.0f;
+  } stat;
 };
 
 struct Context {
@@ -523,97 +514,88 @@ struct Context {
   using Mode = ObjectCounter::Mode;
   using Command = ObjectCounter::Command;
 
-  State current_state;
-  State previous_state;
+  State curr, prev;
   Config config;
   Data data;
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
   Command new_cmd;
-  Object objects[Config::max_objects];
-  uint8_t object_count = 0; // Number of active objects
-  uint8_t id_counter = 0;
+  Item items[Config::max_objs];
+  uint8_t obj_cnt = 0; // Number of active items
+  uint8_t id_cnt = 0;
   // Assignment operator
   Context &operator=(const Context &other) {
     if (this != &other) {
-      current_state = other.current_state;
-      previous_state = other.previous_state;
+      curr = other.curr;
+      prev = other.prev;
       config = other.config;
       data = other.data;
       inputs = other.inputs;
       event = other.event;
       mode = other.mode;
       new_cmd = other.new_cmd;
-      for (uint8_t i = 0; i < Config::max_objects; i++)
-        objects[i] = other.objects[i];
-      object_count = other.object_count;
+      for (uint8_t i = 0; i < Config::max_objs; i++)
+        items[i] = other.items[i];
+      obj_cnt = other.obj_cnt;
     }
     return *this;
   }
-  void addObject(uint32_t current_conveyor_runtime) {
-    if (object_count >= Config::max_objects)
+  void addObject(uint32_t runtime) {
+    if (obj_cnt >= Config::max_objs)
       return;
-    Object obj;
-    obj.id = id_counter;
-    obj.state = Objects::State::PLACED;
-    obj.placed_in_conveyor = true;
-    obj.data = {current_conveyor_runtime,
-                current_conveyor_runtime + config.sensor_trigger_delay_ms,
-                current_conveyor_runtime + config.picker_arrival_delay_ms, 0,
-                0};
-    Serial.printf("Object id= %d  is Placed \n", obj.id);
-    objects[object_count++] = obj;
-    id_counter += 1;
+    Item obj;
+    obj.id = id_cnt;
+    obj.state = Items::State::PLACED;
+    obj.on_conv = true;
+    obj.data = {runtime, runtime + config.sense_delay,
+                runtime + config.pick_delay, 0, 0};
+    LOG::DEBUG("Item id= %d  is Placed \n", obj.id);
+    items[obj_cnt++] = obj;
+    id_cnt += 1;
   }
 
-  void updateObjects(uint32_t current_conveyor_runtime) {
-    for (uint8_t i = 0; i < object_count; i++) {
+  void updateObjects(uint32_t runtime) {
+    for (uint8_t i = 0; i < obj_cnt; i++) {
       // Transition from PLACED to SENSED
-      if (!objects[i].triggered_sensor &&
-          current_conveyor_runtime >= objects[i].data.sensor_trigger_time_ms) {
-        objects[i].state = Objects::State::SENSED;
-        event = Event::SENSOR_TRIGGERED;
-        inputs.sensors.photoeye_active = true;
-        objects[i].triggered_sensor = true;
-        Serial.printf("Object id= %d  is triggered \n", objects[i].id);
-        data.production.total_objects_detected++;
+      if (!items[i].sensed && runtime >= items[i].data.sense_time) {
+        items[i].state = Items::State::SENSED;
+        event = Event::SENSED;
+        inputs.sensors.photoeye = true;
+        items[i].sensed = true;
+        LOG::DEBUG("Item id= %d  is triggered \n", items[i].id);
+        data.stat.total++;
       }
-      // Transition from SENSED to AT_PICKER and start pick processing
-      if (!objects[i].reached_picker &&
-          current_conveyor_runtime >= objects[i].data.picker_arrival_time_ms) {
-        objects[i].state = Objects::State::AT_PICKER;
-        objects[i].reached_picker = true;
-        event = Event::AT_PICKER; // Set event
-        Serial.printf("Object id= %d  is at Picker \n", objects[i].id);
-        startPickerProcessing(objects[i], current_conveyor_runtime);
+      // Transition from SENSED to ARRIVAL and start pick processing
+      if (!items[i].at_pick && runtime >= items[i].data.pick_time) {
+        items[i].state = Items::State::ARRIVAL;
+        items[i].at_pick = true;
+        event = Event::ARRIVAL; // Set event
+        LOG::DEBUG("Item id= %d  is at Picker \n", items[i].id);
+        pickerProcessing(items[i], runtime);
       }
     }
   }
-  void startPickerProcessing(Object &obj, uint32_t current_conveyor_runtime) {
-    obj.data.pick_attempt_time_ms =
-        current_conveyor_runtime +
-        (mode == Mode::AUTO ? config.simulated_pick_delay_ms : 0);
+  void pickerProcessing(Item &obj, uint32_t runtime) {
+    obj.data.pick_attempt =
+        runtime + (mode == Mode::AUTO ? config.sim_pick_delay : 0);
 
-    obj.data.pick_deadline_time_ms =
-        current_conveyor_runtime + (mode == Mode::AUTO
-                                        ? config.auto_picking_time_limit_ms
-                                        : config.manual_picking_time_limit_ms);
+    obj.data.deadline = runtime + (mode == Mode::AUTO ? config.auto_timeout
+                                                      : config.manual_timeout);
   }
 
-  void removeCompletedObjects() {
+  void removeCompleted() {
     uint8_t newCount = 0;
-    for (uint8_t i = 0; i < object_count; ++i) {
-      if (objects[i].state == Objects::State::PICKED ||
-          objects[i].state == Objects::State::FAILED) {
-        Serial.printf("Object id= %d  is removed from active list\n",
-                      objects[i].id);
+    for (uint8_t i = 0; i < obj_cnt; ++i) {
+      if (items[i].state == Items::State::PICKED ||
+          items[i].state == Items::State::FAILED) {
+        LOG::DEBUG("Item id= %d  is removed from active list\n", items[i].id);
       } else {
-        objects[newCount++] = objects[i];
-        Serial.printf("Object id= %d  is kept in active list\n", objects[i].id);
+        items[newCount++] = items[i];
+        LOG::DEBUG("Item id= %d  is kept in active list\n", items[i].id);
       }
     }
-    object_count = newCount;
+    obj_cnt = newCount;
   }
 };
 
