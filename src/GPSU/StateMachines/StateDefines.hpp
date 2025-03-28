@@ -541,62 +541,6 @@ struct Context {
     }
     return *this;
   }
-  void addObject(uint32_t runtime) {
-    if (obj_cnt >= Config::max_objs)
-      return;
-    Item obj;
-    obj.id = id_cnt;
-    obj.state = Items::State::PLACED;
-    obj.on_conv = true;
-    obj.data = {runtime, runtime + config.sense_delay,
-                runtime + config.pick_delay, 0, 0};
-    LOG::DEBUG("Item id= %d  is Placed \n", obj.id);
-    items[obj_cnt++] = obj;
-    id_cnt += 1;
-  }
-
-  void updateObjects(uint32_t runtime) {
-    for (uint8_t i = 0; i < obj_cnt; i++) {
-      // Transition from PLACED to SENSED
-      if (!items[i].sensed && runtime >= items[i].data.sense_time) {
-        items[i].state = Items::State::SENSED;
-        event = Event::SENSED;
-        inputs.sensors.photoeye = true;
-        items[i].sensed = true;
-        LOG::DEBUG("Item id= %d  is triggered \n", items[i].id);
-        data.stat.total++;
-      }
-      // Transition from SENSED to ARRIVAL and start pick processing
-      if (!items[i].at_pick && runtime >= items[i].data.pick_time) {
-        items[i].state = Items::State::ARRIVAL;
-        items[i].at_pick = true;
-        event = Event::ARRIVAL; // Set event
-        LOG::DEBUG("Item id= %d  is at Picker \n", items[i].id);
-        pickerProcessing(items[i], runtime);
-      }
-    }
-  }
-  void pickerProcessing(Item &obj, uint32_t runtime) {
-    obj.data.pick_attempt =
-        runtime + (mode == Mode::AUTO ? config.sim_pick_delay : 0);
-
-    obj.data.deadline = runtime + (mode == Mode::AUTO ? config.auto_timeout
-                                                      : config.manual_timeout);
-  }
-
-  void removeCompleted() {
-    uint8_t newCount = 0;
-    for (uint8_t i = 0; i < obj_cnt; ++i) {
-      if (items[i].state == Items::State::PICKED ||
-          items[i].state == Items::State::FAILED) {
-        LOG::DEBUG("Item id= %d  is removed from active list\n", items[i].id);
-      } else {
-        items[newCount++] = items[i];
-        LOG::DEBUG("Item id= %d  is kept in active list\n", items[i].id);
-      }
-    }
-    obj_cnt = newCount;
-  }
 };
 
 } // namespace ObjectCounter

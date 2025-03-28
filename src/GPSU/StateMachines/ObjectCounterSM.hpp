@@ -170,6 +170,7 @@ public:
   using Inputs = ObjectCounter::Inputs;
   using Event = ObjectCounter::Event;
   using Mode = ObjectCounter::Mode;
+  using Item = ObjectCounter::Item;
 
   explicit ObjectCounterSM(const Context &context, State state)
       : StateMachine(context, state, true, false) {
@@ -178,6 +179,7 @@ public:
   }
 
   ObjectCounterSM() : ObjectCounterSM(Context{}, State::INIT) {}
+
   void updateInternalState(const Inputs &input) {
     ctx_.inputs = input;
     uint32_t currentTime = millis();
@@ -186,27 +188,7 @@ public:
 
     if (current() == State::RUNNING) {
       ctx_.data.timing.runtime += delta;
-
-      // Update x_position for all active items
-      for (uint8_t i = 0; i < ctx_.obj_cnt; ++i) {
-        auto &obj = ctx_.items[i];
-        if (obj.state != Items::State::PICKED &&
-            obj.state != Items::State::FAILED) {
-          uint32_t elapsed_time =
-              ctx_.data.timing.runtime - obj.data.place_time;
-          obj.x_pos = (ObjectCounter::Config::conv_mmps * elapsed_time) / 1000;
-          // Clamp to conveyor length
-          if (obj.x_pos > ObjectCounter::Config::conv_length) {
-            obj.x_pos = ObjectCounter::Config::conv_length;
-          }
-        }
-      }
-    }
-    if (current() == State::RUNNING && ctx_.inputs.timer.t1_expired) {
-      ctx_.addObject(ctx_.data.timing.runtime);
-      ctx_.inputs.timer.t1_expired = false;
-      ctx_.data.timing.last_placed = currentTime;
-      ctx_.updateObjects(ctx_.data.timing.runtime);
+      updateObjects(ctx_.data.timing.runtime);
 
       // Process picking for all items at picker
       for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
@@ -220,15 +202,9 @@ public:
               ctx_.data.stat.ok++;
             }
           } else { // MANUAL mode
-            if (ctx_.inputs.ui.pick) {
-              if (currentTime <= obj.data.deadline) {
-                obj.state = Items::State::PICKED;
-                ctx_.data.stat.ok++;
-
-              } else {
-                obj.state = Items::State::FAILED;
-                ctx_.data.stat.failed++;
-              }
+            if (ctx_.inputs.ui.pick && currentTime <= obj.data.deadline) {
+              obj.state = Items::State::PICKED;
+              ctx_.data.stat.ok++;
             } else if (currentTime > obj.data.deadline) {
               obj.state = Items::State::FAILED;
               ctx_.data.stat.failed++;
@@ -236,10 +212,14 @@ public:
           }
         }
       }
-      // After processing picks
-      ctx_.removeCompleted();
-      ctx_.event = Event::NONE;
-      restartTimer1(static_cast<uint64_t>(ctx_.config.place_interval) * 1000);
+      removeCompleted();
+
+      if (ctx_.inputs.timer.t1_expired) {
+        addObject(ctx_.data.timing.runtime);
+        ctx_.inputs.timer.t1_expired = false;
+        ctx_.data.timing.last_placed = currentTime;
+        restartTimer1(static_cast<uint64_t>(ctx_.config.place_interval) * 1000);
+      }
     }
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
@@ -252,6 +232,74 @@ public:
   }
 
 private:
+  void addObject(uint32_t runtime) {
+    if (ctx_.obj_cnt >= Context::Config::max_objs)
+      return;
+
+    Item item;
+    item.id = ctx_.id_cnt;
+    item.state = Items::State::PLACED;
+    item.on_conv = true;
+    item.data = {runtime, runtime + ctx_.config.sense_delay,
+                 runtime + ctx_.config.pick_delay, 0, 0};
+
+    ctx_.items[ctx_.obj_cnt++] = item;
+    ctx_.id_cnt++;
+    LOG::DEBUG("Item id= %d placed\n", item.id);
+  }
+
+  void updateObjects(uint32_t runtime) {
+    for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
+      auto &item = ctx_.items[i];
+
+      // Update x_position
+      if (item.state != Items::State::PICKED &&
+          item.state != Items::State::FAILED) {
+        uint32_t elapsed_time = runtime - item.data.place_time;
+        item.x_pos = (ObjectCounter::Config::conv_mmps * elapsed_time) / 1000;
+        if (item.x_pos > ObjectCounter::Config::conv_length) {
+          item.x_pos = ObjectCounter::Config::conv_length;
+        }
+      }
+
+      // Check for SENSED transition
+      if (!item.sensed && runtime >= item.data.sense_time) {
+        item.state = Items::State::SENSED;
+        item.sensed = true;
+        ctx_.event = Event::SENSED;
+        LOG::DEBUG("Item %d sensed\n", item.id);
+      }
+
+      // Check for ARRIVAL transition
+      if (!item.at_pick && runtime >= item.data.pick_time) {
+        item.state = Items::State::ARRIVAL;
+        item.at_pick = true;
+        ctx_.event = Event::ARRIVAL;
+        pickerProcessing(item, runtime);
+        LOG::DEBUG("Item %d at picker\n", item.id);
+      }
+    }
+  }
+  void pickerProcessing(Item &obj, uint32_t runtime) {
+    obj.data.pick_attempt =
+        runtime + (ctx_.mode == Mode::AUTO ? ctx_.config.sim_pick_delay : 0);
+
+    obj.data.deadline =
+        runtime + (ctx_.mode == Mode::AUTO ? ctx_.config.auto_timeout
+                                           : ctx_.config.manual_timeout);
+  }
+  void removeCompleted() {
+    uint8_t newCount = 0;
+    for (uint8_t i = 0; i < ctx_.obj_cnt; ++i) {
+      if (ctx_.items[i].state == Items::State::PICKED ||
+          ctx_.items[i].state == Items::State::FAILED) {
+        LOG::DEBUG("Removing item %d\n", ctx_.items[i].id);
+      } else {
+        ctx_.items[newCount++] = ctx_.items[i];
+      }
+    }
+    ctx_.obj_cnt = newCount;
+  }
 };
 
 } // namespace SM
