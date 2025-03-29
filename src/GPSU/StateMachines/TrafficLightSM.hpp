@@ -61,12 +61,12 @@ struct Traits {
   }
 
   static inline bool timeoutRed(const Context &ctx) {
-    return auto_mode(ctx) && (ctx.inputs.timer.t1_expired ||
-                              ctx.data.now >= ctx.config.redTimeout_ms);
+    return auto_mode(ctx) &&
+           (ctx.inputs.timer.t1_expired || ctx.data.now >= ctx.config.red_to);
   }
   static inline bool timeoutGreen(const Context &ctx) {
-    return auto_mode(ctx) && (ctx.inputs.timer.t1_expired ||
-                              ctx.data.now >= ctx.config.greenTimeout_ms);
+    return auto_mode(ctx) &&
+           (ctx.inputs.timer.t1_expired || ctx.data.now >= ctx.config.green_to);
   }
 
   static inline bool manualYellowToRed(const Context &ctx) {
@@ -80,13 +80,13 @@ struct Traits {
   static inline bool timeoutYellowToRed(const Context &ctx) {
     return auto_mode(ctx) &&
            (ctx.inputs.timer.t1_expired ||
-            ctx.data.now >= ctx.config.yellowTimeout_ms) &&
+            ctx.data.now >= ctx.config.yellow_to) &&
            (ctx.prev == State::GREEN_STATE);
   }
   static inline bool timeoutYellowToGreen(const Context &ctx) {
     return auto_mode(ctx) &&
            (ctx.inputs.timer.t1_expired ||
-            ctx.data.now >= ctx.config.yellowTimeout_ms) &&
+            ctx.data.now >= ctx.config.yellow_to) &&
            (ctx.prev == State::RED_STATE);
   }
   static inline bool buttonPress(const Context &ctx) {
@@ -98,22 +98,19 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_RED;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.red_to : 0;
       Serial.printf("time out set for red %d \n", cmd.entry_data.timeout1);
       cmd.entry_data.immediate_transition = false;
       return cmd;
     }
     static Command redToYellow(const Context &ctx) {
-
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout1 =
-          auto_mode(ctx) ? ctx.config.yellowTimeout_ms : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.red_to : 0;
       return cmd;
     }
     static Command redToGreen(const Context &ctx) {
-
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_GREEN;
@@ -124,7 +121,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_GREEN;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.greenTimeout_ms : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.yellow_to : 0;
 
       return cmd;
     }
@@ -132,8 +129,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout1 =
-          auto_mode(ctx) ? ctx.config.yellowTimeout_ms : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.green_to : 0;
 
       return cmd;
     }
@@ -141,7 +137,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_RED;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.redTimeout_ms : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.yellow_to : 0;
       return cmd;
     }
   };
@@ -255,7 +251,7 @@ public:
         update();
       }
     } else if (!use_internal_timer && ctx_.mode == Mode::AUTO) {
-      ctx_.data.now += input.timer.external_delta_time_ms;
+      ctx_.data.now += input.timer.ext_delta;
       update();
     } else if (ctx_.mode == Mode::MANUAL) {
       update();

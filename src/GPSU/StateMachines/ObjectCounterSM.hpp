@@ -189,6 +189,7 @@ public:
     if (current() == State::RUNNING) {
       ctx_.data.timing.runtime += delta;
       updateObjects(ctx_.data.timing.runtime);
+      simulateSensor();
 
       // Process picking for all items at picker
       for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
@@ -263,6 +264,26 @@ private:
       }
 
       // Check for SENSED transition
+
+      if (!item.sensed) {
+
+        if (ctx_.mode == Mode::MANUAL) {
+          if (runtime >= item.data.sense_time) {
+            item.state = Items::State::SENSED;
+            item.sensed = true;
+            ctx_.event = Event::SENSED;
+            ctx_.inputs.sensors.photoeye = true;
+            LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
+          }
+        } else {
+          if (runtime >= item.data.sense_time) {
+            item.state = Items::State::SENSED;
+            item.sensed = true;
+            ctx_.event = Event::SENSED;
+            LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
+          }
+        }
+      }
       if (!item.sensed && runtime >= item.data.sense_time) {
         item.state = Items::State::SENSED;
         item.sensed = true;
@@ -299,6 +320,10 @@ private:
       }
     }
     ctx_.obj_cnt = newCount;
+  }
+  void simulateSensor() {
+    if (ctx_.inputs.sensors.photoeye) {
+    }
   }
 };
 

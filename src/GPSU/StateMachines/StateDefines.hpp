@@ -42,26 +42,29 @@ struct Command {
   CommandData entry_data;
 };
 struct Config {
-  int redTimeout_ms = 5000;
-  int greenTimeout_ms = 3000;
-  int yellowTimeout_ms = 2000;
-  bool allowImmediateTransition = false;
-  uint16_t error_blink_interval = 500;
+  int red_to = 5000;
+  int yellow_to = 2000;
+  int green_to = 4000;
+
+  bool transit_now = false;
+  uint16_t error_blink = 500;
   uint8_t max_errors = 3;
 };
 struct Inputs {
   bool new_data = false;
   struct Timer {
-    int external_delta_time_ms = 0;
+    int ext_delta = 0;
+    uint32_t now = 0;
     bool t1_expired = false;
     bool t2_expired = false;
-    int now = 0;
+
   } timer;
   struct UI {
     bool turn_on_red = false;
     bool turn_on_yellow = false;
     bool turn_on_green = false;
     bool button_pressed = false;
+    bool manual_mode = false;
   } ui;
 };
 struct Data {
@@ -156,7 +159,7 @@ struct Config {
 struct Inputs {
   bool new_data = false;
   struct Timer {
-    int external_delta_time_ms = 0;
+    int ext_delta = 0;
     bool t1_expired = false;
     bool t2_expired = false;
     int now = 0;
@@ -267,7 +270,7 @@ struct Config {
 struct Inputs {
   bool new_data = false;
   struct Timer {
-    int external_delta_time_ms = 0;
+    int ext_delta = 0;
     bool t1_expired = false;
     bool t2_expired = false;
     int now = 0;

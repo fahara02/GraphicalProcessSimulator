@@ -21,7 +21,7 @@ Process::Process()
     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
       display_(GUI::Display::getInstance(process_list, process_count)),
-      // io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
+      io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
       menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
                                            pinA_, pinB_, btn_)),
 
@@ -31,12 +31,12 @@ Process::Process()
 void Process::init() {
 
   display_.init();
-  // io_->init();
+  io_->init();
   setting_.opMode = MCP::OperationMode::SequentialMode16;
-  // io_->configure(setting_);
-  // io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
-  // io_->pinMode(MCP::PORT::GPIOB, INPUT);
-  // io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
+  io_->configure(setting_);
+  io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+  io_->pinMode(MCP::PORT::GPIOB, INPUT);
+  io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
   menu_->set_selection_changed_cb(&Process::selectionChanged, this);
   menu_->set_item_selected_cb(&Process::itemSelected, this);
   menu_->init();
@@ -135,7 +135,7 @@ void Process::handleSelectionChanged(size_t index) {
     if (processTaskHandle != nullptr) {
       xTaskNotify(processTaskHandle, TERMINATE_NOTIFICATION,
                   eSetValueWithOverwrite);
-      vTaskDelay(pdMS_TO_TICKS(10)); // Allow task to exit gracefully
+      vTaskDelay(pdMS_TO_TICKS(10));
       processTaskHandle = nullptr;
     }
 
@@ -213,7 +213,7 @@ void Process::create_task(ProcessType type) {
 
 void Process::traffic_light_task(void *param) {
   auto instance = static_cast<GPSU::Process *>(param);
-  TrafficLight::State state;
+  using State = TrafficLight::State;
   TrafficLight::Context ctx;
   while (true) {
     uint32_t notification;
@@ -235,6 +235,24 @@ void Process::traffic_light_task(void *param) {
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
     ctx.curr = instance->tlsm_->current();
+
+    instance->mapOutputs<ProcessType::TRAFFIC_LIGHT, TrafficLight::Context>(
+        ctx);
+
+    // if (ctx.curr == State::RED_STATE) {
+    //   instance->io_->digitalWrite(GPA1, true);
+    //   instance->io_->digitalWrite(GPA2, false);
+    //   instance->io_->digitalWrite(GPA3, false);
+    // } else if (ctx.curr == State::YELLOW_STATE) {
+    //   instance->io_->digitalWrite(GPA1, false);
+    //   instance->io_->digitalWrite(GPA2, true);
+    //   instance->io_->digitalWrite(GPA3, false);
+
+    // } else if (ctx.curr == State::GREEN_STATE) {
+    //   instance->io_->digitalWrite(GPA1, false);
+    //   instance->io_->digitalWrite(GPA2, false);
+    //   instance->io_->digitalWrite(GPA3, true);
+    // }
     const char *current =
         GPSU::Util::ToString::TLState(instance->tlsm_->current());
     const char *previous =

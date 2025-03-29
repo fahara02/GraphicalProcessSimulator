@@ -36,7 +36,7 @@ protected:
   gpio_num_t pinB_;
   gpio_num_t btn_;
   GUI::Display &display_;
-  // std::unique_ptr<COMPONENT::MCP23017> io_;
+  std::unique_ptr<COMPONENT::MCP23017> io_;
   std::unique_ptr<MenuSelector> menu_;
   // std::unique_ptr<Pulse::Counter> counter_;
   std::unique_ptr<SM::TrafficLightSM> tlsm_;
@@ -53,7 +53,7 @@ private:
   TrafficLight ::Context tl_ctx =
       TrafficLight ::Context{TrafficLight::State::INIT, // curr
                              TrafficLight::State::INIT, // previous_state
-                             {5000, 3000, 2000, false}, // config
+                             {6000, 2000, 4000, false}, // config
                              {0},                       // data
                              {{0}, {false}},            // inputs
                              TrafficLight::Event::OK,   // Event
@@ -85,17 +85,39 @@ private:
 
     if (type == ProcessType::TRAFFIC_LIGHT) {
       Context ctx;
-      // uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
+      uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
 
-      // ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01;    //
-      // GPB1 ctx.inputs.ui.turn_on_green = (pinStatus >> 2) & 0x01;
-      // // GPB2 ctx.inputs.ui.turn_on_yellow = (pinStatus >> 3) &
-      // 0x01; // GPB3 ctx.inputs.ui.button_pressed = (pinStatus >> 4)
-      // & 0x01; // GPB4 ctx.inputs.new_data = true;
+      ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //
+      ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
+      ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
+      ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
       ctx.inputs.new_data = true;
+
       return ctx;
     }
     return Context{};
+  }
+  template <ProcessType type, typename Context>
+  void mapOutputs(const Context &ctx) {
+    uint8_t mask = 0;
+    if (type == ProcessType::TRAFFIC_LIGHT) {
+      if (ctx.inputs.ui.manual_mode) {
+
+        auto ui = ctx.inputs.ui;
+        mask = (ui.turn_on_red << 1) || (ui.turn_on_yellow << 2) ||
+               (ui.turn_on_green << 3);
+
+      } else if (!ctx.inputs.ui.manual_mode) {
+        if (ctx.curr == TrafficLight::State::RED_STATE) {
+          mask = 2;
+        } else if (ctx.curr == TrafficLight::State::YELLOW_STATE) {
+          mask = 4;
+        } else if (ctx.curr == TrafficLight::State::GREEN_STATE) {
+          mask = 8;
+        }
+      }
+      io_->digitalWrite(MCP::PORT::GPIOA, mask);
+    }
   }
 };
 
