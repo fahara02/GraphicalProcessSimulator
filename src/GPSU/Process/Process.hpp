@@ -58,6 +58,7 @@ private:
                              {{0}, {false}},            // inputs
                              TrafficLight::Event::OK,   // Event
                              TrafficLight::Mode::AUTO,  // Mode
+                             TrafficLight::Mode::AUTO,  // Mode
                              TrafficLight::Command{}};
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;
@@ -87,10 +88,28 @@ private:
       Context ctx;
       uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
 
-      ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //
-      ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
-      ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
-      ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+      // ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //
+      // ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
+      // ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
+      // ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+      // ctx.inputs.new_data = true;
+      ctx.inputs.ui.turn_on_red = io_->digitalRead(GPB1); //
+      ctx.inputs.ui.turn_on_yellow = io_->digitalRead(GPB2);
+      ctx.inputs.ui.turn_on_green = io_->digitalRead(GPB3);
+      ctx.inputs.ui.manual_mode = io_->digitalRead(GPB4);
+
+      if (ctx.inputs.ui.turn_on_red) {
+        LOG::DEBUG("SENSED GPB1 i.e red");
+      }
+      if (ctx.inputs.ui.turn_on_yellow) {
+        LOG::DEBUG("SENSED GPB2 i.e yellow");
+      }
+      if (ctx.inputs.ui.turn_on_green) {
+        LOG::DEBUG("SENSED GPB3 i.e green");
+      }
+      if (ctx.inputs.ui.manual_mode) {
+        LOG::DEBUG("SENSED GPB4 i.e manual mode");
+      }
       ctx.inputs.new_data = true;
 
       return ctx;

@@ -52,6 +52,7 @@ struct Config {
 };
 struct Inputs {
   bool new_data = false;
+  bool mode_changed = false;
   struct Timer {
     int ext_delta = 0;
     uint32_t now = 0;
@@ -65,6 +66,7 @@ struct Inputs {
     bool turn_on_green = false;
     bool button_pressed = false;
     bool manual_mode = false;
+
   } ui;
 };
 struct Data {
@@ -86,6 +88,7 @@ struct Context {
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
+  Mode prev_mode = Mode::AUTO;
   Command new_cmd;
 
   // Assignment operator
@@ -98,6 +101,7 @@ struct Context {
       inputs = other.inputs;
       event = other.event;
       mode = other.mode;
+      prev_mode = other.prev_mode;
       new_cmd = other.new_cmd;
     }
     return *this;

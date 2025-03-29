@@ -174,6 +174,28 @@ protected:
       }
     }
   }
+  void disableTimers() {
+
+    if (enable_timer_ && timer_) {
+      esp_timer_stop(timer_);
+      esp_timer_delete(timer_);
+      timer_ = nullptr;
+      enable_timer_ = false;
+    }
+    if (enable_timer2_ && timer2_) {
+      esp_timer_stop(timer2_);
+      esp_timer_delete(timer2_);
+      timer2_ = nullptr;
+      enable_timer2_ = false;
+    }
+  }
+  void enableTimer(int timer_id = 0) {
+    if (timer_id == 0) {
+      enable_timer_ = true;
+    } else if (timer_id == 1) {
+      enable_timer2_ = true;
+    }
+  }
 
 private:
   std::atomic<State> current_;

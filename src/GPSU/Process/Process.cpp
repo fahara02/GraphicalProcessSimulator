@@ -214,7 +214,7 @@ void Process::create_task(ProcessType type) {
 void Process::traffic_light_task(void *param) {
   auto instance = static_cast<GPSU::Process *>(param);
   using State = TrafficLight::State;
-  TrafficLight::Context ctx;
+
   while (true) {
     uint32_t notification;
     if (xTaskNotifyWait(0, ULONG_MAX, &notification, pdMS_TO_TICKS(100))) {
@@ -228,10 +228,10 @@ void Process::traffic_light_task(void *param) {
       vTaskDelete(NULL);
       break;
     }
-    ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
-                                   TrafficLight::Context>();
+    auto ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
+                                        TrafficLight::Context>();
 
-    // instance->tlsm_->updateData(ctx.inputs);
+    instance->tlsm_->updateData(ctx.inputs);
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
     ctx.curr = instance->tlsm_->current();

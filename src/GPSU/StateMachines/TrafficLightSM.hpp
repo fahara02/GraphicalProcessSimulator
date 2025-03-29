@@ -23,7 +23,7 @@ struct Traits {
   static constexpr bool has_exit_actions = true;
   static constexpr bool has_entry_actions = true;
   static constexpr uint16_t state_count = 5;
-  static constexpr uint16_t transition_count = 15;
+  static constexpr uint16_t transition_count = 18;
 
   struct Transition {
     State from;
@@ -43,6 +43,10 @@ struct Traits {
     // Serial.printf("Context Mode is %s",
     //               ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Unknown");
     return ctx.mode == Mode::AUTO;
+  }
+  static inline bool modeChanged(const Context &ctx) {
+
+    return ctx.inputs.mode_changed;
   }
   static inline bool start(const Context &ctx) {
     Serial.printf("Context Mode is %s\n",
@@ -209,6 +213,12 @@ struct Traits {
       {State::YELLOW_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
       {State::GREEN_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
       {State::SYSTEM_FAULT, State::INIT, systemFaultCleared, nullptr, nullptr},
+      {State::RED_STATE, State::INIT, modeChanged, nullptr,
+       exitActions::redToYellow},
+      {State::GREEN_STATE, State::INIT, modeChanged, nullptr,
+       exitActions::greenToYellow},
+      {State::YELLOW_STATE, State::INIT, modeChanged, nullptr,
+       exitActions::yellowToRed},
 
   }
 
@@ -245,6 +255,21 @@ public:
   TrafficLightSM() : TrafficLightSM(Context{}, State::INIT, true) {}
 
   void updateInternalState(const Inputs &input) {
+    check_ui_inputs(input);
+    bool wants_manual = input.ui.manual_mode;
+    if ((wants_manual && ctx_.mode != Mode::MANUAL) ||
+        (!wants_manual && ctx_.mode != Mode::AUTO)) {
+
+      updateMode();
+    }
+
+    // If mode changed during updateMode, handle transitions
+    if (mode_changed) {
+      // Reset the flag after handling
+      mode_changed = false;
+      ctx_.inputs.mode_changed = false;
+    }
+
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
       if (input.timer.t1_expired) {
         ctx_.data.now = 0;
@@ -269,6 +294,46 @@ public:
 
 private:
   bool use_internal_timer;
+  bool mode_changed = false;
+
+  void check_ui_inputs(const Inputs &input) {
+
+    if (input.ui.turn_on_red) {
+      LOG::DEBUG("TL_SM", "TURN RED BTN");
+    } else if (input.ui.turn_on_yellow) {
+      LOG::DEBUG("TL_SM", "TURN YELLOW BTN");
+    } else if (input.ui.turn_on_green) {
+      LOG::DEBUG("TL_SM", "TURN GREEN BTN");
+    } else if (input.ui.manual_mode) {
+      LOG::DEBUG("TL_SM", "MANUAL MODE");
+    }
+  }
+
+  void updateMode() {
+    ctx_.prev_mode = ctx_.mode;
+    if (ctx_.inputs.ui.manual_mode) {
+      ctx_.mode = Mode::MANUAL;
+      disableTimers();
+
+    } else {
+      ctx_.mode = Mode::AUTO;
+      enableTimer();
+    }
+    if (ctx_.mode != ctx_.prev_mode) {
+      mode_changed = true;
+      ctx_.inputs.mode_changed = true;
+      LOG::DEBUG("TL_SM", "Mode changed");
+    }
+
+    // Reset selected member variable except the Config and ui Inputs
+    ctx_.inputs.new_data = false;
+    ctx_.inputs.timer = Inputs::Timer{};
+    ctx_.event = Event{};
+    ctx_.new_cmd = Command{};
+
+    LOG::DEBUG("TL_SM", "Mode updated to %s",
+               ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+  }
 };
 
 } // namespace SM
