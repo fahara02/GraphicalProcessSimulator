@@ -54,12 +54,13 @@ public:
 
   void init();
   void sendDisplayCommand(const Command &cmd);
-  void run_process(GPSU::ProcessType type);
+  void prepare_assets(GPSU::ProcessType type);
   void setMenuItems(const MenuItem *items, size_t count);
   void setCursorIndex(size_t index);
 
   Display(const Display &) = delete;
   Display &operator=(const Display &) = delete;
+  void resetQueue() { xQueueReset(displayQueue); }
 
 private:
   // Private constructor.

@@ -55,7 +55,19 @@ public:
                         bool enableTimer2 = false)
       : ctx_(ctx), current_(initial), previous_(initial),
         enable_timer_(enableTimer), enable_timer2_(enableTimer2) {}
-
+  ~StateMachine() {
+    is_destroying_ = true;
+    if (enable_timer_ && timer_) {
+      esp_timer_stop(timer_);
+      esp_timer_delete(timer_);
+      timer_ = nullptr;
+    }
+    if (enable_timer2_ && timer2_) {
+      esp_timer_stop(timer2_);
+      esp_timer_delete(timer2_);
+      timer2_ = nullptr;
+    }
+  }
   Command update() {
 
     Command cmd{};
@@ -140,6 +152,14 @@ public:
   const Context &getContext() const { return ctx_; }
   void setContext(Context ctx) { ctx_ = ctx; }
   void setAutoUpdate() { dataUpdated_ = true; }
+  void stopTimers() {
+    if (enable_timer_ && timer_) {
+      esp_timer_stop(timer_);
+    }
+    if (enable_timer2_ && timer2_) {
+      esp_timer_stop(timer2_);
+    }
+  }
 
 protected:
   Context ctx_;
@@ -158,6 +178,7 @@ protected:
 private:
   std::atomic<State> current_;
   std::atomic<State> previous_;
+  bool is_destroying_ = false;
   bool enable_timer_ = false;
   bool enable_timer2_ = false;
   bool initialised = false;
@@ -237,24 +258,27 @@ private:
     }
     return base;
   }
-
   static void timer1Callback(void *arg) {
     StateMachine *sm = static_cast<StateMachine *>(arg);
-    sm->timerExpired_ = true;
-    sm->ctx_.inputs.timer.t1_expired = true;
-    sm->dataUpdated_ = true;
-    if (sm->enable_timer_) {
-      sm->updateData(sm->ctx_.inputs);
+    if (sm && !sm->is_destroying_) {
+      sm->timerExpired_ = true;
+      sm->ctx_.inputs.timer.t1_expired = true;
+      sm->dataUpdated_ = true;
+      if (sm->enable_timer_) {
+        sm->updateData(sm->ctx_.inputs);
+      }
     }
   }
 
   static void timer2Callback(void *arg) {
     StateMachine *sm = static_cast<StateMachine *>(arg);
-    sm->timer2Expired_ = true;
-    sm->ctx_.inputs.timer.t2_expired = true;
-    sm->dataUpdated_ = true;
-    if (sm->enable_timer2_) {
-      sm->updateData(sm->ctx_.inputs);
+    if (sm && !sm->is_destroying_) {
+      sm->timer2Expired_ = true;
+      sm->ctx_.inputs.timer.t2_expired = true;
+      sm->dataUpdated_ = true;
+      if (sm->enable_timer2_) {
+        sm->updateData(sm->ctx_.inputs);
+      }
     }
   }
   void handleTimer(Command cmd) {

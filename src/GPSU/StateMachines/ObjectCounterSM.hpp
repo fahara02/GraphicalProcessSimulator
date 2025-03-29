@@ -245,7 +245,7 @@ private:
 
     ctx_.items[ctx_.obj_cnt++] = item;
     ctx_.id_cnt++;
-    LOG::DEBUG("Item id= %d placed\n", item.id);
+    LOG::DEBUG("OC_SM", "Item id= %d placed\n", item.id);
   }
 
   void updateObjects(uint32_t runtime) {
@@ -267,7 +267,7 @@ private:
         item.state = Items::State::SENSED;
         item.sensed = true;
         ctx_.event = Event::SENSED;
-        LOG::DEBUG("Item %d sensed\n", item.id);
+        LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
       }
 
       // Check for ARRIVAL transition
@@ -276,7 +276,7 @@ private:
         item.at_pick = true;
         ctx_.event = Event::ARRIVAL;
         pickerProcessing(item, runtime);
-        LOG::DEBUG("Item %d at picker\n", item.id);
+        LOG::DEBUG("OC_SM", "Item %d at picker\n", item.id);
       }
     }
   }
@@ -293,7 +293,7 @@ private:
     for (uint8_t i = 0; i < ctx_.obj_cnt; ++i) {
       if (ctx_.items[i].state == Items::State::PICKED ||
           ctx_.items[i].state == Items::State::FAILED) {
-        LOG::DEBUG("Removing item %d\n", ctx_.items[i].id);
+        LOG::DEBUG("OC_SM", "Removing item %d\n", ctx_.items[i].id);
       } else {
         ctx_.items[newCount++] = ctx_.items[i];
       }

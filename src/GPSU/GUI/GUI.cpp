@@ -111,10 +111,12 @@ void Display::display_loop(void *param) {
     if (xQueueReceive(self->displayQueue, &cmd, portMAX_DELAY) == pdPASS) {
       switch (cmd.type) {
       case CmdType::SHOW_MENU:
+        self->current_process_ = GPSU::ProcessType::ANY;
         self->setCursorIndex(cmd.cursor.index);
         self->reset_rotation();
         self->deleteSprites();
         self->createSprites();
+        self->deinitProcessFlags();
         self->showMenu();
         break;
       case CmdType::SHOW_PROCESS_SCREEN:
@@ -150,38 +152,40 @@ void Display::display_loop(void *param) {
 //------------------------------------------------------------------------------
 // Runs a process based on the ProcessType.
 //------------------------------------------------------------------------------
-void Display::run_process(GPSU::ProcessType type) {
+void Display::prepare_assets(GPSU::ProcessType type) {
   current_process_ = type;
-  deinitProcessFlags();
+
   switch (type) {
   case GPSU::ProcessType::TRAFFIC_LIGHT:
-
+    deinitProcessFlags();
     setup_traffic = true;
     deleteSprites();
     createSprites();
     Serial.println("Running traffic light process");
     break;
   case GPSU::ProcessType::WATER_LEVEL:
-
+    deinitProcessFlags();
     setup_waterlevel = true;
     deleteSprites();
     createSprites();
     Serial.println("Running water level process");
     break;
   case GPSU::ProcessType::STEPPER_MOTOR:
-
+    deinitProcessFlags();
     setup_stepper = true;
     deleteSprites();
     createSprites();
     Serial.println("Running stepper motor process");
     break;
   case GPSU::ProcessType::STATE_MACHINE:
+    deinitProcessFlags();
+
     deleteSprites();
     createSprites();
     Serial.println("Running state machine process");
     break;
   case GPSU::ProcessType::OBJECT_COUNTER:
-
+    deinitProcessFlags();
     setup_counter = true;
     change_to_horizontal();
     deleteSprites();

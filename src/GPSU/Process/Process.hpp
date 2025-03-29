@@ -61,6 +61,7 @@ private:
                              TrafficLight::Command{}};
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;
+  static constexpr uint32_t TERMINATE_NOTIFICATION = 1;
   static void processTrafficLight(void *data);
   static void processWaterLevel(void *data);
   static void processStepperMotor(void *data);
