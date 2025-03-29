@@ -72,6 +72,15 @@ void Display::deleteSprites() {
 void Display::createSprites() {
   int16_t width = canvas_->width();
   int16_t height = canvas_->height();
+  if (bg_ && bg_->created()) {
+    bg_->deleteSprite();
+  }
+  if (layer_1 && layer_1->created()) {
+    layer_1->deleteSprite();
+  }
+  if (layer_2 && layer_2->created()) {
+    layer_2->deleteSprite();
+  }
   if (setup_counter) {
     bg_->createSprite(240, 133);
   } else {
@@ -83,6 +92,7 @@ void Display::createSprites() {
   if (setup_traffic) {
     layer_1->createSprite(IMG_WIDTH, IMG_HEIGHT);
     layer_1->setSwapBytes(true);
+    LOG::DEBUG("GUI", "Traffic Light layer_1: %dx%d\n", IMG_WIDTH, IMG_HEIGHT);
   }
   if (setup_waterlevel) {
     layer_2->createSprite(FRAME_WIDTH, FRAME_HEIGHT);
@@ -157,49 +167,54 @@ void Display::prepare_assets(GPSU::ProcessType type) {
 
   switch (type) {
   case GPSU::ProcessType::TRAFFIC_LIGHT:
+    LOG::DEBUG("GUI", "Preparing traffic light assets");
     deinitProcessFlags();
     setup_traffic = true;
     deleteSprites();
     createSprites();
-    Serial.println("Running traffic light process");
+
     break;
   case GPSU::ProcessType::WATER_LEVEL:
+    LOG::DEBUG("GUI", "Preparing  water level assets");
     deinitProcessFlags();
     setup_waterlevel = true;
     deleteSprites();
     createSprites();
-    Serial.println("Running water level process");
+
     break;
   case GPSU::ProcessType::STEPPER_MOTOR:
+    LOG::DEBUG("GUI", "Preparing  stepper motor assets");
     deinitProcessFlags();
     setup_stepper = true;
     deleteSprites();
     createSprites();
-    Serial.println("Running stepper motor process");
+
     break;
   case GPSU::ProcessType::STATE_MACHINE:
+    LOG::DEBUG("GUI", "Preparing  state machine assets");
     deinitProcessFlags();
 
     deleteSprites();
     createSprites();
-    Serial.println("Running state machine process");
+
     break;
   case GPSU::ProcessType::OBJECT_COUNTER:
+    LOG::DEBUG("GUI", "Preparing  item counter assets");
     deinitProcessFlags();
     setup_counter = true;
     change_to_horizontal();
     deleteSprites();
     createSprites();
 
-    Serial.println("Running item counter process");
     break;
   case GPSU::ProcessType::MOTOR_CONTROL:
+    LOG::DEBUG("GUI", "Preparing  motor control assets");
     deleteSprites();
     createSprites();
-    Serial.println("Running motor control process");
+
     break;
   default:
-    Serial.println("Unknown process");
+    LOG::DEBUG("GUI", "Unknown process");
     break;
   }
 }
@@ -270,11 +285,14 @@ void Display::showMenu() {
 }
 
 void Display::showProcessScreen(GPSU::ProcessType type) {
+  //
   if (type == GPSU::ProcessType::OBJECT_COUNTER) {
     change_to_horizontal();
   } else {
     reset_rotation();
   }
+
+  prepare_assets(type);
 
   bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   const int16_t fontSize = MENU_FONT;
@@ -293,10 +311,12 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
 
 void Display::processScreenSetup() {
 
-  bg_->fillSprite(TFT_BLACK);
+  bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
     bg_->fillSprite(static_cast<uint16_t>(Colors::black));
     bg_->pushImage(0, 0, 240, 130, Asset::plant2);
+  } else if (setup_traffic) {
+    bg_->fillSprite(static_cast<uint16_t>(Colors::black));
   } else {
     bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   }
@@ -304,17 +324,24 @@ void Display::processScreenSetup() {
   label_->fillSprite(TFT_BLACK);
   label_->setTextColor(static_cast<uint16_t>(Colors::white),
                        static_cast<uint16_t>(Colors::black));
-
-  layer_1->fillSprite(TFT_BLACK);
+  // layer_1->fillSprite(TFT_BLACK);
+  if (setup_counter) {
+    layer_1->fillSprite(TFT_BLACK); // Black for counters
+  } else {
+    layer_1->fillSprite(static_cast<uint16_t>(Colors::logo));
+  }
 
   if (setup_waterlevel || setup_stepper || setup_counter) {
     layer_2->fillSprite(TFT_BLACK);
   }
 }
 void Display::processScreenExecute(int angle) {
-
-  layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                        static_cast<uint16_t>(Colors::black));
+  if (setup_traffic) {
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX);
+  } else {
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                          static_cast<uint16_t>(Colors::black));
+  }
 
   if (setup_stepper) {
     canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
@@ -327,8 +354,7 @@ void Display::processScreenExecute(int angle) {
   }
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
                        static_cast<uint16_t>(Colors::black));
-  // layer_1->pushToSprite(bg_.get(), 0, 0,
-  // static_cast<uint16_t>(Colors::black));
+
   bg_->pushSprite(0, 0);
 }
 
