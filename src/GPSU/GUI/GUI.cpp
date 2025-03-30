@@ -366,13 +366,13 @@ void Display::updateTrafficLight(Command cmd) {
   case TrafficLight::State::INIT: // Init
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
     break;
-  case TrafficLight::State::RED_STATE: // Red
+  case TrafficLight::State::RED: // Red
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_red);
     break;
-  case TrafficLight::State::YELLOW_STATE: // Yellow
+  case TrafficLight::State::YELLOW: // Yellow
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_yellow);
     break;
-  case TrafficLight::State::GREEN_STATE: // Green
+  case TrafficLight::State::GREEN: // Green
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
     break;
     // default:

@@ -40,19 +40,21 @@ struct Traits {
     return ctx.event == Event::OK;
   }
   static inline bool auto_mode(const Context &ctx) {
-    // Serial.printf("Context Mode is %s",
-    //               ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Unknown");
+    LOG::DEBUG("current mode is %s \n",
+               ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Manual");
     return ctx.mode == Mode::AUTO;
   }
   static inline bool modeChanged(const Context &ctx) {
+    if (ctx.inputs.mode_changed) {
+      LOG::DEBUG("triggered mode changed to  %s",
+                 ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Manual");
+    } else {
+      LOG::DEBUG("no mode changed");
+    }
 
     return ctx.inputs.mode_changed;
   }
-  static inline bool start(const Context &ctx) {
-    Serial.printf("Context Mode is %s\n",
-                  ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Unknown");
-    return auto_mode(ctx);
-  }
+
   static inline bool manual_red(const Context &ctx) {
     return !auto_mode(ctx) && ctx.inputs.ui.turn_on_red;
   }
@@ -75,23 +77,23 @@ struct Traits {
 
   static inline bool manualYellowToRed(const Context &ctx) {
     return !auto_mode(ctx) && (ctx.inputs.ui.turn_on_red) &&
-           (ctx.prev == State::GREEN_STATE);
+           (ctx.prev == State::GREEN);
   }
   static inline bool manualYellowToGreen(const Context &ctx) {
     return !auto_mode(ctx) && (ctx.inputs.ui.turn_on_green) &&
-           (ctx.prev == State::RED_STATE);
+           (ctx.prev == State::RED);
   }
   static inline bool timeoutYellowToRed(const Context &ctx) {
     return auto_mode(ctx) &&
            (ctx.inputs.timer.t1_expired ||
             ctx.data.now >= ctx.config.yellow_to) &&
-           (ctx.prev == State::GREEN_STATE);
+           (ctx.prev == State::GREEN);
   }
   static inline bool timeoutYellowToGreen(const Context &ctx) {
     return auto_mode(ctx) &&
            (ctx.inputs.timer.t1_expired ||
             ctx.data.now >= ctx.config.yellow_to) &&
-           (ctx.prev == State::RED_STATE);
+           (ctx.prev == State::RED);
   }
   static inline bool buttonPress(const Context &ctx) {
     return ctx.inputs.ui.button_pressed;
@@ -103,7 +105,6 @@ struct Traits {
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_RED;
       cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.red_to : 0;
-      Serial.printf("time out set for red %d \n", cmd.entry_data.timeout1);
       cmd.entry_data.immediate_transition = false;
       return cmd;
     }
@@ -183,41 +184,39 @@ struct Traits {
   };
 
   static constexpr std::array<Transition, transition_count> transitions = {{
-      {State::INIT, State::RED_STATE, start, entryActions::initToRed, nullptr},
-      {State::INIT, State::RED_STATE, manual_red, entryActions::initToRed,
-       nullptr},
-      {State::RED_STATE, State::YELLOW_STATE, timeoutRed,
-       entryActions::redToYellow, exitActions::redToYellow},
-      {State::RED_STATE, State::YELLOW_STATE, manual_yellow,
-       entryActions::redToYellow, exitActions::redToYellow},
-
-      {State::YELLOW_STATE, State::GREEN_STATE, timeoutYellowToGreen,
-       entryActions::yellowToGreen, exitActions::yellowToGreen},
-      {State::YELLOW_STATE, State::GREEN_STATE, manualYellowToGreen,
-       entryActions::yellowToGreen, exitActions::yellowToGreen},
-
-      {State::GREEN_STATE, State::YELLOW_STATE, timeoutGreen,
-       entryActions::greenToYellow, exitActions::greenToYellow},
-      {State::GREEN_STATE, State::YELLOW_STATE, manual_green,
-       entryActions::greenToYellow, exitActions::greenToYellow},
-
-      {State::YELLOW_STATE, State::RED_STATE, timeoutYellowToRed,
-       entryActions::yellowToRed, exitActions::yellowToRed},
-      {State::YELLOW_STATE, State::RED_STATE, manualYellowToRed,
-       entryActions::yellowToRed, exitActions::yellowToRed},
-
-      {State::RED_STATE, State::GREEN_STATE, buttonPress,
-       entryActions::redToGreen, exitActions::redToGreen},
-
-      {State::RED_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
-      {State::YELLOW_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
-      {State::GREEN_STATE, State::SYSTEM_FAULT, systemFault, nullptr, nullptr},
-      {State::SYSTEM_FAULT, State::INIT, systemFaultCleared, nullptr, nullptr},
-      {State::RED_STATE, State::INIT, modeChanged, nullptr,
+      {State::INIT, State::RED, auto_mode, entryActions::initToRed, nullptr},
+      {State::INIT, State::RED, manual_red, entryActions::initToRed, nullptr},
+      {State::RED, State::YELLOW, timeoutRed, entryActions::redToYellow,
        exitActions::redToYellow},
-      {State::GREEN_STATE, State::INIT, modeChanged, nullptr,
+      {State::RED, State::YELLOW, manual_yellow, entryActions::redToYellow,
+       exitActions::redToYellow},
+
+      {State::YELLOW, State::GREEN, timeoutYellowToGreen,
+       entryActions::yellowToGreen, exitActions::yellowToGreen},
+      {State::YELLOW, State::GREEN, manualYellowToGreen,
+       entryActions::yellowToGreen, exitActions::yellowToGreen},
+
+      {State::GREEN, State::YELLOW, timeoutGreen, entryActions::greenToYellow,
        exitActions::greenToYellow},
-      {State::YELLOW_STATE, State::INIT, modeChanged, nullptr,
+      {State::GREEN, State::YELLOW, manual_yellow, entryActions::greenToYellow,
+       exitActions::greenToYellow},
+
+      {State::YELLOW, State::RED, timeoutYellowToRed, entryActions::yellowToRed,
+       exitActions::yellowToRed},
+      {State::YELLOW, State::RED, manualYellowToRed, entryActions::yellowToRed,
+       exitActions::yellowToRed},
+
+      {State::RED, State::GREEN, buttonPress, entryActions::redToGreen,
+       exitActions::redToGreen},
+
+      {State::RED, State::FAULT, systemFault, nullptr, nullptr},
+      {State::YELLOW, State::FAULT, systemFault, nullptr, nullptr},
+      {State::GREEN, State::FAULT, systemFault, nullptr, nullptr},
+      {State::FAULT, State::INIT, systemFaultCleared, nullptr, nullptr},
+      {State::RED, State::INIT, modeChanged, nullptr, exitActions::redToYellow},
+      {State::GREEN, State::INIT, modeChanged, nullptr,
+       exitActions::greenToYellow},
+      {State::YELLOW, State::INIT, modeChanged, nullptr,
        exitActions::yellowToRed},
 
   }
@@ -259,18 +258,33 @@ public:
     bool wants_manual = input.ui.manual_mode;
     if ((wants_manual && ctx_.mode != Mode::MANUAL) ||
         (!wants_manual && ctx_.mode != Mode::AUTO)) {
-
+      LOG::DEBUG("TL_SM", "updating mode");
       updateMode();
     }
 
     // If mode changed during updateMode, handle transitions
     if (mode_changed) {
       // Reset the flag after handling
-      mode_changed = false;
+      // mode_changed = false;
+      LOG::DEBUG("TL_SM", "Resetting Mode Changed");
       ctx_.inputs.mode_changed = false;
+      mode_changed = false;
     }
 
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
+
+      if (timer1_was_deleted) {
+        timer1_was_deleted = false;
+        enableTimer(0);
+        createTimers();
+        update();
+
+      } else if (timer2_was_deleted) {
+        timer2_was_deleted = false;
+        enableTimer(1);
+        createTimers();
+        update();
+      }
       if (input.timer.t1_expired) {
         ctx_.data.now = 0;
         update();
@@ -280,6 +294,7 @@ public:
       update();
     } else if (ctx_.mode == Mode::MANUAL) {
       update();
+      // reset_ui();
     } else {
     }
   }
@@ -291,6 +306,7 @@ public:
   const char *getStateString() const {
     return GPSU::Util::ToString::TLState(current());
   }
+  void reset_ui() { ctx_.inputs.ui = Inputs::UI{}; }
 
 private:
   bool use_internal_timer;
@@ -317,12 +333,15 @@ private:
 
     } else {
       ctx_.mode = Mode::AUTO;
-      enableTimer();
+      // enableTimer();
     }
     if (ctx_.mode != ctx_.prev_mode) {
       mode_changed = true;
       ctx_.inputs.mode_changed = true;
       LOG::DEBUG("TL_SM", "Mode changed");
+    } else if (ctx_.mode == ctx_.prev_mode) {
+      mode_changed = false;
+      LOG::DEBUG("TL_SM", "Resetting mode_changed");
     }
 
     // Reset selected member variable except the Config and ui Inputs
@@ -333,6 +352,8 @@ private:
 
     LOG::DEBUG("TL_SM", "Mode updated to %s",
                ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+    setAutoUpdate();
+    update();
   }
 };
 

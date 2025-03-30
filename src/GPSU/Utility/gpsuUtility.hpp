@@ -42,14 +42,14 @@ public:
       switch (state) {
       case State::INIT:
         return "INIT";
-      case State::RED_STATE:
+      case State::RED:
         return "RED";
-      case State::GREEN_STATE:
+      case State::GREEN:
         return "GREEN";
-      case State::YELLOW_STATE:
+      case State::YELLOW:
         return "YELLOW";
-      case State::SYSTEM_FAULT:
-        return "SYSTEM_FAULT";
+      case State::FAULT:
+        return "FAULT";
       default:
         return "UNKNOWN";
       }
@@ -95,8 +95,8 @@ public:
         return "FULL";
       case State::OVERFLOW:
         return "OVERFLOW";
-      case State::SYSTEM_FAULT:
-        return "SYSTEM_FAULT";
+      case State::FAULT:
+        return "FAULT";
       default:
         return "UNKNOWN";
       }

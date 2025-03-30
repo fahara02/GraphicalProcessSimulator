@@ -230,35 +230,30 @@ void Process::traffic_light_task(void *param) {
     }
     auto ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
                                         TrafficLight::Context>();
+    auto current_state = instance->tlsm_->current();
+    auto previous_state = instance->tlsm_->current();
 
     instance->tlsm_->updateData(ctx.inputs);
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
     ctx.curr = instance->tlsm_->current();
+    current_state = instance->tlsm_->current();
 
     instance->mapOutputs<ProcessType::TRAFFIC_LIGHT, TrafficLight::Context>(
         ctx);
 
-    // if (ctx.curr == State::RED_STATE) {
-    //   instance->io_->digitalWrite(GPA1, true);
-    //   instance->io_->digitalWrite(GPA2, false);
-    //   instance->io_->digitalWrite(GPA3, false);
-    // } else if (ctx.curr == State::YELLOW_STATE) {
-    //   instance->io_->digitalWrite(GPA1, false);
-    //   instance->io_->digitalWrite(GPA2, true);
-    //   instance->io_->digitalWrite(GPA3, false);
-
-    // } else if (ctx.curr == State::GREEN_STATE) {
-    //   instance->io_->digitalWrite(GPA1, false);
-    //   instance->io_->digitalWrite(GPA2, false);
-    //   instance->io_->digitalWrite(GPA3, true);
-    // }
     const char *current =
         GPSU::Util::ToString::TLState(instance->tlsm_->current());
     const char *previous =
         GPSU::Util::ToString::TLState(instance->tlsm_->previous());
 
-    LOG::INFO("Process", "State changed from %s to: %s \n", current, previous);
+    if (current_state != previous_state) {
+      LOG::INFO("Process", "State changed from %s to: %s \n", current,
+                previous);
+    } else {
+      LOG::INFO("Process", "Current State is %s  \n", current);
+    }
+
     GUI::Command cmd;
     cmd.type = GUI::CmdType::UPDATE_TRAFFIC_LIGHT;
     cmd.contexts.tl_context = ctx;

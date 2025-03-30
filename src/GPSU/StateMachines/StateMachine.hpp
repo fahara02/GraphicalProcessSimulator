@@ -1,6 +1,7 @@
 
 #pragma once
 #include "Logger.hpp"
+#include "Utility/gpsuUtility.hpp"
 #include "esp_log.h"
 #include <array>
 #include <atomic>
@@ -75,6 +76,7 @@ public:
       return cmd;
     }
     dataUpdated_ = false;
+    LOG::DEBUG("SM", "updating.....");
     const auto curr = static_cast<std::size_t>(current());
     if (curr < Traits::transitions_by_state.size()) {
       const auto &group = Traits::transitions_by_state[curr];
@@ -88,6 +90,7 @@ public:
           ctx_.prev = previous_.load();
           ctx_.new_cmd = cmd;
           notify(previous_, current_);
+          LOG::DEBUG("SM", "executing timer in state ");
           handleTimer(cmd);
           return cmd;
         }
@@ -122,31 +125,8 @@ public:
   void init() {
     if (!initialised) {
       initialised = true;
-      dataUpdated_ = true;
-      if (enable_timer_) {
-        LOG::INFO("SM", "Creating Timer 1");
-        esp_timer_create_args_t timer1_args = {.callback = &timer1Callback,
-                                               .arg = this,
-                                               .dispatch_method =
-                                                   ESP_TIMER_TASK,
-                                               .name = "sm_timer1"};
-        esp_err_t err = esp_timer_create(&timer1_args, &timer_);
-        if (err != ESP_OK || !timer_) {
-          LOG::ERROR("SM", "Timer1 creation failed");
-        }
-      }
-      if (enable_timer2_) {
-        LOG::INFO("SM", "Creating Timer 2");
-        esp_timer_create_args_t timer2_args = {.callback = &timer2Callback,
-                                               .arg = this,
-                                               .dispatch_method =
-                                                   ESP_TIMER_TASK,
-                                               .name = "sm_timer2"};
-        esp_err_t err = esp_timer_create(&timer2_args, &timer2_);
-        if (err != ESP_OK || !timer2_) {
-          LOG::ERROR("SM", "Timer2 creation failed");
-        }
-      }
+
+      createTimers();
     }
   }
   const Context &getContext() const { return ctx_; }
@@ -163,7 +143,36 @@ public:
 
 protected:
   Context ctx_;
-
+  bool timer1_was_deleted = false;
+  bool timer2_was_deleted = false;
+  void createTimers() {
+    dataUpdated_ = true;
+    if (enable_timer_) {
+      LOG::INFO("SM", "Creating Timer 1");
+      esp_timer_create_args_t timer1_args = {.callback = &timer1Callback,
+                                             .arg = this,
+                                             .dispatch_method = ESP_TIMER_TASK,
+                                             .name = "sm_timer1"};
+      esp_err_t err = esp_timer_create(&timer1_args, &timer_);
+      if (err == ESP_OK) {
+        LOG::SUCCESS("SM", "TIMER1 CREATED");
+      }
+      if (err != ESP_OK || !timer_) {
+        LOG::ERROR("SM", "Timer1 creation failed");
+      }
+    }
+    if (enable_timer2_) {
+      LOG::INFO("SM", "Creating Timer 2");
+      esp_timer_create_args_t timer2_args = {.callback = &timer2Callback,
+                                             .arg = this,
+                                             .dispatch_method = ESP_TIMER_TASK,
+                                             .name = "sm_timer2"};
+      esp_err_t err = esp_timer_create(&timer2_args, &timer2_);
+      if (err != ESP_OK || !timer2_) {
+        LOG::ERROR("SM", "Timer2 creation failed");
+      }
+    }
+  }
   void restartTimer1(uint64_t timeout_us) {
     if (enable_timer_ && timer_) {
       esp_timer_stop(timer_); // Stop if already running
@@ -181,12 +190,14 @@ protected:
       esp_timer_delete(timer_);
       timer_ = nullptr;
       enable_timer_ = false;
+      timer1_was_deleted = true;
     }
     if (enable_timer2_ && timer2_) {
       esp_timer_stop(timer2_);
       esp_timer_delete(timer2_);
       timer2_ = nullptr;
       enable_timer2_ = false;
+      timer2_was_deleted = true;
     }
   }
   void enableTimer(int timer_id = 0) {

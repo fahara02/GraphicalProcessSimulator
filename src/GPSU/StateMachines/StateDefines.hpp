@@ -6,13 +6,7 @@
 
 namespace TrafficLight {
 enum class Mode : uint8_t { AUTO, MANUAL };
-enum class State : uint8_t {
-  INIT = 0,
-  RED_STATE,
-  GREEN_STATE,
-  YELLOW_STATE,
-  SYSTEM_FAULT
-};
+enum class State : uint8_t { INIT = 0, RED, GREEN, YELLOW, FAULT };
 enum class Event : uint8_t {
   OK = 0,
   TIMER_FAULT,
@@ -119,7 +113,7 @@ enum class State : uint8_t {
   PARTIAL_FILLED,
   FULL,
   OVERFLOW,
-  SYSTEM_FAULT
+  FAULT
 };
 enum class CmdType : uint8_t {
   NONE = 0,

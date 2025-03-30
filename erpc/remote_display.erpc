@@ -6,10 +6,10 @@
 
 @external enum State {
     INIT = 0,
-    RED_STATE,
-    GREEN_STATE,
-    YELLOW_STATE,
-    SYSTEM_FAULT
+  RED,
+    GREEN,
+    YELLOW,
+    FAULT
 }
 
 // Define Context to match StateDefines.hpp

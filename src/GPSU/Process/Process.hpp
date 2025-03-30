@@ -88,15 +88,16 @@ private:
       Context ctx;
       uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
 
-      // ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //
-      // ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
-      // ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
-      // ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
-      // ctx.inputs.new_data = true;
-      ctx.inputs.ui.turn_on_red = io_->digitalRead(GPB1); //
-      ctx.inputs.ui.turn_on_yellow = io_->digitalRead(GPB2);
-      ctx.inputs.ui.turn_on_green = io_->digitalRead(GPB3);
-      ctx.inputs.ui.manual_mode = io_->digitalRead(GPB4);
+      ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //
+      ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
+      ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
+      ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+      ctx.inputs.new_data = true;
+
+      // ctx.inputs.ui.turn_on_red = io_->digitalRead(GPB1); //
+      // ctx.inputs.ui.turn_on_yellow = io_->digitalRead(GPB2);
+      // ctx.inputs.ui.turn_on_green = io_->digitalRead(GPB3);
+      // ctx.inputs.ui.manual_mode = io_->digitalRead(GPB4);
 
       if (ctx.inputs.ui.turn_on_red) {
         LOG::DEBUG("SENSED GPB1 i.e red");
@@ -126,12 +127,14 @@ private:
         mask = (ui.turn_on_red << 1) || (ui.turn_on_yellow << 2) ||
                (ui.turn_on_green << 3);
 
+        tlsm_->reset_ui();
+
       } else if (!ctx.inputs.ui.manual_mode) {
-        if (ctx.curr == TrafficLight::State::RED_STATE) {
+        if (ctx.curr == TrafficLight::State::RED) {
           mask = 2;
-        } else if (ctx.curr == TrafficLight::State::YELLOW_STATE) {
+        } else if (ctx.curr == TrafficLight::State::YELLOW) {
           mask = 4;
-        } else if (ctx.curr == TrafficLight::State::GREEN_STATE) {
+        } else if (ctx.curr == TrafficLight::State::GREEN) {
           mask = 8;
         }
       }
