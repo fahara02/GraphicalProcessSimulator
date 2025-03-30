@@ -264,6 +264,8 @@ public:
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
 
       if (input.timer.t1_expired) {
+        LOG::TEST("TL_SM", "Timer1 expired in %d ms for State %s",
+                  ctx_.data.now, GPSU::Util::ToString::TLState(current()));
         ctx_.data.now = 0;
         update();
       }
@@ -288,6 +290,9 @@ public:
     LOG::TEST("TL_SM", "Red Timeout =%d ms", ctx_.config.red_to);
     LOG::TEST("TL_SM", "Ylw Timeout =%d ms", ctx_.config.yellow_to);
     LOG::TEST("TL_SM", "Grn Timeout =%d ms", ctx_.config.green_to);
+    LOG::TEST("TL_SM", "current time =%d ms", ctx_.data.now);
+    LOG::TEST("TL_SM", "timer1 is %s",
+              ctx_.inputs.timer.t1_expired ? "Expired" : "Running");
     LOG::TEST("TL_SM", "......");
   }
 

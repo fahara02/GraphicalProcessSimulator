@@ -318,7 +318,7 @@ void Display::processScreenSetup() {
   } else if (setup_traffic) {
     bg_->fillSprite(static_cast<uint16_t>(Colors::black));
     bg_->setSwapBytes(true);
-    bg_->pushImage(0, 0, 130, 240, Asset::road);
+    // bg_->pushImage(0, 0, 130, 240, Asset::road);
   } else {
     bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   }
@@ -339,8 +339,7 @@ void Display::processScreenSetup() {
 }
 void Display::processScreenExecute(int angle) {
   if (setup_traffic) {
-    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                          static_cast<uint16_t>(Colors::black));
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX);
   } else {
     layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                           static_cast<uint16_t>(Colors::black));
@@ -381,9 +380,6 @@ void Display::updateTrafficLight(Command cmd) {
   case TrafficLight::State::FAULT: // Green
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
     break;
-    // default:
-    //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
-    //   break;
   }
   processScreenExecute();
 }

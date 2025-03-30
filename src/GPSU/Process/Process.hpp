@@ -51,14 +51,14 @@ protected:
 
 private:
   TrafficLight ::Context tl_ctx =
-      TrafficLight ::Context{TrafficLight::State::INIT,   // curr
-                             TrafficLight::State::INIT,   // previous_state
-                             {12000, 4000, 10000, false}, // config
-                             {0},                         // data
-                             {{0}, {false}},              // inputs
-                             TrafficLight::Event::OK,     // Event
-                             TrafficLight::Mode::AUTO,    // Mode
-                             TrafficLight::Mode::AUTO,    // Mode
+      TrafficLight ::Context{TrafficLight::State::INIT, // curr
+                             TrafficLight::State::INIT, // previous_state
+                             {2000, 1000, 1500, false}, // config
+                             {0},                       // data
+                             {{0}, {false}},            // inputs
+                             TrafficLight::Event::OK,   // Event
+                             TrafficLight::Mode::AUTO,  // Mode
+                             TrafficLight::Mode::AUTO,  // Mode
                              TrafficLight::Command{}};
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;

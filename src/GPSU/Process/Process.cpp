@@ -236,12 +236,12 @@ void Process::traffic_light_task(void *param) {
     auto current_state = instance->tlsm_->current();
     auto previous_state = instance->tlsm_->current();
     // instance->tlsm_->setContext(ctx);
+    instance->tlsm_->printConfig();
     instance->tlsm_->updateData(ctx.inputs);
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
     ctx.curr = instance->tlsm_->current();
     current_state = instance->tlsm_->current();
-    instance->tlsm_->printConfig();
 
     instance->mapOutputs<ProcessType::TRAFFIC_LIGHT, TrafficLight::Context>(
         ctx);
