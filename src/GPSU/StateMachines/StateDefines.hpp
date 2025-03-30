@@ -47,6 +47,7 @@ struct Config {
 struct Inputs {
   bool new_data = false;
   bool mode_changed = false;
+  bool faultyinput = false;
   struct Timer {
     int ext_delta = 0;
     uint32_t now = 0;

@@ -32,15 +32,19 @@ struct Traits {
     EntryAction entry_action;
     ExitAction exit_action;
   };
+  static inline bool faultyInput(const Context &ctx) {
 
+    return !auto_mode(ctx) && ctx.inputs.faultyinput;
+  }
   static inline bool systemFault(const Context &ctx) {
-    return ctx.event == Event::LED_FAULT || ctx.event == Event::TIMER_FAULT;
+    return ctx.event == Event::LED_FAULT || ctx.event == Event::TIMER_FAULT ||
+           faultyInput(ctx);
   }
   static inline bool systemFaultCleared(const Context &ctx) {
-    return ctx.event == Event::OK;
+    return ctx.event == Event::OK && !faultyInput(ctx);
   }
   static inline bool auto_mode(const Context &ctx) {
-    LOG::DEBUG("current mode is %s \n",
+    LOG::DEBUG("current mode is %s\n",
                ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Manual");
     return ctx.mode == Mode::AUTO;
   }
@@ -56,14 +60,14 @@ struct Traits {
   }
 
   static inline bool manual_red(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.ui.turn_on_red;
+    return !auto_mode(ctx) && !faultyInput(ctx) && ctx.inputs.ui.turn_on_red;
   }
   static inline bool manual_yellow(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.ui.turn_on_yellow;
+    return !auto_mode(ctx) && !faultyInput(ctx) && ctx.inputs.ui.turn_on_yellow;
   }
 
   static inline bool manual_green(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.ui.turn_on_green;
+    return !auto_mode(ctx) && !faultyInput(ctx) && ctx.inputs.ui.turn_on_green;
   }
 
   static inline bool timeoutRed(const Context &ctx) {
@@ -255,36 +259,18 @@ public:
 
   void updateInternalState(const Inputs &input) {
     check_ui_inputs(input);
-    bool wants_manual = input.ui.manual_mode;
-    if ((wants_manual && ctx_.mode != Mode::MANUAL) ||
-        (!wants_manual && ctx_.mode != Mode::AUTO)) {
-      LOG::DEBUG("TL_SM", "updating mode");
-      updateMode();
-    }
+    // bool wants_manual = input.ui.manual_mode;
+    // if ((wants_manual && ctx_.mode != Mode::MANUAL) ||
+    //     (!wants_manual && ctx_.mode != Mode::AUTO)) {
+    //   LOG::DEBUG("TL_SM", "updating mode");
+    //   updateMode();
+    // }
+    updateMode(input.ui.manual_mode);
 
     // If mode changed during updateMode, handle transitions
-    if (mode_changed) {
-      // Reset the flag after handling
-      // mode_changed = false;
-      LOG::DEBUG("TL_SM", "Resetting Mode Changed");
-      ctx_.inputs.mode_changed = false;
-      mode_changed = false;
-    }
 
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
 
-      if (timer1_was_deleted) {
-        timer1_was_deleted = false;
-        enableTimer(0);
-        createTimers();
-        update();
-
-      } else if (timer2_was_deleted) {
-        timer2_was_deleted = false;
-        enableTimer(1);
-        createTimers();
-        update();
-      }
       if (input.timer.t1_expired) {
         ctx_.data.now = 0;
         update();
@@ -294,8 +280,6 @@ public:
       update();
     } else if (ctx_.mode == Mode::MANUAL) {
       update();
-      // reset_ui();
-    } else {
     }
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
@@ -310,10 +294,13 @@ public:
 
 private:
   bool use_internal_timer;
-  bool mode_changed = false;
 
   void check_ui_inputs(const Inputs &input) {
-
+    if (checkFaultyInput()) {
+      ctx_.inputs.faultyinput = true;
+    } else {
+      ctx_.inputs.faultyinput = false;
+    }
     if (input.ui.turn_on_red) {
       LOG::DEBUG("TL_SM", "TURN RED BTN");
     } else if (input.ui.turn_on_yellow) {
@@ -325,35 +312,72 @@ private:
     }
   }
 
-  void updateMode() {
+  // void updateMode() {
+  //   ctx_.prev_mode = ctx_.mode;
+  //   if (ctx_.inputs.ui.manual_mode) {
+  //     ctx_.mode = Mode::MANUAL;
+  //     disableTimers();
+
+  //   } else {
+  //     ctx_.mode = Mode::AUTO;
+  //     // enableTimer();
+  //   }
+  //   if (ctx_.mode != ctx_.prev_mode) {
+  //     mode_changed = true;
+  //     ctx_.inputs.mode_changed = true;
+  //     LOG::DEBUG("TL_SM", "Mode changed");
+  //   } else if (ctx_.mode == ctx_.prev_mode) {
+  //     mode_changed = false;
+  //     LOG::DEBUG("TL_SM", "Resetting mode_changed");
+  //   }
+
+  //   // Reset selected member variable except the Config and ui Inputs
+  //   ctx_.inputs.new_data = false;
+  //   ctx_.inputs.timer = Inputs::Timer{};
+  //   ctx_.event = Event{};
+  //   ctx_.new_cmd = Command{};
+
+  //   LOG::DEBUG("TL_SM", "Mode updated to %s",
+  //              ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+  //   setAutoUpdate();
+  //   update();
+  // }
+
+  void updateMode(bool manual_requested) {
+    const Mode new_mode = manual_requested ? Mode::MANUAL : Mode::AUTO;
     ctx_.prev_mode = ctx_.mode;
-    if (ctx_.inputs.ui.manual_mode) {
-      ctx_.mode = Mode::MANUAL;
-      disableTimers();
+    if (new_mode != ctx_.mode) {
 
-    } else {
-      ctx_.mode = Mode::AUTO;
-      // enableTimer();
-    }
-    if (ctx_.mode != ctx_.prev_mode) {
-      mode_changed = true;
+      ctx_.mode = new_mode;
       ctx_.inputs.mode_changed = true;
-      LOG::DEBUG("TL_SM", "Mode changed");
-    } else if (ctx_.mode == ctx_.prev_mode) {
-      mode_changed = false;
-      LOG::DEBUG("TL_SM", "Resetting mode_changed");
+      LOG::DEBUG("TL_SM", "Mode updated to %s",
+                 ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+      if (ctx_.mode == Mode::AUTO) {
+
+        if (timer1_was_deleted) {
+          timer1_was_deleted = false;
+          enableTimer(0);
+          createTimers();
+
+        } else if (timer2_was_deleted) {
+          timer2_was_deleted = false;
+          enableTimer(1);
+          createTimers();
+        }
+      } else {
+        disableTimers();
+      }
+      setAutoUpdate();
+      update();
+      ctx_.inputs.mode_changed = false;
     }
+  }
 
-    // Reset selected member variable except the Config and ui Inputs
-    ctx_.inputs.new_data = false;
-    ctx_.inputs.timer = Inputs::Timer{};
-    ctx_.event = Event{};
-    ctx_.new_cmd = Command{};
-
-    LOG::DEBUG("TL_SM", "Mode updated to %s",
-               ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
-    setAutoUpdate();
-    update();
+  bool checkFaultyInput() {
+    bool faulty_input = false;
+    faulty_input = (ctx_.inputs.ui.turn_on_red + ctx_.inputs.ui.turn_on_yellow +
+                    ctx_.inputs.ui.turn_on_green) >= 2;
+    return faulty_input;
   }
 };
 

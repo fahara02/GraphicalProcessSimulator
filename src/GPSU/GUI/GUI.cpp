@@ -375,6 +375,9 @@ void Display::updateTrafficLight(Command cmd) {
   case TrafficLight::State::GREEN: // Green
     layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::traffic_green);
     break;
+  case TrafficLight::State::FAULT: // Green
+    layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
+    break;
     // default:
     //   layer_1->pushImage(0, 0, IMG_WIDTH, IMG_HEIGHT, Asset::blank_traffic);
     //   break;

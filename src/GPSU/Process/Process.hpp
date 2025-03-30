@@ -121,15 +121,14 @@ private:
   void mapOutputs(const Context &ctx) {
     uint8_t mask = 0;
     if (type == ProcessType::TRAFFIC_LIGHT) {
-      if (ctx.inputs.ui.manual_mode) {
+      if (ctx.mode == TrafficLight::Mode::MANUAL) {
 
         auto ui = ctx.inputs.ui;
+        LOG::DEBUG("Process", "Activating manual switch");
         mask = (ui.turn_on_red << 1) || (ui.turn_on_yellow << 2) ||
                (ui.turn_on_green << 3);
 
-        tlsm_->reset_ui();
-
-      } else if (!ctx.inputs.ui.manual_mode) {
+      } else if (ctx.mode == TrafficLight::Mode::AUTO) {
         if (ctx.curr == TrafficLight::State::RED) {
           mask = 2;
         } else if (ctx.curr == TrafficLight::State::YELLOW) {
