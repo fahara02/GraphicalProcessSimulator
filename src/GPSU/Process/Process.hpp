@@ -51,14 +51,14 @@ protected:
 
 private:
   TrafficLight ::Context tl_ctx =
-      TrafficLight ::Context{TrafficLight::State::INIT, // curr
-                             TrafficLight::State::INIT, // previous_state
-                             {6000, 2000, 4000, false}, // config
-                             {0},                       // data
-                             {{0}, {false}},            // inputs
-                             TrafficLight::Event::OK,   // Event
-                             TrafficLight::Mode::AUTO,  // Mode
-                             TrafficLight::Mode::AUTO,  // Mode
+      TrafficLight ::Context{TrafficLight::State::INIT,   // curr
+                             TrafficLight::State::INIT,   // previous_state
+                             {12000, 4000, 10000, false}, // config
+                             {0},                         // data
+                             {{0}, {false}},              // inputs
+                             TrafficLight::Event::OK,     // Event
+                             TrafficLight::Mode::AUTO,    // Mode
+                             TrafficLight::Mode::AUTO,    // Mode
                              TrafficLight::Command{}};
   static const MenuItem process_list[];
   static constexpr size_t process_count = 6;
@@ -82,10 +82,11 @@ private:
   void handleSelectionChanged(size_t index);
   void handleItemSelected(size_t index);
 
-  template <ProcessType type, typename Context> Context mapUserCommand() {
+  template <ProcessType type, typename Context>
+  Context mapUserCommand(Context ctx) {
 
     if (type == ProcessType::TRAFFIC_LIGHT) {
-      Context ctx;
+
       uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
 
       ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //

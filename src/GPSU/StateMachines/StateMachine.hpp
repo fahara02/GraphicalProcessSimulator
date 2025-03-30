@@ -90,7 +90,6 @@ public:
           ctx_.prev = previous_.load();
           ctx_.new_cmd = cmd;
           notify(previous_, current_);
-          LOG::DEBUG("SM", "executing timer in state ");
           handleTimer(cmd);
           return cmd;
         }
@@ -318,6 +317,9 @@ private:
     // Handle Timer 1
     if (enable_timer_) {
       resetTimerExpired(0);
+      if (esp_timer_is_active(timer_)) {
+        stopTimer(0);
+      }
       if (cmd.check_entry && cmd.entry_data.timeout1 > 0) {
         esp_err_t err = startTimer(cmd.entry_data.timeout1 * 1000, 0);
         if (err != ESP_OK) {

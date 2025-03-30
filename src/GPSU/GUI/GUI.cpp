@@ -317,6 +317,8 @@ void Display::processScreenSetup() {
     bg_->pushImage(0, 0, 240, 130, Asset::plant2);
   } else if (setup_traffic) {
     bg_->fillSprite(static_cast<uint16_t>(Colors::black));
+    bg_->setSwapBytes(true);
+    bg_->pushImage(0, 0, 130, 240, Asset::road);
   } else {
     bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
   }
@@ -337,7 +339,8 @@ void Display::processScreenSetup() {
 }
 void Display::processScreenExecute(int angle) {
   if (setup_traffic) {
-    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX);
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
+                          static_cast<uint16_t>(Colors::black));
   } else {
     layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
                           static_cast<uint16_t>(Colors::black));

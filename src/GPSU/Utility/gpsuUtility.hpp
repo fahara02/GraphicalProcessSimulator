@@ -10,6 +10,13 @@ class Util {
 public:
   class ToString {
   public:
+    // template <typename State> const char *StateToString(State state) {
+    //   if (State  TrafficLight::State) {
+    //     return TLState(state);
+    //   } else if (State == ObjectCounter::State) {
+    //     return OCState(state);
+    //   }
+    // }
     static const char *Process(ProcessType type) {
 
       switch (type) {

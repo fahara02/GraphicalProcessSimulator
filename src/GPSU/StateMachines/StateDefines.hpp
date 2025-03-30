@@ -36,9 +36,9 @@ struct Command {
   CommandData entry_data;
 };
 struct Config {
-  int red_to = 5000;
+  int red_to = 8000;
   int yellow_to = 2000;
-  int green_to = 4000;
+  int green_to = 6000;
 
   bool transit_now = false;
   uint16_t error_blink = 500;
@@ -101,6 +101,7 @@ struct Context {
     }
     return *this;
   }
+
 };
 
 } // namespace TrafficLight

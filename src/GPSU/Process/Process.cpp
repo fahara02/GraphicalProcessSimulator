@@ -48,6 +48,7 @@ void Process::startProcess(ProcessType type) {
   switch (type) {
   case ProcessType::TRAFFIC_LIGHT:
     tlsm_ = std::make_unique<SM::TrafficLightSM>();
+    tlsm_->setContext(tl_ctx);
     vTaskDelay(100);
     tlsm_->init();
     break;
@@ -228,16 +229,19 @@ void Process::traffic_light_task(void *param) {
       vTaskDelete(NULL);
       break;
     }
-    auto ctx = instance->mapUserCommand<ProcessType::TRAFFIC_LIGHT,
-                                        TrafficLight::Context>();
+    auto ctx =
+        instance
+            ->mapUserCommand<ProcessType::TRAFFIC_LIGHT, TrafficLight::Context>(
+                instance->tl_ctx);
     auto current_state = instance->tlsm_->current();
     auto previous_state = instance->tlsm_->current();
-
+    // instance->tlsm_->setContext(ctx);
     instance->tlsm_->updateData(ctx.inputs);
     instance->tlsm_->setAutoUpdate();
     instance->tlsm_->update();
     ctx.curr = instance->tlsm_->current();
     current_state = instance->tlsm_->current();
+    instance->tlsm_->printConfig();
 
     instance->mapOutputs<ProcessType::TRAFFIC_LIGHT, TrafficLight::Context>(
         ctx);
@@ -257,6 +261,8 @@ void Process::traffic_light_task(void *param) {
     GUI::Command cmd;
     cmd.type = GUI::CmdType::UPDATE_TRAFFIC_LIGHT;
     cmd.contexts.tl_context = ctx;
+    // instance->tl_ctx = ctx;
+
     instance->display_.sendDisplayCommand(cmd);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second

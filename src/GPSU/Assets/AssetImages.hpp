@@ -11,6 +11,7 @@ namespace Asset {
 #include "box.hpp"
 #include "plant.hpp"
 #include "plant2.hpp"
+#include "road.hpp"
 #include "stepper.hpp"
 #include "traffic_green.hpp"
 #include "traffic_red.hpp"

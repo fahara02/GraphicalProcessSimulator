@@ -44,13 +44,12 @@ struct Traits {
     return ctx.event == Event::OK && !faultyInput(ctx);
   }
   static inline bool auto_mode(const Context &ctx) {
-    LOG::DEBUG("current mode is %s\n",
-               ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Manual");
+
     return ctx.mode == Mode::AUTO;
   }
   static inline bool modeChanged(const Context &ctx) {
     if (ctx.inputs.mode_changed) {
-      LOG::DEBUG("triggered mode changed to  %s",
+      LOG::DEBUG("TL_SM", "triggered mode changed to  %s",
                  ctx.mode == TrafficLight::Mode::AUTO ? "Auto" : "Manual");
     } else {
       LOG::DEBUG("no mode changed");
@@ -116,7 +115,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.red_to : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.yellow_to : 0;
       return cmd;
     }
     static Command redToGreen(const Context &ctx) {
@@ -130,7 +129,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_GREEN;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.yellow_to : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.green_to : 0;
 
       return cmd;
     }
@@ -138,7 +137,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_YELLOW;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.green_to : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.yellow_to : 0;
 
       return cmd;
     }
@@ -146,7 +145,7 @@ struct Traits {
       Command cmd;
       cmd.check_entry = true;
       cmd.entry_command = CmdType::TURN_ON_RED;
-      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.yellow_to : 0;
+      cmd.entry_data.timeout1 = auto_mode(ctx) ? ctx.config.red_to : 0;
       return cmd;
     }
   };
@@ -241,6 +240,7 @@ class TrafficLightSM
 public:
   using Traits = TrafficLight::Traits;
   using Context = Traits::Context;
+  using Config = Traits::Context::Config;
   using State = Traits::State;
   using Inputs = TrafficLight::Inputs;
   using Event = TrafficLight::Event;
@@ -259,15 +259,7 @@ public:
 
   void updateInternalState(const Inputs &input) {
     check_ui_inputs(input);
-    // bool wants_manual = input.ui.manual_mode;
-    // if ((wants_manual && ctx_.mode != Mode::MANUAL) ||
-    //     (!wants_manual && ctx_.mode != Mode::AUTO)) {
-    //   LOG::DEBUG("TL_SM", "updating mode");
-    //   updateMode();
-    // }
     updateMode(input.ui.manual_mode);
-
-    // If mode changed during updateMode, handle transitions
 
     if (use_internal_timer && ctx_.mode == Mode::AUTO) {
 
@@ -291,6 +283,13 @@ public:
     return GPSU::Util::ToString::TLState(current());
   }
   void reset_ui() { ctx_.inputs.ui = Inputs::UI{}; }
+  void printConfig() const {
+    LOG::TEST("TL_SM", "Current Config.....");
+    LOG::TEST("TL_SM", "Red Timeout =%d ms", ctx_.config.red_to);
+    LOG::TEST("TL_SM", "Ylw Timeout =%d ms", ctx_.config.yellow_to);
+    LOG::TEST("TL_SM", "Grn Timeout =%d ms", ctx_.config.green_to);
+    LOG::TEST("TL_SM", "......");
+  }
 
 private:
   bool use_internal_timer;
@@ -311,37 +310,6 @@ private:
       LOG::DEBUG("TL_SM", "MANUAL MODE");
     }
   }
-
-  // void updateMode() {
-  //   ctx_.prev_mode = ctx_.mode;
-  //   if (ctx_.inputs.ui.manual_mode) {
-  //     ctx_.mode = Mode::MANUAL;
-  //     disableTimers();
-
-  //   } else {
-  //     ctx_.mode = Mode::AUTO;
-  //     // enableTimer();
-  //   }
-  //   if (ctx_.mode != ctx_.prev_mode) {
-  //     mode_changed = true;
-  //     ctx_.inputs.mode_changed = true;
-  //     LOG::DEBUG("TL_SM", "Mode changed");
-  //   } else if (ctx_.mode == ctx_.prev_mode) {
-  //     mode_changed = false;
-  //     LOG::DEBUG("TL_SM", "Resetting mode_changed");
-  //   }
-
-  //   // Reset selected member variable except the Config and ui Inputs
-  //   ctx_.inputs.new_data = false;
-  //   ctx_.inputs.timer = Inputs::Timer{};
-  //   ctx_.event = Event{};
-  //   ctx_.new_cmd = Command{};
-
-  //   LOG::DEBUG("TL_SM", "Mode updated to %s",
-  //              ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
-  //   setAutoUpdate();
-  //   update();
-  // }
 
   void updateMode(bool manual_requested) {
     const Mode new_mode = manual_requested ? Mode::MANUAL : Mode::AUTO;
