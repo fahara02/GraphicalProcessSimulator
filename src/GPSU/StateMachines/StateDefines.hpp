@@ -101,7 +101,6 @@ struct Context {
     }
     return *this;
   }
-
 };
 
 } // namespace TrafficLight
@@ -444,10 +443,10 @@ struct Command {
 struct Config {
   static constexpr uint16_t conv_length = 1000;
   static constexpr uint16_t obj_length = 50;
-  static constexpr uint16_t conv_mmps = 60;
+  static constexpr uint16_t conv_mmps = 50;
   static constexpr uint16_t sen_pos = 200;
-  static constexpr uint16_t pick_pos = 400;
-  static constexpr int32_t placement_rate = 5;
+  static constexpr uint16_t pick_pos = 800;
+  static constexpr int32_t placement_rate = 10;
   static constexpr uint32_t sim_pick_delay = 20;
   static constexpr uint8_t max_objs = 10;
 

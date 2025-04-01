@@ -76,7 +76,7 @@ public:
       return cmd;
     }
     dataUpdated_ = false;
-    LOG::DEBUG("SM", "updating.....");
+
     const auto curr = static_cast<std::size_t>(current());
     if (curr < Traits::transitions_by_state.size()) {
       const auto &group = Traits::transitions_by_state[curr];

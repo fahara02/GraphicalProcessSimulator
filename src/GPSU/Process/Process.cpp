@@ -280,14 +280,7 @@ void Process::object_counter_task(void *param) {
     }
     ObjectCounter::Command oc_cmd = instance->ocsm_->updateData();
     const auto &ctx = instance->ocsm_->getContext();
-    state = instance->ocsm_->current();
-    const char *current =
-        GPSU::Util::ToString::OCState(instance->ocsm_->current());
-    const char *previous =
-        GPSU::Util::ToString::OCState(instance->ocsm_->previous());
 
-    Serial.printf("State changed to: %s from state %s  int time %lu\n", current,
-                  previous, millis());
     GUI::Command cmd;
     cmd.type = GUI::CmdType::UPDATE_COUNTER;
     cmd.contexts.oc_context = ctx;

@@ -115,7 +115,7 @@ void Display::createSprites() {
     layer_2->setSwapBytes(true);
   }
   if (setup_counter) {
-    bg_->setSwapBytes(true);
+
     layer_1->createSprite(width, height - 50);
     layer_1->setSwapBytes(true);
     layer_2->createSprite(width, height - 50);
@@ -311,7 +311,6 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
 
   prepare_assets(type);
 
-  bg_->fillSprite(Colors::logo);
   const int16_t fontSize = MENU_FONT;
   const char *label = GPSU::Util::ToString::Process(type);
   label_->setTextColor(Colors::main, Colors::black);
@@ -427,13 +426,13 @@ void Display::updateObjectCounter(Command cmd) {
           20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
 
       drawData data = {scaled_x, y_pos, 30, 30, id};
-      drawBox(layer_2.get(), data, state);
+      drawBox(layer_1.get(), data, state);
     }
   }
   // Draw each item
 
   // Draw layers to main display
-  layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
+  // layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
   processScreenExecute();
 }
 
@@ -465,6 +464,7 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   }
 
   // Draw 3D-styled box
+  LOG::DEBUG("GUI", "DRAWING BOXES.........");
   sprite->fillRoundRect(data.x, data.y, data.w, data.h, 3, fill_color);
   sprite->drawRoundRect(data.x, data.y, data.w, data.h, 3, border_color);
 
