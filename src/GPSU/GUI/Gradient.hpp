@@ -105,6 +105,16 @@ constexpr uint16_t BLACK = 0x0000;
 constexpr uint16_t WHITE = color565(255, 255, 255);
 constexpr uint16_t RED = color565(255, 0, 0);
 constexpr uint16_t BLUE = color565(0, 0, 255);
+constexpr uint16_t ITEM_BG_START = color565(160, 160, 160);   // Light grey
+constexpr uint16_t ITEM_BG_END = color565(50, 200, 255);      // Vibrant cyan
+constexpr uint16_t ITEM_SELECTED_START = color565(0, 0, 128); // Navy
+constexpr uint16_t ITEM_SELECTED_END = color565(0, 255, 255); // Bright cyan
+
+// Generate gradients
+constexpr auto itemBgGradient =
+    generateGradient<50>(ColorInterpolator<ITEM_BG_START, ITEM_BG_END>{});
+constexpr auto itemSelectedBgGradient = generateGradient<50>(
+    ColorInterpolator<ITEM_SELECTED_START, ITEM_SELECTED_END>{});
 
 // Generate gradients using the interpolator
 constexpr auto grays = generateGradient<50>(ColorInterpolator<BLACK, WHITE>{});

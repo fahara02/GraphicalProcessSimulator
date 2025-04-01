@@ -1,22 +1,16 @@
 #include "Process.hpp"
-// io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
-//  counter_(std::make_unique<Pulse::Counter>()),
-// io_->configure(setting_);
-// io_->pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
-// io_->pinMode(MCP::PORT::GPIOB, INPUT);
-// io_->invertInput(true, GPB1, GPB2, GPB3, GPB4);
 
 namespace GPSU {
 StackType_t
     Process::sharedStack[Process::process_task_depth]; // Define the stack array
 StaticTask_t Process::sharedTCB;
 const MenuItem Process::process_list[] = {
-    {"TRAFFIC_LIGHT", &Process::processTrafficLight},
-    {"WATER_LEVEL", &Process::processWaterLevel},
-    {"STEPPER_MOTOR", &Process::processStepperMotor},
-    {"STATE_MACHINE", &Process::processStateMachine},
-    {"OBJECT_COUNTER", &Process::processObjectCounter},
-    {"MOTOR_CONTROL", &Process::processMotorControl}};
+    {"TrafficLight", &Process::processTrafficLight},
+    {"WaterLevel", &Process::processWaterLevel},
+    {"StepperMotor", &Process::processStepperMotor},
+    {"StateMachine", &Process::processStateMachine},
+    {"ObjectCounter", &Process::processObjectCounter},
+    {"MotorControl", &Process::processMotorControl}};
 Process::Process()
     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
@@ -77,7 +71,7 @@ void Process::deleteProcess(ProcessType type) {
   case ProcessType::TRAFFIC_LIGHT:
     if (tlsm_) {
       tlsm_->stopTimers();
-      vTaskDelay(pdMS_TO_TICKS(100)); // Allow pending callbacks to complete
+      vTaskDelay(pdMS_TO_TICKS(100));
       tlsm_.reset();
     }
     break;
@@ -147,7 +141,7 @@ void Process::handleSelectionChanged(size_t index) {
   display_.resetQueue();
   GUI::Command cmd;
   size_t selected_index = menu_->get_selected_index();
-  display_.setCursorIndex(selected_index);
+  display_.updateCursorIndex(selected_index);
   cmd.cursor.index = selected_index;
   cmd.cursor.items = process_count;
   cmd.type = GUI::CmdType::SHOW_MENU;
@@ -157,11 +151,9 @@ void Process::handleItemSelected(size_t index) {
   ProcessType selected_type = static_cast<ProcessType>(index);
   process_list[index].action(this);
   switchToProcess(selected_type);
-
   GUI::Command cmd;
   cmd.type = GUI::CmdType::SHOW_PROCESS_SCREEN;
   cmd.process_type = current_process_;
-
   display_.sendDisplayCommand(cmd);
 }
 

@@ -35,20 +35,33 @@ static constexpr uint8_t TANK_BORDER_THK = 5;
 static constexpr uint8_t TANK_WIDTH = FRAME_WIDTH - 2 * TANK_BORDER_THK;
 static constexpr uint8_t TANK_HEIGHT = FRAME_HEIGHT - 2 * TANK_BORDER_THK;
 
-static constexpr uint8_t MENU_FONT = 2;
-static constexpr uint8_t MENU_VERTICAL_PADDING = 10;
-enum class Colors : uint16_t {
-  black = 0x0000,
-  white = 0xFFFF,
-  main = 0xE6FD,
-  menu = 0x30BA,
-  logo = 0xB990,
-  cursor = 0x30BA,
-  frame = 0x30BA,
-  process_bg = 0x30BA
+static constexpr uint8_t MENU_FONT = 4;
 
+static constexpr uint8_t MENU_VERTICAL_PADDING = 2;
+
+struct Colors {
+  static constexpr uint16_t black = 0x0000;
+  static constexpr uint16_t white = 0xFFFF;
+  static constexpr uint16_t main = 0xE6FD;
+  static constexpr uint16_t menu = 0x30BA;
+  static constexpr uint16_t logo = 0xB990;
+  static constexpr uint16_t cursor = 0x30BA;
+  static constexpr uint16_t process_bg = 0x30BA;
+  static constexpr uint16_t dial_bg = 0x00A3;
+  static constexpr uint16_t dial_points = 0x8410;
+  static constexpr uint16_t dial_title = 0x15B3;
+  static constexpr uint16_t NAVY = 0x000F;
+  static constexpr uint16_t DARKGREY = 0x7BEF;
+  static constexpr uint16_t SILVER = 0xC618;
+  static constexpr uint16_t CYAN = 0x07FF;
+  static constexpr uint16_t menu_bg = 0x4A69;          // Dark slate grey
+  static constexpr uint16_t item_bg = 0xAD55;          // Light grey
+  static constexpr uint16_t item_selected_bg = 0x001F; // Navy blue
+  static constexpr uint16_t frame = 0x7BEF;            // Silver
+  static constexpr uint16_t title_text = 0xFFFF;       // White
 };
-enum class ScreenRotation : uint8_t { VERTICAL = 0, HORIZONTAl = 1 };
+
+enum class ScreenRotation : uint8_t { VERTICAL = 0, HORIZONTAL = 1 };
 enum class AlignMent : uint8_t {
   TOP_MIDDLE,
   CENTER_MIDDLE,

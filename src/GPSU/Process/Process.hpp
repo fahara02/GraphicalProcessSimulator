@@ -22,7 +22,6 @@ public:
   using tlMode = TrafficLight::Mode;
   Process();
   void init();
-
   void deleteProcess(ProcessType type);
   void startProcess(ProcessType type);
   void switchToProcess(ProcessType new_type);
@@ -94,11 +93,6 @@ private:
       ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
       ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
       ctx.inputs.new_data = true;
-
-      // ctx.inputs.ui.turn_on_red = io_->digitalRead(GPB1); //
-      // ctx.inputs.ui.turn_on_yellow = io_->digitalRead(GPB2);
-      // ctx.inputs.ui.turn_on_green = io_->digitalRead(GPB3);
-      // ctx.inputs.ui.manual_mode = io_->digitalRead(GPB4);
 
       if (ctx.inputs.ui.turn_on_red) {
         LOG::DEBUG("SENSED GPB1 i.e red");

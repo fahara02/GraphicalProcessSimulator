@@ -2,6 +2,7 @@
 #define GUI_HPP
 
 #include "Assets/AssetImages.hpp"
+#include "Assets/orbitron18.h"
 #include "GUIConstants.hpp"
 #include "Gradient.hpp"
 #include "MenuSelector.hpp"
@@ -9,6 +10,7 @@
 #include "StateMachines/StateDefines.hpp"
 #include "atomic"
 #include <TFT_eSPI.h>
+#include <algorithm>
 #include <memory>
 #include <tuple>
 
@@ -56,11 +58,14 @@ public:
   void sendDisplayCommand(const Command &cmd);
   void prepare_assets(GPSU::ProcessType type);
   void setMenuItems(const MenuItem *items, size_t count);
-  void setCursorIndex(size_t index);
+  void updateCursorIndex(size_t index);
 
   Display(const Display &) = delete;
   Display &operator=(const Display &) = delete;
   void resetQueue() { xQueueReset(displayQueue); }
+  ScreenRotation getScreenRotation() const {
+    return static_cast<ScreenRotation>(rotation_);
+  }
 
 private:
   // Private constructor.
@@ -68,7 +73,17 @@ private:
   const MenuItem *menuItems_ = nullptr;
   size_t menuItemCount_ = 0;
   uint8_t rotation_ = 0;
+  uint8_t visible_items = 3;
   bool initialised;
+  bool needsRedraw = true;
+  int16_t scrollOffset = 0;
+  uint32_t scrollDebounce = 0;
+  struct {
+    int16_t textWidth;
+    int16_t textHeight;
+    int16_t padding;
+    int16_t radius;
+  } menuMetrics;
 
   bool setup_traffic = false;
   bool setup_waterlevel = false;
@@ -101,10 +116,111 @@ private:
   void change_to_horizontal();
 
   // helpers
-  void drawAlignText(AlignMent align, const char *text, uint8_t font,
-                     Colors txt = Colors::main, Colors bg = Colors::black);
-  std::tuple<int16_t, int16_t>
-  calculateAlignment(AlignMent align, int16_t Width, int16_t Height);
+  // In the calculateMenuMetrics function, adjust visible_items dynamically
+  void calculateMenuMetrics() {
+    const ScreenRotation rotation = getScreenRotation();
+    menuMetrics.padding = PADDING_PX;
+
+    // Set the font used for menu items to get accurate height
+    bg_->setFreeFont(&FreeSans12pt7b);
+    menuMetrics.textHeight = bg_->fontHeight();
+
+    // Calculate available vertical space
+    const int16_t startY = 50;
+    const int16_t availableHeight = canvas_->height() - startY - 20;
+
+    // Adjust visible items based on available height and text height
+    visible_items = availableHeight / menuMetrics.textHeight;
+
+    // Additional adjustments for vertical padding if needed
+    if (rotation == ScreenRotation::VERTICAL) {
+      menuMetrics.textHeight += MENU_VERTICAL_PADDING;
+    }
+
+    menuMetrics.radius = 8;
+  }
+  void rotateMenu() {
+    rotation_ = (rotation_ + 1) % 4;
+    canvas_->setRotation(rotation_);
+    deleteSprites();
+    createSprites();
+    calculateMenuMetrics(); // Recalculate metrics after rotation
+    needsRedraw = true;
+  }
+  void drawMenuFramework() {
+    bg_->fillScreen(TFT_BLACK);
+
+    // Draw menu background with Colors::menu
+    bg_->fillRoundRect(10, 10, bg_->width(), bg_->height() - 20,
+                       menuMetrics.radius, Colors::logo);
+    bg_->drawRoundRect(10, 10, bg_->width() - 20, bg_->height() - 20,
+                       menuMetrics.radius, Colors::frame);
+
+    // Title with Colors::CYAN
+    const char *title = "Main Menu";
+    bg_->setFreeFont(&Orbitron_Medium_18);
+    bg_->setTextColor(Colors::title_text, Colors::logo);
+    bg_->drawString(title, (bg_->width() - bg_->textWidth(title)) / 2, 15);
+  }
+
+  void drawMenuItem(int16_t yPos, size_t itemIndex) {
+    const bool isSelected = (itemIndex == cursorIndex_);
+    const int16_t itemWidth = bg_->width() - 40; // Adjusted for better margin
+    char truncatedLabel[32];
+
+    bg_->setFreeFont(&FreeSans12pt7b);
+    bg_->setTextSize(1);
+
+    // Truncate text to fit within itemWidth
+    truncateText(menuItems_[itemIndex].label, truncatedLabel,
+                 itemWidth - 20); // Allow padding
+
+    // Calculate text position
+    int16_t textX = 20 + (itemWidth - bg_->textWidth(truncatedLabel)) / 2;
+    int16_t textY = yPos + (menuMetrics.textHeight - bg_->fontHeight()) / 2;
+
+    // Draw background and text
+    bg_->fillRoundRect(20, yPos, itemWidth, menuMetrics.textHeight,
+                       menuMetrics.radius,
+                       isSelected ? Colors::item_selected_bg : Colors::item_bg);
+    bg_->setTextColor(isSelected ? Colors::white : Colors::black);
+    bg_->drawString(truncatedLabel, textX, textY);
+
+    // Draw selection border
+    if (isSelected) {
+      bg_->drawRoundRect(20, yPos, itemWidth, menuMetrics.textHeight,
+                         menuMetrics.radius, TFT_WHITE);
+    }
+  }
+
+  void drawMenuItems() {
+    const int16_t startY = 50;
+    const int16_t visibleHeight = visible_items * menuMetrics.textHeight;
+
+    // Draw scroll indicators if needed
+    if (scrollOffset > 0) {
+      drawTriangle(bg_->width() / 2, startY - 15, Colors::white, true);
+    }
+    if (scrollOffset < menuItemCount_ - visible_items) {
+      drawTriangle(bg_->width() / 2, startY + visibleHeight + 5, Colors::white,
+                   false);
+    }
+
+    // Draw each visible item
+    for (uint8_t i = 0; i < visible_items; ++i) {
+      const size_t itemIndex = scrollOffset + i;
+      if (itemIndex >= menuItemCount_)
+        break;
+      const int16_t yPos = startY + i * menuMetrics.textHeight;
+      drawMenuItem(yPos, itemIndex);
+    }
+  }
+
+  void drawTriangle(int16_t x, int16_t y, uint16_t color, bool up) {
+    const uint8_t size = 8;
+    bg_->fillTriangle(x - size, y + (up ? size : 0), x + size,
+                      y + (up ? size : 0), x, y + (up ? 0 : size), color);
+  }
 
   // void setUpSprites(GPSU::ProcessType type);
   void processScreenSetup();
@@ -119,6 +235,16 @@ private:
     int id;
   };
   void drawBox(TFT_eSprite *sprite, drawData &data, Items::State state);
+  void truncateText(const char *input, char *output, int maxWidth) {
+    strncpy(output, input, 31);
+    output[31] = '\0';
+    bg_->setFreeFont(&FreeSans12pt7b); // Ensure correct font is set
+    while (bg_->textWidth(output) > maxWidth && strlen(output) > 3) {
+      output[strlen(output) - 1] = '\0';
+      output[strlen(output) - 1] = '.';
+      output[strlen(output) - 2] = '.';
+    }
+  }
 };
 
 } // namespace GUI

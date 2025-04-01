@@ -37,7 +37,18 @@ void Display::init() {
     initialised = true;
   }
 }
-void Display::setCursorIndex(size_t index) { cursorIndex_ = index; }
+void Display::updateCursorIndex(size_t index) {
+  cursorIndex_ = std::min(index, menuItemCount_ - 1);
+
+  // Update scroll position
+  if (cursorIndex_ < scrollOffset) {
+    scrollOffset = cursorIndex_;
+    needsRedraw = true;
+  } else if (cursorIndex_ >= scrollOffset + visible_items) {
+    scrollOffset = cursorIndex_ - visible_items + 1;
+    needsRedraw = true;
+  }
+}
 void Display::reset_rotation() {
   canvas_->setRotation(0);
   rotation_ = 0;
@@ -122,7 +133,7 @@ void Display::display_loop(void *param) {
       switch (cmd.type) {
       case CmdType::SHOW_MENU:
         self->current_process_ = GPSU::ProcessType::ANY;
-        self->setCursorIndex(cmd.cursor.index);
+        self->updateCursorIndex(cmd.cursor.index);
         self->reset_rotation();
         self->deleteSprites();
         self->createSprites();
@@ -221,68 +232,74 @@ void Display::prepare_assets(GPSU::ProcessType type) {
 // StartUp menu of GUI
 void Display::showMenu() {
   current_process_ = GPSU::ProcessType::ANY;
-  // Clear the screen with a black background
-  bg_->fillScreen(TFT_BLACK);
-
-  // Define constants for layout
-  const int16_t padding = PADDING_PX;
-  const int16_t fontSize = MENU_FONT;
-  const int16_t textHeight = bg_->fontHeight(fontSize);
-  const int16_t itemHeight = textHeight + MENU_VERTICAL_PADDING;
-  // Define frame padding
-  const int16_t frame_padding = 10; // Adjustable padding around the frame
-  // Calculate frame top and bottom positions
-  int16_t y_frame_top = padding - frame_padding;
-  if (y_frame_top < 0)
-    y_frame_top = 0; // Ensure it doesn’t go off-screen
-  int16_t y_frame_bottom =
-      padding + (menuItemCount_ + 1) * itemHeight + frame_padding;
-  if (y_frame_bottom > bg_->height())
-    y_frame_bottom = bg_->height(); // Cap at screen height
-
-  // Draw the frame around the menu
-  bg_->drawRect(0, y_frame_top, bg_->width(), y_frame_bottom - y_frame_top,
-                static_cast<uint16_t>(Colors::white));
-
-  // Draw the title "Main Menu"
-  const char *title = "Main Menu";
-  int16_t title_width = bg_->textWidth(title, fontSize);
-  int16_t x_title = (bg_->width() - title_width) / 2; // Center horizontally
-  int16_t y_title =
-      padding + (itemHeight - textHeight) / 2; // Center vertically in slot
-  bg_->setTextColor(static_cast<uint16_t>(Colors::main),
-                    static_cast<uint16_t>(Colors::black));
-  bg_->drawString(title, x_title, y_title, fontSize);
-  // Loop through all menu items, shifted down by one itemHeight
-  for (size_t i = 0; i < menuItemCount_; i++) {
-    int16_t yPos = padding + (i + 1) * itemHeight; // Shifted position
-
-    // Draw a background rectangle for the selected item
-    if (i == cursorIndex_) {
-      bg_->fillRect(0, yPos, bg_->width(), itemHeight,
-                    static_cast<uint16_t>(Colors::logo));
-    }
-
-    // Calculate text dimensions
-    int16_t textWidth = bg_->textWidth(menuItems_[i].label, fontSize);
-    // Calculate x-position to center the text horizontally
-    int16_t xPos = (bg_->width() - textWidth) / 2;
-    // Adjust y-position to center the text vertically within the item
-    // height
-    int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
-    // Set text and background colors
-    Colors textColor = Colors::main;
-    Colors bgColor = (i == cursorIndex_) ? Colors::logo : Colors::black;
-    bg_->setTextColor(static_cast<uint16_t>(textColor),
-                      static_cast<uint16_t>(bgColor));
-
-    // Draw the menu item's text
-    bg_->drawString(menuItems_[i].label, xPos, adjustedYPos, fontSize);
+  rotateMenu();
+  if (needsRedraw) {
+    calculateMenuMetrics();
+    drawMenuFramework();
+    needsRedraw = false;
   }
-
-  // Push the sprite to the display
+  drawMenuItems();
   bg_->pushSprite(0, 0);
 }
+// void Display::showMenu() {
+//   current_process_ = GPSU::ProcessType::ANY;
+//   // Clear the screen with a black background
+//   bg_->fillScreen(TFT_BLACK);
+
+//   // Define constants for layout
+//   const int16_t padding = PADDING_PX;
+//   const int16_t fontSize = MENU_FONT;
+//   bg_->setFreeFont(&Orbitron_Medium_18);
+//   const int16_t textHeight = 18;
+//   const int16_t itemHeight = textHeight + MENU_VERTICAL_PADDING;
+//   // Define frame padding
+//   const int16_t frame_padding = 2; // Adjustable padding around the frame
+//   // Calculate frame top and bottom positions
+//   int16_t y_frame_top = padding - frame_padding;
+//   if (y_frame_top < 0)
+//     y_frame_top = 0;
+//   int16_t y_frame_bottom =
+//       padding + (menuItemCount_ + 1) * itemHeight + frame_padding;
+//   if (y_frame_bottom > bg_->height())
+//     y_frame_bottom = bg_->height(); // Cap at screen height
+
+//   // Draw the frame around the menu
+//   bg_->drawRect(0, y_frame_top, bg_->width(), y_frame_bottom - y_frame_top,
+//                 static_cast<uint16_t>(Colors::white));
+
+//   // Draw the title "Main Menu"
+//   const char *title = "Main Menu";
+//   int16_t title_width = bg_->textWidth(title, fontSize);
+//   int16_t x_title = (bg_->width() - title_width) / 2;
+//   int16_t y_title = padding + (itemHeight - textHeight) / 2;
+//   bg_->setTextColor(static_cast<uint16_t>(Colors::main),
+//                     static_cast<uint16_t>(Colors::black));
+//   bg_->drawString(title, x_title, y_title, fontSize);
+
+//   for (size_t i = 0; i < menuItemCount_; i++) {
+//     int16_t yPos = padding + (i + 1) * itemHeight;
+
+//     if (i == cursorIndex_) {
+//       bg_->fillRect(0, yPos, bg_->width(), itemHeight,
+//                     static_cast<uint16_t>(Colors::logo));
+//     }
+
+//     // Calculate text dimensions
+//     int16_t textWidth = bg_->textWidth(menuItems_[i].label, fontSize);
+//     int16_t xPos = (bg_->width() - textWidth) / 2;
+//     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
+//     Colors textColor = Colors::main;
+//     Colors bgColor = (i == cursorIndex_) ? Colors::logo : Colors::black;
+//     bg_->setTextColor(static_cast<uint16_t>(textColor),
+//                       static_cast<uint16_t>(bgColor));
+
+//     // Draw the menu item's text
+//     bg_->drawString(menuItems_[i].label, xPos, adjustedYPos);
+//   }
+
+//   // Push the sprite to the display
+//   bg_->pushSprite(0, 0);
+// }
 
 void Display::showProcessScreen(GPSU::ProcessType type) {
   //
@@ -294,17 +311,15 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
 
   prepare_assets(type);
 
-  bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+  bg_->fillSprite(Colors::logo);
   const int16_t fontSize = MENU_FONT;
   const char *label = GPSU::Util::ToString::Process(type);
-  label_->setTextColor(static_cast<uint16_t>(Colors::main),
-                       static_cast<uint16_t>(Colors::black));
+  label_->setTextColor(Colors::main, Colors::black);
   processScreenSetup();
-  label_->fillSprite(static_cast<uint16_t>(Colors::black));
+  label_->fillSprite(Colors::black);
   label_->drawString(label, 0, 0, fontSize);
 
-  label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
-                       static_cast<uint16_t>(Colors::black));
+  label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX, Colors::black);
 
   bg_->pushSprite(0, 0);
 }
@@ -313,24 +328,23 @@ void Display::processScreenSetup() {
 
   bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
-    bg_->fillSprite(static_cast<uint16_t>(Colors::black));
+    bg_->fillSprite(Colors::black);
     bg_->pushImage(0, 0, 240, 130, Asset::plant2);
   } else if (setup_traffic) {
-    bg_->fillSprite(static_cast<uint16_t>(Colors::black));
+    bg_->fillSprite(Colors::black);
     bg_->setSwapBytes(true);
     // bg_->pushImage(0, 0, 130, 240, Asset::road);
   } else {
-    bg_->fillSprite(static_cast<uint16_t>(Colors::logo));
+    bg_->fillSprite(Colors::logo);
   }
 
   label_->fillSprite(TFT_BLACK);
-  label_->setTextColor(static_cast<uint16_t>(Colors::white),
-                       static_cast<uint16_t>(Colors::black));
+  label_->setTextColor(Colors::white, Colors::black);
   // layer_1->fillSprite(TFT_BLACK);
   if (setup_counter) {
     layer_1->fillSprite(TFT_BLACK); // Black for counters
   } else {
-    layer_1->fillSprite(static_cast<uint16_t>(Colors::logo));
+    layer_1->fillSprite(Colors::logo);
   }
 
   if (setup_waterlevel || setup_stepper || setup_counter) {
@@ -341,21 +355,17 @@ void Display::processScreenExecute(int angle) {
   if (setup_traffic) {
     layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX);
   } else {
-    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                          static_cast<uint16_t>(Colors::black));
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
   }
 
   if (setup_stepper) {
     canvas_->setPivot(IMG2_WIDTH / 2, IMG2_HEIGHT / 2);
-    layer_2->pushRotated(bg_.get(), angle,
-                         static_cast<uint16_t>(Colors::black));
+    layer_2->pushRotated(bg_.get(), angle, Colors::black);
   }
   if (setup_waterlevel) {
-    layer_2->pushToSprite(bg_.get(), 5, FRAME_TOP_PX,
-                          static_cast<uint16_t>(Colors::black));
+    layer_2->pushToSprite(bg_.get(), 5, FRAME_TOP_PX, Colors::black);
   }
-  label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX,
-                       static_cast<uint16_t>(Colors::black));
+  label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX, Colors::black);
 
   bg_->pushSprite(0, 0);
 }
@@ -419,17 +429,13 @@ void Display::updateObjectCounter(Command cmd) {
 
     // Position item on conveyor (adjust y as needed)
     uint16_t y_pos = 20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
-    // layer_2->fillRect(scaled_x, y_pos, 30, 30, TFT_BLUE);
 
     drawData data = {scaled_x, y_pos, 30, 30, id};
-    // label_->setTextColor(TFT_RED, TFT_BLACK);
-    //  label_->drawString(String(data.id), data.x + 2, 70, 2);
     drawBox(layer_2.get(), data, state);
   }
 
   // Draw layers to main display
-  layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX,
-                        static_cast<uint16_t>(Colors::black));
+  layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
   processScreenExecute();
 }
 
@@ -575,60 +581,3 @@ void Display::setMenuItems(const MenuItem *items, size_t count) {
 }
 
 } // namespace GUI
-
-// // std::tuple<int16_t, int16_t>
-// //  Display::calculateAlignment(AlignMent align, int16_t Width, int16_t
-// //  Height) {
-// //    int16_t x = 0;
-// //    int16_t y = 0;
-
-// //   switch (align) {
-// //   case AlignMent::TOP_MIDDLE:
-// //     x = (MAX_WIDTH - Width) / 2;
-// //     y = TOP_MARGIN_PX;
-// //     break;
-
-// //   case AlignMent::CENTER_MIDDLE:
-// //     x = (MAX_WIDTH - Width) / 2;
-// //     y = (MAX_HEIGHT - Height) / 2;
-// //     break;
-
-// //   case AlignMent::LEFT_X:
-// //     x = LEFT_MARGIN_PX;
-// //     y = (MAX_HEIGHT - Height) / 2;
-// //     break;
-
-// //   case AlignMent::RIGHT_X:
-// //     x = MAX_WIDTH - Width - RIGHT_MARGIN_PX;
-// //     y = (MAX_HEIGHT - Height) / 2;
-// //     break;
-
-// //   case AlignMent::BOTTOM_MIDDLE:
-// //     x = (MAX_WIDTH - Width) / 2;
-// //     y = MAX_HEIGHT - Height - BOTTOM_MARGIN_PX;
-// //     break;
-
-// //   default:
-// //     ESP_LOGW("GUI", "Unknown alignment, defaulting to TOP_MIDDLE");
-// //     x = (MAX_WIDTH - Width) / 2;
-// //     y = TOP_MARGIN_PX;
-// //     break;
-// //   }
-
-// //   return std::make_tuple(x, y);
-// // }
-// // void Display::drawAlignText(AlignMent align, const char *text, uint8_t
-// // font,
-// //                             Colors txt, Colors bg) {
-// //   if (!text) {
-// //     ESP_LOGE("GUI", "Null pointer passed!");
-// //     return;
-// //   }
-
-// //   int16_t textWidth = canvas_->textWidth(text, font);
-// //   int16_t textHeight = canvas_->fontHeight(font);
-
-// //   auto [x, y] = calculateAlignment(align, textWidth, textHeight);
-// //   canvas_->setTextColor(static_cast<uint16_t>(txt),
-// //   static_cast<uint16_t>(bg)); canvas_->drawString(text, x, y, font);
-// // }
