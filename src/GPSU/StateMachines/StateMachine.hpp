@@ -46,6 +46,7 @@ group_transitions_by_state(const std::array<Transition, N> &transitions) {
 template <typename Traits, typename Derived> class StateMachine {
 public:
   using Context = typename Traits::Context;
+  using Mode = typename Traits::Context::Mode;
   using Inputs = typename Traits::Context::Inputs;
   using Event = typename Traits::Context::Event;
   using State = typename Traits::Context::State;
@@ -144,6 +145,37 @@ protected:
   Context ctx_;
   bool timer1_was_deleted = false;
   bool timer2_was_deleted = false;
+
+  void updateMode(bool manual_requested) {
+    const Mode new_mode = manual_requested ? Mode::MANUAL : Mode::AUTO;
+    ctx_.prev_mode = ctx_.mode;
+    if (new_mode != ctx_.mode) {
+
+      ctx_.mode = new_mode;
+      ctx_.inputs.mode_changed = true;
+      LOG::DEBUG("SM", "Mode updated to %s",
+                 ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+      if (ctx_.mode == Mode::AUTO) {
+
+        if (timer1_was_deleted) {
+          timer1_was_deleted = false;
+          enableTimer(0);
+          createTimers();
+
+        } else if (timer2_was_deleted) {
+          timer2_was_deleted = false;
+          enableTimer(1);
+          createTimers();
+        }
+      } else {
+        disableTimers();
+      }
+      setAutoUpdate();
+      update();
+      ctx_.inputs.mode_changed = false;
+    }
+  }
+
   void createTimers() {
     dataUpdated_ = true;
     if (enable_timer_) {

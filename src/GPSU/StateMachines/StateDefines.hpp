@@ -417,10 +417,7 @@ enum class CmdType : uint8_t {
   SENSE,
   PICK,
   ALARM,
-  CLEAR_ALARM,
-  MANUAL_MODE,
-  AUTO_MODE
-
+  CLEAR_ALARM
 };
 struct CommandData {
   int timeout1 = 0;
@@ -466,6 +463,7 @@ struct Config {
 };
 struct Inputs {
   bool new_data = false;
+  bool mode_changed = false;
   struct Timer {
     bool t1_expired = false; // placement timer, resets after placement
     bool t2_expired = false; // timer item
@@ -483,8 +481,8 @@ struct Inputs {
     bool stop = false;
     bool reset = false;
     bool ack = false;
-    bool pick = false; // Manual pick trigger
-    bool mode = false; // Auto/Manual toggle
+    bool pick = false;        // Manual pick trigger
+    bool manual_mode = false; // Auto/Manual toggle
   } ui;
 };
 struct Data {

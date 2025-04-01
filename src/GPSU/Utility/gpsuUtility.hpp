@@ -149,8 +149,6 @@ public:
         return "ALARM";
       case Command::CLEAR_ALARM:
         return "CLEAR_ALARM";
-      case Command::MANUAL_MODE:
-        return "MANUAL_MODE";
       default:
         return "UNKNOWN";
       }
