@@ -81,37 +81,8 @@ private:
   void handleSelectionChanged(size_t index);
   void handleItemSelected(size_t index);
 
-  template <ProcessType type, typename Context>
-  Context mapUserCommand(Context ctx) {
-
-    if (type == ProcessType::TRAFFIC_LIGHT) {
-
-      uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
-
-      ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01; //
-      ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
-      ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
-      ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
-      ctx.inputs.new_data = true;
-
-      if (ctx.inputs.ui.turn_on_red) {
-        LOG::DEBUG("SENSED GPB1 i.e red");
-      }
-      if (ctx.inputs.ui.turn_on_yellow) {
-        LOG::DEBUG("SENSED GPB2 i.e yellow");
-      }
-      if (ctx.inputs.ui.turn_on_green) {
-        LOG::DEBUG("SENSED GPB3 i.e green");
-      }
-      if (ctx.inputs.ui.manual_mode) {
-        LOG::DEBUG("SENSED GPB4 i.e manual mode");
-      }
-      ctx.inputs.new_data = true;
-
-      return ctx;
-    }
-    return Context{};
-  }
+  TrafficLight::Context mapUserCommand(TrafficLight::Context ctx);
+  ObjectCounter::Context mapUserCommand(ObjectCounter::Context ctx);
   template <ProcessType type, typename Context>
   void mapOutputs(const Context &ctx) {
     uint8_t mask = 0;

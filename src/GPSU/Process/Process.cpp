@@ -204,6 +204,55 @@ void Process::create_task(ProcessType type) {
   }
 }
 
+TrafficLight::Context GPSU::Process::mapUserCommand(TrafficLight::Context ctx) {
+  uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
+  ctx.inputs.ui.turn_on_red = (pinStatus >> 1) & 0x01;
+  ctx.inputs.ui.turn_on_yellow = (pinStatus >> 2) & 0x01;
+  ctx.inputs.ui.turn_on_green = (pinStatus >> 3) & 0x01;
+  ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+  ctx.inputs.new_data = true;
+
+  if (ctx.inputs.ui.turn_on_red) {
+    LOG::DEBUG("SENSED GPB1 i.e red");
+  }
+  if (ctx.inputs.ui.turn_on_yellow) {
+    LOG::DEBUG("SENSED GPB2 i.e yellow");
+  }
+  if (ctx.inputs.ui.turn_on_green) {
+    LOG::DEBUG("SENSED GPB3 i.e green");
+  }
+  if (ctx.inputs.ui.manual_mode) {
+    LOG::DEBUG("SENSED GPB4 i.e manual mode");
+  }
+  return ctx;
+}
+
+
+ObjectCounter::Context
+GPSU::Process::mapUserCommand(ObjectCounter::Context ctx) {
+  uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
+  ctx.inputs.ui.start = (pinStatus >> 1) & 0x01;
+  ctx.inputs.ui.ack = (pinStatus >> 2) & 0x01;
+  ctx.inputs.ui.pick = (pinStatus >> 3) & 0x01;
+  ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+  if (ctx.inputs.ui.start) {
+    LOG::DEBUG("SENSED GPB1 i.e start");
+  }
+  if (!ctx.inputs.ui.start) {
+    LOG::DEBUG("SENSED GPB1 i.e stop");
+  }
+  if (ctx.inputs.ui.ack) {
+    LOG::DEBUG("SENSED GPB2 i.e ackknowledge");
+  }
+  if (ctx.inputs.ui.pick) {
+    LOG::DEBUG("SENSED GPB3 i.e PICK");
+  }
+  if (ctx.inputs.ui.manual_mode) {
+    LOG::DEBUG("SENSED GPB4 i.e manual mode");
+  }
+  return ctx;
+}
+
 void Process::traffic_light_task(void *param) {
   auto instance = static_cast<GPSU::Process *>(param);
   using State = TrafficLight::State;
@@ -221,10 +270,7 @@ void Process::traffic_light_task(void *param) {
       vTaskDelete(NULL);
       break;
     }
-    auto ctx =
-        instance
-            ->mapUserCommand<ProcessType::TRAFFIC_LIGHT, TrafficLight::Context>(
-                instance->tl_ctx);
+    auto ctx = instance->mapUserCommand(instance->tl_ctx);
     auto current_state = instance->tlsm_->current();
     auto previous_state = instance->tlsm_->current();
     // instance->tlsm_->setContext(ctx);

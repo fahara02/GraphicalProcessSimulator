@@ -478,11 +478,10 @@ struct Inputs {
   } sensors;
   struct UI {
     bool start = false;
-    bool stop = false;
-    bool reset = false;
     bool ack = false;
     bool pick = false;        // Manual pick trigger
     bool manual_mode = false; // Auto/Manual toggle
+    bool reset = false;
   } ui;
 };
 struct Data {
@@ -517,6 +516,7 @@ struct Context {
   Inputs inputs;
   Event event;
   Mode mode = Mode::AUTO;
+  Mode prev_mode = Mode::AUTO;
   Command new_cmd;
   Item items[Config::max_objs];
   uint8_t obj_cnt = 0; // Number of active items
@@ -531,6 +531,7 @@ struct Context {
       inputs = other.inputs;
       event = other.event;
       mode = other.mode;
+      prev_mode = other.prev_mode;
       new_cmd = other.new_cmd;
       for (uint8_t i = 0; i < Config::max_objs; i++)
         items[i] = other.items[i];

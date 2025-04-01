@@ -249,7 +249,6 @@ public:
                           bool internalTimer = true)
       : StateMachine(context, state, internalTimer),
         use_internal_timer(internalTimer) {
-    // ctx_.mode = mode;
     register_callback(transitionCb);
   }
   TrafficLightSM(const Context &context, bool internalTimer = true)

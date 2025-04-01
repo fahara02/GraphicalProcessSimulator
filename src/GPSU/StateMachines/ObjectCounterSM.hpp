@@ -56,14 +56,13 @@ struct Traits {
   }
   static inline bool manual_start(const Context &ctx) {
     return (ctx.mode == Mode::MANUAL && ctx.inputs.ui.start);
-    ;
   }
 
   static inline bool start(const Context &ctx) {
     return auto_mode(ctx) || manual_start(ctx);
   }
   static inline bool stop(const Context &ctx) {
-    return ctx.inputs.ui.stop && ctx.mode == Mode::MANUAL;
+    return !ctx.inputs.ui.start && ctx.mode == Mode::MANUAL;
   }
   static inline bool objectPlaced(const Context &ctx) {
     for (uint8_t i = 0; i < ctx.obj_cnt; i++) {
@@ -89,7 +88,7 @@ struct Traits {
   }
 
   static inline bool runningToIdle(const Context &ctx) {
-    return !auto_mode(ctx) && ctx.inputs.ui.stop;
+    return !auto_mode(ctx) && !ctx.inputs.ui.start;
   }
   // entry Actions
   static inline Command alarm(const Context &ctx) {
@@ -174,14 +173,15 @@ public:
 
   explicit ObjectCounterSM(const Context &context, State state)
       : StateMachine(context, state, true, false) {
-
     register_callback(transitionCb);
   }
 
   ObjectCounterSM() : ObjectCounterSM(Context{}, State::INIT) {}
 
   void updateInternalState(const Inputs &input) {
-    ctx_.inputs = input;
+    check_ui_inputs(input);
+    updateMode(input.ui.manual_mode);
+    // ctx_.inputs = input;
     uint32_t currentTime = millis();
     uint32_t delta = currentTime - ctx_.data.timing.now;
     ctx_.data.timing.now = currentTime;
@@ -250,6 +250,7 @@ private:
   }
 
   void updateObjects(uint32_t runtime) {
+
     for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
       auto &item = ctx_.items[i];
 
@@ -331,6 +332,21 @@ private:
   }
   void simulateSensor() {
     if (ctx_.inputs.sensors.photoeye) {
+    }
+  }
+
+  void check_ui_inputs(const Inputs &input) {
+
+    if (input.ui.start) {
+      LOG::DEBUG("OC_SM", "Start");
+    } else if (!input.ui.start) {
+      LOG::DEBUG("OC_SM", "stop");
+    } else if (input.ui.ack) {
+      LOG::DEBUG("OC_SM", "ackknowledged");
+    } else if (input.ui.pick) {
+      LOG::DEBUG("OC_SM", "Pick");
+    } else if (input.ui.manual_mode) {
+      LOG::DEBUG("OC_SM", "MANUAL MODE");
     }
   }
 };
