@@ -286,7 +286,7 @@ void Process::object_counter_task(void *param) {
     cmd.contexts.oc_context = ctx;
     instance->display_.sendDisplayCommand(cmd);
 
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Update every second
+    vTaskDelay(pdMS_TO_TICKS(100)); // Update every second
   }
   vTaskDelete(NULL);
 }

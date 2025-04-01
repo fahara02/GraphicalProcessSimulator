@@ -39,7 +39,6 @@ struct Config {
   int red_to = 8000;
   int yellow_to = 2000;
   int green_to = 6000;
-
   bool transit_now = false;
   uint16_t error_blink = 500;
   uint8_t max_errors = 3;
@@ -53,7 +52,6 @@ struct Inputs {
     uint32_t now = 0;
     bool t1_expired = false;
     bool t2_expired = false;
-
   } timer;
   struct UI {
     bool turn_on_red = false;
@@ -61,7 +59,6 @@ struct Inputs {
     bool turn_on_green = false;
     bool button_pressed = false;
     bool manual_mode = false;
-
   } ui;
 };
 struct Data {
@@ -399,6 +396,7 @@ struct Item {
   bool sensed = false;
   bool at_pick = false;
   uint16_t x_pos = 0;
+  uint16_t y_pos = 0;
 };
 enum class Event : uint8_t {
   OK = 0,
@@ -497,7 +495,6 @@ struct Data {
     uint32_t uptime = 0;
     uint32_t runtime = 0;
   } timing;
-
   struct Stats {
     uint16_t total = 0;
     uint16_t ok = 0;

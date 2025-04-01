@@ -213,7 +213,7 @@ public:
           }
         }
       }
-      removeCompleted();
+      removeFailed();
 
       if (ctx_.inputs.timer.t1_expired) {
         addObject(ctx_.data.timing.runtime);
@@ -261,9 +261,13 @@ private:
         if (item.x_pos > ObjectCounter::Config::conv_length) {
           item.x_pos = ObjectCounter::Config::conv_length;
         }
+      } else if (item.state == Items::State::PICKED) {
+        uint32_t elapsed_time = runtime - item.data.place_time;
+        item.y_pos += 2;
+        if (item.y_pos >= 25) {
+          removeItem(item.id);
+        }
       }
-
-      // Check for SENSED transition
 
       if (!item.sensed) {
 
@@ -273,13 +277,6 @@ private:
             item.sensed = true;
             ctx_.event = Event::SENSED;
             ctx_.inputs.sensors.photoeye = true;
-            LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
-          }
-        } else {
-          if (runtime >= item.data.sense_time) {
-            item.state = Items::State::SENSED;
-            item.sensed = true;
-            ctx_.event = Event::SENSED;
             LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
           }
         }
@@ -309,12 +306,23 @@ private:
         runtime + (ctx_.mode == Mode::AUTO ? ctx_.config.auto_timeout
                                            : ctx_.config.manual_timeout);
   }
-  void removeCompleted() {
+  void removeFailed() {
     uint8_t newCount = 0;
     for (uint8_t i = 0; i < ctx_.obj_cnt; ++i) {
-      if (ctx_.items[i].state == Items::State::PICKED ||
-          ctx_.items[i].state == Items::State::FAILED) {
-        LOG::DEBUG("OC_SM", "Removing item %d\n", ctx_.items[i].id);
+      if (ctx_.items[i].state == Items::State::FAILED) {
+        LOG::DEBUG("OC_SM", "After Failed Removing item %d\n",
+                   ctx_.items[i].id);
+      } else {
+        ctx_.items[newCount++] = ctx_.items[i];
+      }
+    }
+    ctx_.obj_cnt = newCount;
+  }
+  void removeItem(int id) {
+    uint8_t newCount = 0;
+    for (uint8_t i = 0; i < ctx_.obj_cnt; ++i) {
+      if (ctx_.items[i].id == id) {
+        LOG::DEBUG("OC_SM", "After Pick Removingitem %d\n", ctx_.items[i].id);
       } else {
         ctx_.items[newCount++] = ctx_.items[i];
       }

@@ -417,13 +417,12 @@ void Display::updateObjectCounter(Command cmd) {
       Items::State state = obj.state;
       // Scale position and length to pixels
       uint16_t scaled_x = (obj.x_pos / 4);
-      uint16_t object_length_px = 12;
+      uint16_t scaled_y = (obj.y_pos);
+
       int id = obj.id;
       LOG::INFO("GUI", "item id %d in pos = %d mm\n", id, scaled_x);
 
-      // Position item on conveyor (adjust y as needed)
-      uint16_t y_pos =
-          20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
+      uint16_t y_pos = 25 - scaled_y;
 
       drawData data = {scaled_x, y_pos, 30, 30, id};
       drawBox(layer_1.get(), data, state);
