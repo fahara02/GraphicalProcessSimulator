@@ -45,7 +45,7 @@ struct Colors {
   static constexpr uint16_t main = 0xE6FD;
   static constexpr uint16_t menu = 0x30BA;
   static constexpr uint16_t logo = 0xB990;
-  static constexpr uint16_t cursor = 0x30BA;
+  static constexpr uint16_t cursor = 0xFFE0; // Bright yellow
   static constexpr uint16_t process_bg = 0x30BA;
   static constexpr uint16_t dial_bg = 0x00A3;
   static constexpr uint16_t dial_points = 0x8410;
@@ -54,11 +54,14 @@ struct Colors {
   static constexpr uint16_t DARKGREY = 0x7BEF;
   static constexpr uint16_t SILVER = 0xC618;
   static constexpr uint16_t CYAN = 0x07FF;
-  static constexpr uint16_t menu_bg = 0x4A69;          // Dark slate grey
-  static constexpr uint16_t item_bg = 0xAD55;          // Light grey
-  static constexpr uint16_t item_selected_bg = 0x001F; // Navy blue
-  static constexpr uint16_t frame = 0x7BEF;            // Silver
+
+  // Vibrant menu colors
+  static constexpr uint16_t menu_bg = 0x081A;          // Deep purple
+  static constexpr uint16_t item_bg = 0xFD20;          // Vivid orange
+  static constexpr uint16_t item_selected_bg = 0xF81F; // Electric magenta
+  static constexpr uint16_t frame = 0x07FF;            // Cyan
   static constexpr uint16_t title_text = 0xFFFF;       // White
+  static constexpr uint16_t scroll_indicator = 0xAF5D; // Gold
 };
 
 enum class ScreenRotation : uint8_t { VERTICAL = 0, HORIZONTAL = 1 };

@@ -144,52 +144,49 @@ private:
     canvas_->setRotation(rotation_);
     deleteSprites();
     createSprites();
-    calculateMenuMetrics(); // Recalculate metrics after rotation
+    calculateMenuMetrics();
     needsRedraw = true;
   }
   void drawMenuFramework() {
-    bg_->fillScreen(TFT_BLACK);
+    bg_->fillScreen(Colors::black);
 
-    // Draw menu background with Colors::menu
+    // Draw menu background with vibrant purple
     bg_->fillRoundRect(10, 10, bg_->width(), bg_->height() - 20,
-                       menuMetrics.radius, Colors::logo);
+                       menuMetrics.radius, Colors::menu_bg);
     bg_->drawRoundRect(10, 10, bg_->width() - 20, bg_->height() - 20,
                        menuMetrics.radius, Colors::frame);
 
-    // Title with Colors::CYAN
+    // Title with white text
     const char *title = "Main Menu";
     bg_->setFreeFont(&Orbitron_Medium_18);
-    bg_->setTextColor(Colors::title_text, Colors::logo);
+    bg_->setTextColor(Colors::title_text, Colors::menu_bg);
     bg_->drawString(title, (bg_->width() - bg_->textWidth(title)) / 2, 15);
   }
-
   void drawMenuItem(int16_t yPos, size_t itemIndex) {
     const bool isSelected = (itemIndex == cursorIndex_);
-    const int16_t itemWidth = bg_->width() - 40; // Adjusted for better margin
+    const int16_t itemWidth = bg_->width() - 40;
     char truncatedLabel[32];
 
     bg_->setFreeFont(&FreeSans12pt7b);
     bg_->setTextSize(1);
 
-    // Truncate text to fit within itemWidth
-    truncateText(menuItems_[itemIndex].label, truncatedLabel,
-                 itemWidth - 20); // Allow padding
+    truncateText(menuItems_[itemIndex].label, truncatedLabel, itemWidth - 20);
 
-    // Calculate text position
     int16_t textX = 20 + (itemWidth - bg_->textWidth(truncatedLabel)) / 2;
     int16_t textY = yPos + (menuMetrics.textHeight - bg_->fontHeight()) / 2;
 
-    // Draw background and text
+    // Vibrant orange/magenta backgrounds
     bg_->fillRoundRect(20, yPos, itemWidth, menuMetrics.textHeight,
                        menuMetrics.radius,
                        isSelected ? Colors::item_selected_bg : Colors::item_bg);
+
+    // High-contrast text colors
     bg_->setTextColor(isSelected ? Colors::white : Colors::black);
     bg_->drawString(truncatedLabel, textX, textY);
 
-    // Draw selection border
     if (isSelected) {
       bg_->drawRoundRect(20, yPos, itemWidth, menuMetrics.textHeight,
-                         menuMetrics.radius, TFT_WHITE);
+                         menuMetrics.radius, Colors::cursor); // Yellow border
     }
   }
 
@@ -199,11 +196,10 @@ private:
 
     // Draw scroll indicators if needed
     if (scrollOffset > 0) {
-      drawTriangle(bg_->width() / 2, startY - 15, Colors::white, true);
+      drawTriangle(bg_->width() / 2, startY - 15, true);
     }
     if (scrollOffset < menuItemCount_ - visible_items) {
-      drawTriangle(bg_->width() / 2, startY + visibleHeight + 5, Colors::white,
-                   false);
+      drawTriangle(bg_->width() / 2, startY + visibleHeight + 5, false);
     }
 
     // Draw each visible item
@@ -216,10 +212,11 @@ private:
     }
   }
 
-  void drawTriangle(int16_t x, int16_t y, uint16_t color, bool up) {
+  void drawTriangle(int16_t x, int16_t y, bool up) {
     const uint8_t size = 8;
     bg_->fillTriangle(x - size, y + (up ? size : 0), x + size,
-                      y + (up ? size : 0), x, y + (up ? 0 : size), color);
+                      y + (up ? size : 0), x, y + (up ? 0 : size),
+                      Colors::scroll_indicator);
   }
 
   // void setUpSprites(GPSU::ProcessType type);
