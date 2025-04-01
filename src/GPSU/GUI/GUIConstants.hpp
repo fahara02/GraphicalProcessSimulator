@@ -37,7 +37,7 @@ static constexpr uint8_t TANK_HEIGHT = FRAME_HEIGHT - 2 * TANK_BORDER_THK;
 
 static constexpr uint8_t MENU_FONT = 4;
 
-static constexpr uint8_t MENU_VERTICAL_PADDING = 2;
+static constexpr uint8_t MENU_VERTICAL_PADDING = 5;
 
 struct Colors {
   static constexpr uint16_t black = 0x0000;

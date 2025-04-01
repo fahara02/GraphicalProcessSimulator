@@ -116,12 +116,10 @@ private:
   void change_to_horizontal();
 
   // helpers
-  // In the calculateMenuMetrics function, adjust visible_items dynamically
+
   void calculateMenuMetrics() {
     const ScreenRotation rotation = getScreenRotation();
     menuMetrics.padding = PADDING_PX;
-
-    // Set the font used for menu items to get accurate height
     bg_->setFreeFont(&FreeSans12pt7b);
     menuMetrics.textHeight = bg_->fontHeight();
 
