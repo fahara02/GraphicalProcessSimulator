@@ -329,7 +329,8 @@ void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
     bg_->fillSprite(Colors::black);
-    bg_->pushImage(0, 0, 240, 130, Asset::plant2);
+    bg_->setSwapBytes(false);
+
   } else if (setup_traffic) {
     bg_->fillSprite(Colors::black);
     bg_->setSwapBytes(true);
@@ -402,37 +403,34 @@ void Display::updateObjectCounter(Command cmd) {
   const char *state_string = GPSU::Util::ToString::OCState(state);
   label_->drawString(state_string, 5, 20, MENU_FONT);
 
-  // Draw conveyor background
-  layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, TFT_BLUE, TFT_BLACK);
-  layer_1->fillSmoothRoundRect(0, 60, 230, 20, 10, TFT_DARKGREY, TFT_BLACK);
+  layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, Colors::NAVY, Colors::black);
 
-  // Gradient::drawCustomGradient<50>(layer_1.get(), 0, 60, 230, 20,
-  //                                  Gradient::lines);
-
-  // Clear previous items from layer_2
-  // layer_2->fillSprite(TFT_BLACK);
-
-  // Conveyor dimensions
-  const uint16_t conveyor_pixel_width = 230; // Matches gradient width
-  const uint16_t conveyor_length_mm =
-      cmd.contexts.oc_context.config.conv_length;
-  Serial.printf("item count =%d\n", cmd.contexts.oc_context.obj_cnt);
-  // Draw each item
-  for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {
-    const auto &obj = cmd.contexts.oc_context.items[i];
-    Items::State state = obj.state;
-    // Scale position and length to pixels
-    uint16_t scaled_x = (obj.x_pos / 4);
-    uint16_t object_length_px = 12;
-    int id = obj.id;
-    Serial.printf("item id%d position = %d mm\n", id, scaled_x);
-
-    // Position item on conveyor (adjust y as needed)
-    uint16_t y_pos = 20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
-
-    drawData data = {scaled_x, y_pos, 30, 30, id};
-    drawBox(layer_2.get(), data, state);
+  // Conveyor belt surface with perspective
+  for (int y = 60; y < 80; y++) {
+    uint16_t line_color =
+        interpolateColor(Colors::SILVER, Colors::DARKGREY, y - 60);
+    layer_1->drawFastHLine(5, y, 230, line_color);
   }
+
+  if (cmd.contexts.oc_context.obj_cnt > 0) {
+    for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {
+      const auto &obj = cmd.contexts.oc_context.items[i];
+      Items::State state = obj.state;
+      // Scale position and length to pixels
+      uint16_t scaled_x = (obj.x_pos / 4);
+      uint16_t object_length_px = 12;
+      int id = obj.id;
+      LOG::INFO("GUI", "item id %d in pos = %d mm\n", id, scaled_x);
+
+      // Position item on conveyor (adjust y as needed)
+      uint16_t y_pos =
+          20; // Align with conveyor's y=60 in layer_1 (60 - 55 = 5)
+
+      drawData data = {scaled_x, y_pos, 30, 30, id};
+      drawBox(layer_2.get(), data, state);
+    }
+  }
+  // Draw each item
 
   // Draw layers to main display
   layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
@@ -441,45 +439,42 @@ void Display::updateObjectCounter(Command cmd) {
 
 void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   using State = Items::State;
-  bool draw_object = false;
-  uint32_t color = 0;
-  const uint16_t *imgdata = nullptr;
+  sprite->setSwapBytes(false);
+  uint32_t fill_color = 0;
+  uint32_t border_color =
+      Colors::white; // Non-black border to prevent transparency
 
   switch (state) {
-  case State::INIT:
-    break;
   case State::PLACED:
-    color = TFT_BLUE;
-    draw_object = true;
-
+    fill_color = 0x001F; // Dark blue (non-black)
     break;
   case State::SENSED:
-    color = TFT_YELLOW;
-    draw_object = true;
-
+    fill_color = 0xFFE0; // Yellow
     break;
   case State::ARRIVAL:
-    color = TFT_DARKGREEN;
-    draw_object = true;
-
+    fill_color = 0x07E0; // Bright green
     break;
   case State::PICKED:
-    color = TFT_DARKGREY;
-    draw_object = true;
-
+    fill_color = 0x7BEF; // Mid-gray
     break;
   case State::FAILED:
-    color = TFT_RED;
-    draw_object = true;
-
+    fill_color = 0xF800; // Red
     break;
   default:
-    break;
+    return;
   }
-  if (draw_object) {
-    // sprite->fillRect(data.x, data.y, data.w, data.h, color);
-    sprite->pushImage(data.x, data.y, 40, 40, Asset::box);
-  }
+
+  // Draw 3D-styled box
+  sprite->fillRoundRect(data.x, data.y, data.w, data.h, 3, fill_color);
+  sprite->drawRoundRect(data.x, data.y, data.w, data.h, 3, border_color);
+
+  // Optional: Add highlight/shadow effects
+  sprite->drawFastHLine(data.x + 2, data.y + 2, data.w - 4,
+                        lightenColor(fill_color));
+  sprite->drawFastVLine(data.x + 2, data.y + 2, data.h - 4,
+                        lightenColor(fill_color));
+  sprite->drawFastHLine(data.x + 2, data.y + data.h - 3, data.w - 4,
+                        darkenColor(fill_color));
 }
 
 // void Display::updateWaterLevelDisplay(const int state, int level) {

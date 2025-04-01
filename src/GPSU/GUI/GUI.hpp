@@ -240,6 +240,18 @@ private:
       output[strlen(output) - 2] = '.';
     }
   }
+  // Helpers for visual depth
+  uint16_t lightenColor(uint16_t color) {
+    return ((color & 0xF79E) >> 1) + 0x4210; // Lighten by ~20%
+  }
+
+  uint16_t darkenColor(uint16_t color) {
+    return (color & 0xF79E) >> 1; // Darken by ~20%
+  }
+
+  uint16_t interpolateColor(uint16_t c1, uint16_t c2, uint8_t ratio) {
+    return ((c1 & 0xF81F) * (255 - ratio) + (c2 & 0xF81F) * ratio) >> 8;
+  }
 };
 
 } // namespace GUI
