@@ -183,7 +183,7 @@ public:
       : ObjectCounterSM(Context{}, State::INIT, io) {}
 
   void updateInternalState(const Inputs &input) {
-    ctx_.inputs = input;
+
     check_ui_inputs(input);
     updateMode(input.ui.manual_mode);
     uint32_t currentTime = millis();
@@ -193,31 +193,7 @@ public:
     if (current() == State::RUNNING) {
       ctx_.data.timing.runtime += delta;
       updateObjects(ctx_.data.timing.runtime);
-
-      // Process picking for all items at picker
-      // for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
-      //   auto &obj = ctx_.items[i];
-      // if (obj.state == Items::State::ARRIVAL) {
-      //   if (ctx_.mode == Mode::AUTO) {
-      //     if (ctx_.data.timing.runtime >= obj.data.pick_attempt &&
-      //         ctx_.data.timing.runtime <= obj.data.deadline) {
-      //       obj.state = Items::State::PICKED;
-      //       LOG::DEBUG("Item id= %d  is PICKED \n", obj.id);
-      //       ctx_.data.stat.ok++;
-      //     }
-      //   } else { // MANUAL mode
-      //     if (ctx_.inputs.ui.pick && currentTime <= obj.data.deadline) {
-      //       obj.state = Items::State::PICKED;
-      //       ctx_.data.stat.ok++;
-      //     } else if (currentTime > obj.data.deadline) {
-      //       obj.state = Items::State::FAILED;
-      //       ctx_.data.stat.failed++;
-      //     }
-      //   }
-      // }
-      // }
       removeFailed();
-
       if (ctx_.inputs.timer.t1_expired) {
         addObject(ctx_.data.timing.runtime);
         ctx_.inputs.timer.t1_expired = false;
@@ -247,7 +223,6 @@ private:
     item.on_conv = true;
     item.data = {runtime, runtime + ctx_.config.sense_delay,
                  runtime + ctx_.config.pick_delay, 0, 0};
-
     ctx_.items[ctx_.obj_cnt++] = item;
     ctx_.id_cnt++;
     LOG::DEBUG("OC_SM", "Item id= %d placed\n", item.id);
@@ -257,7 +232,6 @@ private:
 
     for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
       auto &item = ctx_.items[i];
-
       // Update x_position
       if (item.state != Items::State::PICKED &&
           item.state != Items::State::FAILED) {
@@ -296,17 +270,20 @@ private:
         pickerProcessing(item, runtime);
         LOG::DEBUG("OC_SM", "Item %d at picker\n", item.id);
       }
+      bool pick_state = false;
       if (item.state == Items::State::ARRIVAL) {
         if (ctx_.mode == Mode::AUTO) {
           if (ctx_.data.timing.runtime >= item.data.pick_attempt &&
               ctx_.data.timing.runtime <= item.data.deadline) {
             item.state = Items::State::PICKED;
+            trigger_pick(item.id, true);
             LOG::DEBUG("OC_SM", "Item id= %d  is PICKED \n", item.id);
             ctx_.data.stat.ok++;
           }
         } else { // MANUAL mode
           if (ctx_.inputs.ui.pick && runtime <= item.data.deadline) {
             item.state = Items::State::PICKED;
+            trigger_pick(item.id, true);
             ctx_.data.stat.ok++;
             LOG::DEBUG("OC_SM", "Item id= %d  is Manual PICKED \n", item.id);
           } else if (runtime > item.data.deadline) {
@@ -315,6 +292,11 @@ private:
             ctx_.data.stat.failed++;
           }
         }
+      }
+      if (ctx_.mode == Mode::AUTO && runtime >= ctx_.config.pick_timeout) {
+        trigger_pick(item.id, false);
+      } else if (ctx_.mode == Mode::MANUAL && !ctx_.inputs.ui.pick) {
+        trigger_pick(item.id, false);
       }
     }
   }
@@ -353,6 +335,10 @@ private:
     bool level = ctx_.inputs.sensors.photoeye;
     io_->digitalWrite(GPA1, level);
     LOG::TEST("OC_SM", "Simulating sensor Item %d sensed\n", id);
+  }
+  void trigger_pick(int id, bool level) {
+    io_->digitalWrite(GPA2, level);
+    LOG::TEST("OC_SM", "Simulating pick Item %d sensed\n", id);
   }
 
   void check_ui_inputs(const Inputs &input) {

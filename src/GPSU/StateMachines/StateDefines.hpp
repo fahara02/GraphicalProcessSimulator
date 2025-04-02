@@ -442,10 +442,12 @@ struct Config {
   static constexpr uint32_t sim_pick_delay = 20;
   static constexpr uint8_t max_objs = 10;
   static constexpr uint32_t sensor_latch = 2000;
+  static constexpr uint32_t pick_latch = 1000;
 
   // Derived timings (calculated once during initialization)
   uint32_t sense_delay; //
   uint32_t sense_timeout;
+  uint32_t pick_timeout;
   uint32_t pick_delay;     //
   uint32_t place_interval; //
   uint32_t auto_timeout;   //
@@ -454,7 +456,9 @@ struct Config {
   Config() {
     sense_delay = (sen_pos * 1000) / conv_mmps;
     sense_timeout = sense_delay + sensor_latch;
+
     pick_delay = (pick_pos * 1000) / conv_mmps;
+    pick_timeout = pick_delay + pick_latch;
     place_interval = placement_rate * 1000;
     auto_timeout = pick_delay + sim_pick_delay;
     manual_timeout = 2000;

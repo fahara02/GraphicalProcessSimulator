@@ -112,11 +112,12 @@ public:
     dataUpdated_ = true;
     return update();
   }
-  void updateData(const Inputs &newInput) {
+  Command updateData(const Inputs &newInput) {
 
     ctx_.inputs = newInput;
     static_cast<Derived *>(this)->updateInternalState(newInput);
     dataUpdated_ = true;
+    return update();
   }
   void handleEvent(const Event ev) {
     static_cast<Derived *>(this)->updateInternalState(ev);
