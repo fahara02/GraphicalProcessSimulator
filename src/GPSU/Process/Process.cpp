@@ -15,7 +15,7 @@ Process::Process()
     : sda_(GPIO_NUM_25), scl_(GPIO_NUM_33), reset_(GPIO_NUM_13),
       pinA_(GPIO_NUM_37), pinB_(GPIO_NUM_38), btn_(GPIO_NUM_32),
       display_(GUI::Display::getInstance(process_list, process_count)),
-      io_(std::make_unique<COMPONENT::MCP23017>(sda_, scl_, reset_)),
+      io_(std::make_shared<COMPONENT::MCP23017>(sda_, scl_, reset_)),
       menu_(std::make_unique<MenuSelector>(process_list, process_count, 4,
                                            pinA_, pinB_, btn_)),
 
@@ -57,7 +57,7 @@ void Process::startProcess(ProcessType type) {
     stsm_->init();
     break;
   case ProcessType::OBJECT_COUNTER:
-    ocsm_ = std::make_unique<SM::ObjectCounterSM>();
+    ocsm_ = std::make_unique<SM::ObjectCounterSM>(io_);
     vTaskDelay(100);
     ocsm_->init();
     break;
@@ -226,7 +226,6 @@ TrafficLight::Context GPSU::Process::mapUserCommand(TrafficLight::Context ctx) {
   }
   return ctx;
 }
-
 
 ObjectCounter::Context
 GPSU::Process::mapUserCommand(ObjectCounter::Context ctx) {

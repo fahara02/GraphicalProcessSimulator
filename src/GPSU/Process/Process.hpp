@@ -35,7 +35,7 @@ protected:
   gpio_num_t pinB_;
   gpio_num_t btn_;
   GUI::Display &display_;
-  std::unique_ptr<COMPONENT::MCP23017> io_;
+  std::shared_ptr<COMPONENT::MCP23017> io_;
   std::unique_ptr<MenuSelector> menu_;
   // std::unique_ptr<Pulse::Counter> counter_;
   std::unique_ptr<SM::TrafficLightSM> tlsm_;

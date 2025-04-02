@@ -1,6 +1,7 @@
 // ObjectCounter.hpp
 #pragma once
 #include "Arduino.h"
+#include "MCP23017.hpp"
 #include "StateMachines/StateDefines.hpp"
 #include "StateMachines/StateMachine.hpp"
 #include "Utility/gpsuUtility.hpp"
@@ -170,18 +171,21 @@ public:
   using Event = ObjectCounter::Event;
   using Mode = ObjectCounter::Mode;
   using Item = ObjectCounter::Item;
+  using IO = COMPONENT::MCP23017;
 
-  explicit ObjectCounterSM(const Context &context, State state)
-      : StateMachine(context, state, true, false) {
+  explicit ObjectCounterSM(const Context &context, State state,
+                           std::shared_ptr<COMPONENT::MCP23017> io)
+      : StateMachine(context, state, true, false), io_(io) {
     register_callback(transitionCb);
   }
 
-  ObjectCounterSM() : ObjectCounterSM(Context{}, State::INIT) {}
+  ObjectCounterSM(std::shared_ptr<COMPONENT::MCP23017> io)
+      : ObjectCounterSM(Context{}, State::INIT, io) {}
 
   void updateInternalState(const Inputs &input) {
+    ctx_.inputs = input;
     check_ui_inputs(input);
     updateMode(input.ui.manual_mode);
-    // ctx_.inputs = input;
     uint32_t currentTime = millis();
     uint32_t delta = currentTime - ctx_.data.timing.now;
     ctx_.data.timing.now = currentTime;
@@ -189,30 +193,29 @@ public:
     if (current() == State::RUNNING) {
       ctx_.data.timing.runtime += delta;
       updateObjects(ctx_.data.timing.runtime);
-      simulateSensor();
 
       // Process picking for all items at picker
-      for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
-        auto &obj = ctx_.items[i];
-        if (obj.state == Items::State::ARRIVAL) {
-          if (ctx_.mode == Mode::AUTO) {
-            if (ctx_.data.timing.runtime >= obj.data.pick_attempt &&
-                ctx_.data.timing.runtime <= obj.data.deadline) {
-              obj.state = Items::State::PICKED;
-              LOG::DEBUG("Item id= %d  is PICKED \n", obj.id);
-              ctx_.data.stat.ok++;
-            }
-          } else { // MANUAL mode
-            if (ctx_.inputs.ui.pick && currentTime <= obj.data.deadline) {
-              obj.state = Items::State::PICKED;
-              ctx_.data.stat.ok++;
-            } else if (currentTime > obj.data.deadline) {
-              obj.state = Items::State::FAILED;
-              ctx_.data.stat.failed++;
-            }
-          }
-        }
-      }
+      // for (uint8_t i = 0; i < ctx_.obj_cnt; i++) {
+      //   auto &obj = ctx_.items[i];
+      // if (obj.state == Items::State::ARRIVAL) {
+      //   if (ctx_.mode == Mode::AUTO) {
+      //     if (ctx_.data.timing.runtime >= obj.data.pick_attempt &&
+      //         ctx_.data.timing.runtime <= obj.data.deadline) {
+      //       obj.state = Items::State::PICKED;
+      //       LOG::DEBUG("Item id= %d  is PICKED \n", obj.id);
+      //       ctx_.data.stat.ok++;
+      //     }
+      //   } else { // MANUAL mode
+      //     if (ctx_.inputs.ui.pick && currentTime <= obj.data.deadline) {
+      //       obj.state = Items::State::PICKED;
+      //       ctx_.data.stat.ok++;
+      //     } else if (currentTime > obj.data.deadline) {
+      //       obj.state = Items::State::FAILED;
+      //       ctx_.data.stat.failed++;
+      //     }
+      //   }
+      // }
+      // }
       removeFailed();
 
       if (ctx_.inputs.timer.t1_expired) {
@@ -233,6 +236,7 @@ public:
   }
 
 private:
+  std::shared_ptr<COMPONENT::MCP23017> io_;
   void addObject(uint32_t runtime) {
     if (ctx_.obj_cnt >= Context::Config::max_objs)
       return;
@@ -271,24 +275,19 @@ private:
       }
 
       if (!item.sensed) {
-
-        if (ctx_.mode == Mode::MANUAL) {
-          if (runtime >= item.data.sense_time) {
-            item.state = Items::State::SENSED;
-            item.sensed = true;
-            ctx_.event = Event::SENSED;
-            ctx_.inputs.sensors.photoeye = true;
-            LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
-          }
+        // manual and auto both will have same
+        if (runtime >= item.data.sense_time) {
+          item.state = Items::State::SENSED;
+          item.sensed = true;
+          ctx_.event = Event::SENSED;
+          ctx_.inputs.sensors.photoeye = true;
+          LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
+        } else if (item.state != Items::State::SENSED ||
+                   runtime >= ctx_.config.sense_timeout) {
+          ctx_.inputs.sensors.photoeye = false;
         }
       }
-      if (!item.sensed && runtime >= item.data.sense_time) {
-        item.state = Items::State::SENSED;
-        item.sensed = true;
-        ctx_.event = Event::SENSED;
-        LOG::DEBUG("OC_SM", "Item %d sensed\n", item.id);
-      }
-
+      simulateSensor(item.id);
       // Check for ARRIVAL transition
       if (!item.at_pick && runtime >= item.data.pick_time) {
         item.state = Items::State::ARRIVAL;
@@ -296,6 +295,26 @@ private:
         ctx_.event = Event::ARRIVAL;
         pickerProcessing(item, runtime);
         LOG::DEBUG("OC_SM", "Item %d at picker\n", item.id);
+      }
+      if (item.state == Items::State::ARRIVAL) {
+        if (ctx_.mode == Mode::AUTO) {
+          if (ctx_.data.timing.runtime >= item.data.pick_attempt &&
+              ctx_.data.timing.runtime <= item.data.deadline) {
+            item.state = Items::State::PICKED;
+            LOG::DEBUG("OC_SM", "Item id= %d  is PICKED \n", item.id);
+            ctx_.data.stat.ok++;
+          }
+        } else { // MANUAL mode
+          if (ctx_.inputs.ui.pick && runtime <= item.data.deadline) {
+            item.state = Items::State::PICKED;
+            ctx_.data.stat.ok++;
+            LOG::DEBUG("OC_SM", "Item id= %d  is Manual PICKED \n", item.id);
+          } else if (runtime > item.data.deadline) {
+            item.state = Items::State::FAILED;
+            LOG::DEBUG("OC_SM", "Item id= %d  is failed to  PICK \n", item.id);
+            ctx_.data.stat.failed++;
+          }
+        }
       }
     }
   }
@@ -330,9 +349,10 @@ private:
     }
     ctx_.obj_cnt = newCount;
   }
-  void simulateSensor() {
-    if (ctx_.inputs.sensors.photoeye) {
-    }
+  void simulateSensor(int id) {
+    bool level = ctx_.inputs.sensors.photoeye;
+    io_->digitalWrite(GPA1, level);
+    LOG::TEST("OC_SM", "Simulating sensor Item %d sensed\n", id);
   }
 
   void check_ui_inputs(const Inputs &input) {

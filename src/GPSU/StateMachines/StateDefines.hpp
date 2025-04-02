@@ -309,14 +309,11 @@ struct Data {
   // Position tracking
   int32_t current_position = 0;
   int32_t target_position = 0;
-
   // Movement parameters
   uint16_t current_rpm = 0;
   bool current_direction = true;
-
   // Timing
   unsigned long move_start_time = 0;
-
   // Error tracking
   uint8_t error_code = 0;
 };
@@ -444,9 +441,11 @@ struct Config {
   static constexpr int32_t placement_rate = 10;
   static constexpr uint32_t sim_pick_delay = 20;
   static constexpr uint8_t max_objs = 10;
+  static constexpr uint32_t sensor_latch = 2000;
 
   // Derived timings (calculated once during initialization)
-  uint32_t sense_delay;    //
+  uint32_t sense_delay; //
+  uint32_t sense_timeout;
   uint32_t pick_delay;     //
   uint32_t place_interval; //
   uint32_t auto_timeout;   //
@@ -454,11 +453,11 @@ struct Config {
 
   Config() {
     sense_delay = (sen_pos * 1000) / conv_mmps;
+    sense_timeout = sense_delay + sensor_latch;
     pick_delay = (pick_pos * 1000) / conv_mmps;
     place_interval = placement_rate * 1000;
     auto_timeout = pick_delay + sim_pick_delay;
     manual_timeout = 2000;
-    ;
   }
 };
 struct Inputs {
