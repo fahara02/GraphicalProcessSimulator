@@ -350,11 +350,22 @@ private:
       return;
     } else {
       pinStatus = static_cast<uint8_t>(raw_value);
-      ctx_.inputs.ui.start = (pinStatus >> 1) & 0x01;
-      ctx_.inputs.ui.ack = (pinStatus >> 2) & 0x01;
-      ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01;
-      ctx_.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
-      ctx_.inputs.new_data = true;
+      if (ctx_.inputs.ui.start != (pinStatus >> 1) & 0x01) {
+        ctx_.inputs.ui.start = (pinStatus >> 1) & 0x01;
+        ctx_.inputs.new_data = true;
+      }
+      if (ctx_.inputs.ui.ack != (pinStatus >> 2) & 0x01) {
+        ctx_.inputs.ui.ack = (pinStatus >> 2) & 0x01;
+        ctx_.inputs.new_data = true;
+      }
+      if (ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01) {
+        ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01;
+        ctx_.inputs.new_data = true;
+      }
+      if (ctx_.inputs.ui.manual_mode != (pinStatus >> 4) & 0x01) {
+        ctx_.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+        ctx_.inputs.new_data = true;
+      }
     }
     if (ctx_.inputs.new_data) {
       if (ctx_.inputs.ui.start) {
