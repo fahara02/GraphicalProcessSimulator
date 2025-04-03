@@ -184,8 +184,8 @@ public:
 
   void updateInternalState(const Inputs &input) {
 
-    check_ui_inputs(input);
-    updateMode(input.ui.manual_mode);
+    check_ui_inputs();
+    updateMode(ctx_.inputs.ui.manual_mode);
     uint32_t currentTime = millis();
     uint32_t delta = currentTime - ctx_.data.timing.now;
     ctx_.data.timing.now = currentTime;
@@ -341,17 +341,21 @@ private:
     LOG::TEST("OC_SM", "Simulating pick Item %d sensed\n", id);
   }
 
-  void check_ui_inputs(const Inputs &input) {
-
-    if (input.ui.start) {
+  void check_ui_inputs() {
+    uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
+    ctx_.inputs.ui.start = (pinStatus >> 1) & 0x01;
+    ctx_.inputs.ui.ack = (pinStatus >> 2) & 0x01;
+    ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01;
+    ctx_.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+    if (ctx_.inputs.ui.start) {
       LOG::DEBUG("OC_SM", "Start");
-    } else if (!input.ui.start) {
+    } else if (!ctx_.inputs.ui.start) {
       LOG::DEBUG("OC_SM", "stop");
-    } else if (input.ui.ack) {
+    } else if (ctx_.inputs.ui.ack) {
       LOG::DEBUG("OC_SM", "ackknowledged");
-    } else if (input.ui.pick) {
+    } else if (ctx_.inputs.ui.pick) {
       LOG::DEBUG("OC_SM", "Pick");
-    } else if (input.ui.manual_mode) {
+    } else if (ctx_.inputs.ui.manual_mode) {
       LOG::DEBUG("OC_SM", "MANUAL MODE");
     }
   }

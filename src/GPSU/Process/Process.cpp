@@ -323,15 +323,18 @@ void Process::object_counter_task(void *param) {
       vTaskDelete(NULL);
       break;
     }
-    ObjectCounter::Command oc_cmd = instance->ocsm_->updateData();
     const auto &ctx = instance->ocsm_->getContext();
+    // auto new_ctx = instance->mapUserCommand(ctx);
+    // ObjectCounter::Command oc_cmd =
+    // instance->ocsm_->updateData(new_ctx.inputs);
+    ObjectCounter::Command oc_cmd = instance->ocsm_->updateData();
 
     GUI::Command cmd;
     cmd.type = GUI::CmdType::UPDATE_COUNTER;
     cmd.contexts.oc_context = ctx;
     instance->display_.sendDisplayCommand(cmd);
 
-    vTaskDelay(pdMS_TO_TICKS(100)); // Update every second
+    vTaskDelay(pdMS_TO_TICKS(200)); // Update every second
   }
   vTaskDelete(NULL);
 }

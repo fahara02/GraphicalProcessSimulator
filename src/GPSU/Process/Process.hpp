@@ -25,7 +25,7 @@ public:
   void deleteProcess(ProcessType type);
   void startProcess(ProcessType type);
   void switchToProcess(ProcessType new_type);
-  static constexpr uint16_t process_task_depth = 4096;
+  static constexpr uint16_t process_task_depth = 8192;
 
 protected:
   gpio_num_t sda_;
