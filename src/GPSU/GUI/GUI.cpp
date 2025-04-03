@@ -463,7 +463,7 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   }
 
   // Draw 3D-styled box
-  LOG::DEBUG("GUI", "DRAWING BOXES.........");
+
   sprite->fillRoundRect(data.x, data.y, data.w, data.h, 3, fill_color);
   sprite->drawRoundRect(data.x, data.y, data.w, data.h, 3, border_color);
 

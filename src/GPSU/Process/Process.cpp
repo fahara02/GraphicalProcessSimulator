@@ -323,11 +323,12 @@ void Process::object_counter_task(void *param) {
       vTaskDelete(NULL);
       break;
     }
-    const auto &ctx = instance->ocsm_->getContext();
+
     // auto new_ctx = instance->mapUserCommand(ctx);
     // ObjectCounter::Command oc_cmd =
     // instance->ocsm_->updateData(new_ctx.inputs);
     ObjectCounter::Command oc_cmd = instance->ocsm_->updateData();
+    const auto &ctx = instance->ocsm_->getContext();
 
     GUI::Command cmd;
     cmd.type = GUI::CmdType::UPDATE_COUNTER;

@@ -342,21 +342,32 @@ private:
   }
 
   void check_ui_inputs() {
-    uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
-    ctx_.inputs.ui.start = (pinStatus >> 1) & 0x01;
-    ctx_.inputs.ui.ack = (pinStatus >> 2) & 0x01;
-    ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01;
-    ctx_.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
-    if (ctx_.inputs.ui.start) {
-      LOG::DEBUG("OC_SM", "Start");
-    } else if (!ctx_.inputs.ui.start) {
-      LOG::DEBUG("OC_SM", "stop");
-    } else if (ctx_.inputs.ui.ack) {
-      LOG::DEBUG("OC_SM", "ackknowledged");
-    } else if (ctx_.inputs.ui.pick) {
-      LOG::DEBUG("OC_SM", "Pick");
-    } else if (ctx_.inputs.ui.manual_mode) {
-      LOG::DEBUG("OC_SM", "MANUAL MODE");
+    uint8_t pinStatus = 0;
+    int raw_value = io_->digitalRead(MCP::PORT::GPIOB);
+    if (raw_value == -1) {
+      LOG::ERROR("OC_SM", "ERROR READING MCP");
+      ctx_.inputs.new_data = false;
+      return;
+    } else {
+      pinStatus = static_cast<uint8_t>(raw_value);
+      ctx_.inputs.ui.start = (pinStatus >> 1) & 0x01;
+      ctx_.inputs.ui.ack = (pinStatus >> 2) & 0x01;
+      ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01;
+      ctx_.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
+      ctx_.inputs.new_data = true;
+    }
+    if (ctx_.inputs.new_data) {
+      if (ctx_.inputs.ui.start) {
+        LOG::DEBUG("OC_SM", "Start");
+      } else if (!ctx_.inputs.ui.start) {
+        LOG::DEBUG("OC_SM", "stop");
+      } else if (ctx_.inputs.ui.ack) {
+        LOG::DEBUG("OC_SM", "ackknowledged");
+      } else if (ctx_.inputs.ui.pick) {
+        LOG::DEBUG("OC_SM", "Pick");
+      } else if (ctx_.inputs.ui.manual_mode) {
+        LOG::DEBUG("OC_SM", "MANUAL MODE");
+      }
     }
   }
 };
