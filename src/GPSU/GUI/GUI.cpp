@@ -272,6 +272,7 @@ void Display::processScreenSetup() {
     bg_->fillSprite(Colors::white);
     bg_->setSwapBytes(true);
     bg_->pushImage(0, 80, 240, 69, Asset::conv_belt2);
+    bg_->pushImage(55, 5, 40, 60, Asset::sensor);
   } else if (setup_traffic) {
     bg_->fillSprite(Colors::black);
     bg_->setSwapBytes(true);
@@ -343,12 +344,12 @@ void Display::updateObjectCounter(Command cmd) {
   label_->unloadFont();
   label_->loadFont(NotoSansMonoSCB20);
   label_->setTextColor(swapBytes(Colors::logo), Colors::white);
-  label_->drawString("OBJECT_COUNTER", 5, 5);
+  label_->drawString("OBJECT_COUNTER", 50, 5);
   ObjectCounter::State state = cmd.contexts.oc_context.curr;
-  const char *state_string = GPSU::Util::ToString::OCState(state);
-  label_->unloadFont();
-  label_->setFreeFont(&Orbitron_Medium_18);
-  label_->drawString(state_string, 5, 30);
+  // const char *state_string = GPSU::Util::ToString::OCState(state);
+  // label_->unloadFont();
+  // label_->setFreeFont(&Orbitron_Medium_18);
+  // label_->drawString(state_string, 5, 30);
 
   if (cmd.contexts.oc_context.obj_cnt > 0) {
     for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {
@@ -368,10 +369,7 @@ void Display::updateObjectCounter(Command cmd) {
       drawBox(layer_1.get(), data, state);
     }
   }
-  // Draw each item
 
-  // Draw layers to main display
-  // layer_2->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
   processScreenExecute();
 }
 
