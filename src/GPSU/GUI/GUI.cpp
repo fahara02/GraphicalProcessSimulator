@@ -239,65 +239,6 @@ void Display::showMenu() {
   drawMenuItems();
   bg_->pushSprite(0, 0);
 }
-// void Display::showMenu() {
-//   current_process_ = GPSU::ProcessType::ANY;
-//   // Clear the screen with a black background
-//   bg_->fillScreen(TFT_BLACK);
-
-//   // Define constants for layout
-//   const int16_t padding = PADDING_PX;
-//   const int16_t fontSize = MENU_FONT;
-//   bg_->setFreeFont(&Orbitron_Medium_18);
-//   const int16_t textHeight = 18;
-//   const int16_t itemHeight = textHeight + MENU_VERTICAL_PADDING;
-//   // Define frame padding
-//   const int16_t frame_padding = 2; // Adjustable padding around the frame
-//   // Calculate frame top and bottom positions
-//   int16_t y_frame_top = padding - frame_padding;
-//   if (y_frame_top < 0)
-//     y_frame_top = 0;
-//   int16_t y_frame_bottom =
-//       padding + (menuItemCount_ + 1) * itemHeight + frame_padding;
-//   if (y_frame_bottom > bg_->height())
-//     y_frame_bottom = bg_->height(); // Cap at screen height
-
-//   // Draw the frame around the menu
-//   bg_->drawRect(0, y_frame_top, bg_->width(), y_frame_bottom - y_frame_top,
-//                 static_cast<uint16_t>(Colors::white));
-
-//   // Draw the title "Main Menu"
-//   const char *title = "Main Menu";
-//   int16_t title_width = bg_->textWidth(title, fontSize);
-//   int16_t x_title = (bg_->width() - title_width) / 2;
-//   int16_t y_title = padding + (itemHeight - textHeight) / 2;
-//   bg_->setTextColor(static_cast<uint16_t>(Colors::main),
-//                     static_cast<uint16_t>(Colors::black));
-//   bg_->drawString(title, x_title, y_title, fontSize);
-
-//   for (size_t i = 0; i < menuItemCount_; i++) {
-//     int16_t yPos = padding + (i + 1) * itemHeight;
-
-//     if (i == cursorIndex_) {
-//       bg_->fillRect(0, yPos, bg_->width(), itemHeight,
-//                     static_cast<uint16_t>(Colors::logo));
-//     }
-
-//     // Calculate text dimensions
-//     int16_t textWidth = bg_->textWidth(menuItems_[i].label, fontSize);
-//     int16_t xPos = (bg_->width() - textWidth) / 2;
-//     int16_t adjustedYPos = yPos + (itemHeight - textHeight) / 2;
-//     Colors textColor = Colors::main;
-//     Colors bgColor = (i == cursorIndex_) ? Colors::logo : Colors::black;
-//     bg_->setTextColor(static_cast<uint16_t>(textColor),
-//                       static_cast<uint16_t>(bgColor));
-
-//     // Draw the menu item's text
-//     bg_->drawString(menuItems_[i].label, xPos, adjustedYPos);
-//   }
-
-//   // Push the sprite to the display
-//   bg_->pushSprite(0, 0);
-// }
 
 void Display::showProcessScreen(GPSU::ProcessType type) {
   //
@@ -334,7 +275,6 @@ void Display::processScreenSetup() {
   } else if (setup_traffic) {
     bg_->fillSprite(Colors::black);
     bg_->setSwapBytes(true);
-    // bg_->pushImage(0, 0, 130, 240, Asset::road);
   } else {
     bg_->fillSprite(Colors::logo);
   }
@@ -410,16 +350,6 @@ void Display::updateObjectCounter(Command cmd) {
   label_->setFreeFont(&Orbitron_Medium_18);
   label_->drawString(state_string, 5, 30);
 
-  // layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, Colors::NAVY,
-  // Colors::black);
-
-  // // Conveyor belt surface with perspective
-  // for (int y = 60; y < 80; y++) {
-  //   uint16_t line_color =
-  //       interpolateColor(Colors::SILVER, Colors::DARKGREY, y - 60);
-  //   layer_1->drawFastHLine(5, y, 230, line_color);
-  // }
-
   if (cmd.contexts.oc_context.obj_cnt > 0) {
     for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {
       const auto &obj = cmd.contexts.oc_context.items[i];
@@ -427,13 +357,14 @@ void Display::updateObjectCounter(Command cmd) {
       // Scale position and length to pixels
       uint16_t scaled_x = (obj.x_pos / 4);
       uint16_t scaled_y = (obj.y_pos);
+      uint16_t box_size = 40;
 
       int id = obj.id;
       LOG::INFO("GUI", "item id %d in pos = %d mm\n", id, scaled_x);
 
-      uint16_t y_pos = 20 - scaled_y;
+      uint16_t y_pos = (10) - scaled_y;
 
-      drawData data = {scaled_x, y_pos, 25, 25, id};
+      drawData data = {scaled_x, y_pos, box_size, box_size, id};
       drawBox(layer_1.get(), data, state);
     }
   }
@@ -448,6 +379,7 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   using State = Items::State;
   uint32_t fill_color = 0;
   uint32_t border_color = Colors::black;
+  // sprite->setSwapBytes(true);
 
   switch (state) {
   case State::PLACED:
@@ -468,16 +400,16 @@ void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   default:
     return;
   }
+  sprite->pushImage(data.x, data.y, data.w, data.h, Asset::box);
+  // sprite->fillRoundRect(data.x, data.y, data.w, data.h, 3, fill_color);
+  // sprite->drawRoundRect(data.x, data.y, data.w, data.h, 3, border_color);
 
-  sprite->fillRoundRect(data.x, data.y, data.w, data.h, 3, fill_color);
-  sprite->drawRoundRect(data.x, data.y, data.w, data.h, 3, border_color);
-
-  sprite->drawFastHLine(data.x + 2, data.y + 2, data.w - 4,
-                        lightenColor(fill_color));
-  sprite->drawFastVLine(data.x + 2, data.y + 2, data.h - 4,
-                        lightenColor(fill_color));
-  sprite->drawFastHLine(data.x + 2, data.y + data.h - 3, data.w - 4,
-                        darkenColor(fill_color));
+  // sprite->drawFastHLine(data.x + 2, data.y + 2, data.w - 4,
+  //                       lightenColor(fill_color));
+  // sprite->drawFastVLine(data.x + 2, data.y + 2, data.h - 4,
+  //                       lightenColor(fill_color));
+  // sprite->drawFastHLine(data.x + 2, data.y + data.h - 3, data.w - 4,
+  //                       darkenColor(fill_color));
 }
 
 // void Display::updateWaterLevelDisplay(const int state, int level) {
