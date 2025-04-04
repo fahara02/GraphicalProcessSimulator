@@ -180,24 +180,40 @@ public:
       : ObjectCounterSM(Context{}, State::INIT, io) {}
 
   void updateInternalState(const Inputs &input) {
-
     check_ui_inputs();
+
+    // Detect mode change before calling updateMode
+    bool mode_changed =
+        (ctx_.inputs.ui.manual_mode ? Mode::MANUAL : Mode::AUTO) != ctx_.mode;
+
     updateMode(ctx_.inputs.ui.manual_mode);
+
     uint32_t currentTime = millis();
     uint32_t delta = currentTime - ctx_.data.timing.now;
     ctx_.data.timing.now = currentTime;
+
+    // Handle timer restart on mode change to MANUAL
+    if (mode_changed && ctx_.mode == Mode::MANUAL &&
+        current() == State::RUNNING) {
+      restartTimer1(ctx_.config.place_interval * 1000);
+      LOG::DEBUG("OC_SM", "Restarted placement timer for manual mode");
+    }
 
     if (current() == State::RUNNING) {
       ctx_.data.timing.runtime += delta;
       updateObjects(ctx_.data.timing.runtime);
       removeFailed();
+
+      // Handle timer-based object placement (works for both modes)
       if (ctx_.inputs.timer.t1_expired) {
         addObject(ctx_.data.timing.runtime);
         ctx_.inputs.timer.t1_expired = false;
         ctx_.data.timing.last_placed = currentTime;
-        restartTimer1(static_cast<uint64_t>(ctx_.config.place_interval) * 1000);
+        restartTimer1(ctx_.config.place_interval * 1000);
       }
     }
+
+    last_mode_ = ctx_.mode; // Update mode tracking
   }
   void updateInternalState(const Event ev) { ctx_.event = ev; }
   static void transitionCb(State from, State to, Context &ctx) {
@@ -209,6 +225,7 @@ public:
   }
 
 private:
+  Mode last_mode_ = Mode::AUTO;
   std::shared_ptr<COMPONENT::MCP23017> io_;
   void updateMode(bool manual_requested) {
     const Mode new_mode = manual_requested ? Mode::MANUAL : Mode::AUTO;
