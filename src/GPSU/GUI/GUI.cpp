@@ -328,8 +328,8 @@ void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
     bg_->fillSprite(Colors::white);
-    bg_->setSwapBytes(false);
-
+    bg_->setSwapBytes(true);
+    bg_->pushImage(0, 80, 240, 69, Asset::conv_belt2);
   } else if (setup_traffic) {
     bg_->fillSprite(Colors::black);
     bg_->setSwapBytes(true);
@@ -412,8 +412,6 @@ void Display::updateObjectCounter(Command cmd) {
   //   layer_1->drawFastHLine(5, y, 230, line_color);
   // }
 
-  layer_1->pushImage(0, 30, 240, 72, Asset::conv_belt);
-
   if (cmd.contexts.oc_context.obj_cnt > 0) {
     for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {
       const auto &obj = cmd.contexts.oc_context.items[i];
@@ -425,9 +423,9 @@ void Display::updateObjectCounter(Command cmd) {
       int id = obj.id;
       LOG::INFO("GUI", "item id %d in pos = %d mm\n", id, scaled_x);
 
-      uint16_t y_pos = 25 - scaled_y;
+      uint16_t y_pos = 20 - scaled_y;
 
-      drawData data = {scaled_x, y_pos, 30, 30, id};
+      drawData data = {scaled_x, y_pos, 25, 25, id};
       drawBox(layer_1.get(), data, state);
     }
   }
@@ -440,10 +438,10 @@ void Display::updateObjectCounter(Command cmd) {
 
 void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   using State = Items::State;
-  sprite->setSwapBytes(false);
+  sprite->setSwapBytes(true);
   uint32_t fill_color = 0;
   uint32_t border_color =
-      Colors::white; // Non-black border to prevent transparency
+      Colors::black; // Non-black border to prevent transparency
 
   switch (state) {
   case State::PLACED:
