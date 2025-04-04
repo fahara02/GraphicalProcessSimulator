@@ -247,18 +247,14 @@ void Display::showProcessScreen(GPSU::ProcessType type) {
   } else {
     reset_rotation();
   }
-
   prepare_assets(type);
-
   const int16_t fontSize = MENU_FONT;
   const char *label = GPSU::Util::ToString::Process(type);
   label_->setTextColor(Colors::main, Colors::black);
   processScreenSetup();
   label_->fillSprite(Colors::black);
   label_->drawString(label, 0, 0, fontSize);
-
   label_->pushToSprite(bg_.get(), LABEL_LEFT_PX, LABEL_TOP_PX, Colors::black);
-
   bg_->pushSprite(0, 0);
 }
 
@@ -342,10 +338,20 @@ void Display::updateTrafficLight(Command cmd) {
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
   label_->unloadFont();
-  label_->loadFont(NotoSansMonoSCB20);
-  label_->setTextColor(swapBytes(Colors::logo), Colors::white);
-  label_->drawString("OBJECT_COUNTER", 50, 5);
+  // label_->loadFont(NotoSansMonoSCB20);
+  // label_->setFreeFont(&Orbitron_Medium_18);
+  // label_->setTextColor(swapBytes(Colors::logo), Colors::white);
+  // label_->drawString("OBJECT_COUNTER", 60, 5);
+  uint32_t fill_color = 0;
   ObjectCounter::State state = cmd.contexts.oc_context.curr;
+  if (state == ObjectCounter::State::READY) {
+    fill_color = swapBytes(0x07E0);
+  } else if (state == ObjectCounter::State::RUNNING) {
+    fill_color = swapBytes(0x001F); // Dark blue
+  } else {
+    fill_color = swapBytes(0xF800);
+  }
+  label_->fillSmoothCircle(15, 15, 10, fill_color);
   // const char *state_string = GPSU::Util::ToString::OCState(state);
   // label_->unloadFont();
   // label_->setFreeFont(&Orbitron_Medium_18);
