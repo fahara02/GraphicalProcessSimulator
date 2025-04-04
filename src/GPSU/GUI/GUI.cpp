@@ -327,7 +327,7 @@ void Display::processScreenSetup() {
 
   bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
-    bg_->fillSprite(Colors::black);
+    bg_->fillSprite(Colors::white);
     bg_->setSwapBytes(false);
 
   } else if (setup_traffic) {
@@ -402,14 +402,17 @@ void Display::updateObjectCounter(Command cmd) {
   const char *state_string = GPSU::Util::ToString::OCState(state);
   label_->drawString(state_string, 5, 20, MENU_FONT);
 
-  layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, Colors::NAVY, Colors::black);
+  // layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, Colors::NAVY,
+  // Colors::black);
 
-  // Conveyor belt surface with perspective
-  for (int y = 60; y < 80; y++) {
-    uint16_t line_color =
-        interpolateColor(Colors::SILVER, Colors::DARKGREY, y - 60);
-    layer_1->drawFastHLine(5, y, 230, line_color);
-  }
+  // // Conveyor belt surface with perspective
+  // for (int y = 60; y < 80; y++) {
+  //   uint16_t line_color =
+  //       interpolateColor(Colors::SILVER, Colors::DARKGREY, y - 60);
+  //   layer_1->drawFastHLine(5, y, 230, line_color);
+  // }
+
+  layer_1->pushImage(0, 30, 240, 72, Asset::conv_belt);
 
   if (cmd.contexts.oc_context.obj_cnt > 0) {
     for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {

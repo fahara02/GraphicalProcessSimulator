@@ -9,6 +9,7 @@ namespace Asset {
 #include "blank_traffic.hpp"
 
 #include "box.hpp"
+#include "conv_belt.hpp"
 #include "plant.hpp"
 #include "plant2.hpp"
 #include "road.hpp"
@@ -17,6 +18,7 @@ namespace Asset {
 #include "traffic_red.hpp"
 #include "traffic_yellow.hpp"
 #include "watertank_blank.hpp"
+
 
 } // namespace Asset
 #endif
