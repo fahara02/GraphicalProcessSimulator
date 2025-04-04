@@ -346,16 +346,22 @@ void Display::updateObjectCounter(Command cmd) {
   ObjectCounter::State state = cmd.contexts.oc_context.curr;
   if (state == ObjectCounter::State::READY) {
     fill_color = swapBytes(0x07E0);
-  } else if (state == ObjectCounter::State::RUNNING) {
-    fill_color = swapBytes(0x001F); // Dark blue
+  } else if (state == ObjectCounter::State::RUNNING && toggle_color) {
+    fill_color = swapBytes(0x187B); // Dark blue
+    toggle_color = false;
+  } else if (state == ObjectCounter::State::RUNNING && !toggle_color) {
+    fill_color = swapBytes(0x9CDB); // light purple
+    toggle_color = true;
   } else {
-    fill_color = swapBytes(0xF800);
+    fill_color = 0xF800;
   }
+
+  label_->fillSmoothCircle(15, 15, 12, Colors::black);
   label_->fillSmoothCircle(15, 15, 10, fill_color);
-  // const char *state_string = GPSU::Util::ToString::OCState(state);
-  // label_->unloadFont();
-  // label_->setFreeFont(&Orbitron_Medium_18);
-  // label_->drawString(state_string, 5, 30);
+  //  const char *state_string = GPSU::Util::ToString::OCState(state);
+  //  label_->unloadFont();
+  //  label_->setFreeFont(&Orbitron_Medium_18);
+  //  label_->drawString(state_string, 5, 30);
 
   if (cmd.contexts.oc_context.obj_cnt > 0) {
     for (uint8_t i = 0; i < cmd.contexts.oc_context.obj_cnt; ++i) {

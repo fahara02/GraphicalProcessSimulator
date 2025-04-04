@@ -15,7 +15,6 @@
 #include <memory>
 #include <tuple>
 
-
 namespace GUI {
 
 enum class CmdType {
@@ -70,6 +69,7 @@ public:
   }
 
 private:
+  bool toggle_color = false;
   // Private constructor.
   explicit Display(const MenuItem *items, size_t count);
   const MenuItem *menuItems_ = nullptr;
