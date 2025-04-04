@@ -326,8 +326,7 @@ void Display::processScreenSetup() {
   bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
     bg_->unloadFont();
-    label_->unloadFont();
-    label_->setFreeFont(&FreeSans12pt7b);
+
     bg_->fillScreen(Colors::black);
     bg_->fillSprite(Colors::white);
     bg_->setSwapBytes(true);
@@ -401,11 +400,15 @@ void Display::updateTrafficLight(Command cmd) {
 
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
-  label_->setTextColor(Colors::logo, Colors::white);
+  label_->unloadFont();
+  label_->loadFont(NotoSansMonoSCB20);
+  label_->setTextColor(swapBytes(Colors::logo), Colors::white);
   label_->drawString("OBJECT_COUNTER", 5, 5);
   ObjectCounter::State state = cmd.contexts.oc_context.curr;
   const char *state_string = GPSU::Util::ToString::OCState(state);
-  label_->drawString(state_string, 5, 20);
+  label_->unloadFont();
+  label_->setFreeFont(&Orbitron_Medium_18);
+  label_->drawString(state_string, 5, 30);
 
   // layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, Colors::NAVY,
   // Colors::black);

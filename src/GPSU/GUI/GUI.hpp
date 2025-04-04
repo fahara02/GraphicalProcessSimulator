@@ -2,6 +2,7 @@
 #define GUI_HPP
 
 #include "Assets/AssetImages.hpp"
+#include "Assets/NotoSansMonoSCB20.h"
 #include "Assets/orbitron18.h"
 #include "GUIConstants.hpp"
 #include "Gradient.hpp"
@@ -13,6 +14,7 @@
 #include <algorithm>
 #include <memory>
 #include <tuple>
+
 
 namespace GUI {
 
