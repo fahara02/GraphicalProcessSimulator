@@ -7,7 +7,8 @@
 #include <freertos/event_groups.h>
 #include <freertos/task.h>
 
-namespace GPSU_CORE {
+namespace GPSU_CORE
+{
 #define POOL_POLLER_NAME "PZP_Poll"
 #define POLLER_NAME "GPIO_POLLER"
 
@@ -24,33 +25,48 @@ static const uint32_t PCNTaskStack = 4096;
 static const UBaseType_t PCNTask_Priority = 3;
 static const BaseType_t PCNTask_CORE = tskNO_AFFINITY;
 
-struct GPIO {
-  struct DI {
-    static constexpr gpio_num_t DI_PIN_0 = gpio_num_t::GPIO_NUM_2;
-    static constexpr gpio_num_t DI_PIN_1 = gpio_num_t::GPIO_NUM_15;
-    static constexpr gpio_num_t DI_PIN_2 = gpio_num_t::GPIO_NUM_13;
-    static constexpr gpio_num_t DI_PIN_3 = gpio_num_t::GPIO_NUM_12;
-  };
+struct GPIO
+{
+	struct DI
+	{
+		static constexpr gpio_num_t DI_PIN_0 = gpio_num_t::GPIO_NUM_2;
+		static constexpr gpio_num_t DI_PIN_1 = gpio_num_t::GPIO_NUM_15;
+		static constexpr gpio_num_t DI_PIN_2 = gpio_num_t::GPIO_NUM_13;
+		static constexpr gpio_num_t DI_PIN_3 = gpio_num_t::GPIO_NUM_12;
+	};
 
-  struct DO {
-    static constexpr gpio_num_t DO_PIN_0 = gpio_num_t::GPIO_NUM_33;
-    static constexpr gpio_num_t DO_PIN_1 = gpio_num_t::GPIO_NUM_25;
-    static constexpr gpio_num_t DO_PIN_2 = gpio_num_t::GPIO_NUM_26;
-    static constexpr gpio_num_t DO_PIN_3 = gpio_num_t::GPIO_NUM_27;
-  };
-  struct I2C {
-    static constexpr gpio_num_t I2C_SDA = gpio_num_t::GPIO_NUM_21;
-    static constexpr gpio_num_t I2C_SCL = gpio_num_t::GPIO_NUM_22;
-  };
-  struct Encoder {
-    static constexpr gpio_num_t EN_A = gpio_num_t::GPIO_NUM_37;
-    static constexpr gpio_num_t EN_B = gpio_num_t::GPIO_NUM_38;
-    static constexpr gpio_num_t EN_Btn = gpio_num_t::GPIO_NUM_32;
-  };
+	struct DO
+	{
+		static constexpr gpio_num_t DO_PIN_0 = gpio_num_t::GPIO_NUM_33;
+		static constexpr gpio_num_t DO_PIN_1 = gpio_num_t::GPIO_NUM_25;
+		static constexpr gpio_num_t DO_PIN_2 = gpio_num_t::GPIO_NUM_26;
+		static constexpr gpio_num_t DO_PIN_3 = gpio_num_t::GPIO_NUM_27;
+	};
+	struct I2C
+	{
+		static constexpr gpio_num_t I2C_SDA = gpio_num_t::GPIO_NUM_21;
+		static constexpr gpio_num_t I2C_SCL = gpio_num_t::GPIO_NUM_22;
+	};
+	struct Encoder
+	{
+		static constexpr gpio_num_t EN_A = gpio_num_t::GPIO_NUM_37;
+		static constexpr gpio_num_t EN_B = gpio_num_t::GPIO_NUM_38;
+		static constexpr gpio_num_t EN_Btn = gpio_num_t::GPIO_NUM_32;
+	};
 };
-enum class Direction { NOROTATION = 0, CLOCKWISE = 1, COUNTERCLOCKWISE = -1 };
+enum class Direction
+{
+	NOROTATION = 0,
+	CLOCKWISE = 1,
+	COUNTERCLOCKWISE = -1
+};
 
-enum class EncoderType { SINGLE, HALF, FULL };
+enum class EncoderType
+{
+	SINGLE,
+	HALF,
+	FULL
+};
 
 } // namespace GPSU_CORE
 

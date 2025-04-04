@@ -21,14 +21,15 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 #include <WifiClient.h>
+#include <eFSM.hpp>
 
 gpio_num_t sda = GPIO_NUM_25;
 gpio_num_t scl = GPIO_NUM_33;
 gpio_num_t reset = GPIO_NUM_13;
 TaskHandle_t runTaskhandle = nullptr;
 
-void RunTask(void *param);
-void TestTask(void *param);
+void RunTask(void* param);
+void TestTask(void* param);
 
 // TrafficLight::Context context{
 //     TrafficLight::State::INIT, // previous_state
@@ -43,111 +44,113 @@ void TestTask(void *param);
 //                                 true); // Global item
 // unsigned long lastMillis;      // Global variable to track last update time
 ObjectCounter::State prevState; // Global variable to track previous state
-                                // SM::WaterLevelSM waterLevel;
+								// SM::WaterLevelSM waterLevel;
 GPSU::Process process;
 // SM::ObjectCounterSM oc;
-void setup() {
+void setup()
+{
 
-  Serial.begin(115200);
-  LOG::ENABLE_TIMESTAMPS();
+	Serial.begin(115200);
+	LOG::ENABLE_TIMESTAMPS();
 
-  process.init();
-  // oc.update();
+	process.init();
+	// oc.update();
 
-  // Initialize traffic light with timeouts: 5s red, 3s green, 2s yellow
+	// Initialize traffic light with timeouts: 5s red, 3s green, 2s yellow
 
-  // Perform initial update to transition from INIT to RED_STATE
-  // delay(2000);
-  // trafficLight.init();
-  // delay(2000);
-  // trafficLight.update();
-  // waterLevel.update();
-  //   Print initial state
+	// Perform initial update to transition from INIT to RED_STATE
+	// delay(2000);
+	// trafficLight.init();
+	// delay(2000);
+	// trafficLight.update();
+	// waterLevel.update();
+	//   Print initial state
 
-  // Record initial time and state
-  // lastMillis = millis();
-  // prevState = trafficLight.current();
-  // tft.init();
-  // display.init();
-  // display.showMenu();
-  // delay(1000);
-  // auto &controller = GPSU_CORE::IO_Controller::getInstance(
-  //     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
+	// Record initial time and state
+	// lastMillis = millis();
+	// prevState = trafficLight.current();
+	// tft.init();
+	// display.init();
+	// display.showMenu();
+	// delay(1000);
+	// auto &controller = GPSU_CORE::IO_Controller::getInstance(
+	//     GPSU_CORE::Process::OBJECT_COUNTER, 500, 0x48);
 
-  // encoder.init();
-  // encoder.set_callbacks(readEncoderISRcb);
-  // bool circleValues = true;
-  // encoder.set_range(0, 10, circleValues);
+	// encoder.init();
+	// encoder.set_callbacks(readEncoderISRcb);
+	// bool circleValues = true;
+	// encoder.set_range(0, 10, circleValues);
 
-  // encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
+	// encoder.attach(pinA, pinB, ranges, GPSU_CORE::EncoderType::FULL);
 
-  // expander.init();
-  // expander.dumpRegisters();
-  // delay(1000);
-  // MCP::Settings setting;
-  // setting.opMode = MCP::OperationMode::SequentialMode16;
-  // expander.configure(setting);
-  // delay(1000);
+	// expander.init();
+	// expander.dumpRegisters();
+	// delay(1000);
+	// MCP::Settings setting;
+	// setting.opMode = MCP::OperationMode::SequentialMode16;
+	// expander.configure(setting);
+	// delay(1000);
 
-  // // expander.enableInterrupt();
+	// // expander.enableInterrupt();
 
-  // expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
-  // delay(1000);
-  // expander.pinMode(MCP::PORT::GPIOB, INPUT);
-  // delay(1000);
-  // expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
-  // delay(1000);
-  // int sensorThershold = 12;
-  // expander.setInterrupts(GPB1, GPB2, RISING);
-  // expander.setInterrupts(GPB3, GPB4, RISING,
-  //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
-  // expander.setInterrupts(GPB5, cb1, GPB6, cb2, RISING,
-  //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
-  // expander.setInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
-  //                        &sensorThershold, RISING,
-  //                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
-  // expander.dumpRegisters();
+	// expander.pinMode(OUTPUT_OPEN_DRAIN, GPA1, GPA2, GPA3, GPA4);
+	// delay(1000);
+	// expander.pinMode(MCP::PORT::GPIOB, INPUT);
+	// delay(1000);
+	// expander.invertInput(true, GPB1, GPB2, GPB3, GPB4);
+	// delay(1000);
+	// int sensorThershold = 12;
+	// expander.setInterrupts(GPB1, GPB2, RISING);
+	// expander.setInterrupts(GPB3, GPB4, RISING,
+	//                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+	// expander.setInterrupts(GPB5, cb1, GPB6, cb2, RISING,
+	//                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+	// expander.setInterrupts(GPB7, cb3, &sensorThershold, GPB0, cb4,
+	//                        &sensorThershold, RISING,
+	//                        MCP::INTR_OUTPUT_TYPE::INTR_ACTIVE_HIGH);
+	// expander.dumpRegisters();
 
-  // xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2,
-  // &runTaskhandle,
-  //                         0);
+	// xTaskCreatePinnedToCore(TestTask, "TestTask", 4196, NULL, 2,
+	// &runTaskhandle,
+	//                         0);
 
-  // pinMode(12,OUTPUT);
-  // digitalWrite(12,1);
+	// pinMode(12,OUTPUT);
+	// digitalWrite(12,1);
 
-  // ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
-  // ledcAttachPin(5, pwmLedChannelTFT);
-  // ledcWrite(pwmLedChannelTFT, 100);
+	// ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
+	// ledcAttachPin(5, pwmLedChannelTFT);
+	// ledcWrite(pwmLedChannelTFT, 100);
 
-  // menu.set_selection_changed_Cb(onSelectionChanged);
-  // menu.set_item_selected_cb(onItemSelected);
-  // menu.init();
+	// menu.set_selection_changed_Cb(onSelectionChanged);
+	// menu.set_item_selected_cb(onItemSelected);
+	// menu.init();
 
-  // tft.fillScreen(TFT_WHITE);
-  // img.createSprite(135, 240);
-  // img.setTextDatum(4);
-  // img.setSwapBytes(true);
+	// tft.fillScreen(TFT_WHITE);
+	// img.createSprite(135, 240);
+	// img.setTextDatum(4);
+	// img.setSwapBytes(true);
 
-  // img.setFreeFont(&FreeSansBold9pt7b);
+	// img.setFreeFont(&FreeSansBold9pt7b);
 
-  // device.printRegisters();
-  //  for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);
-  //       i <= static_cast<uint8_t>(MCP::MCP_23X17::REG::OLAT); ++i) {
-  //    MCP::MCP_23X17::REG reg = static_cast<MCP::MCP_23X17::REG>(i);
+	// device.printRegisters();
+	//  for (uint8_t i = static_cast<uint8_t>(MCP::MCP_23X17::REG::IODIR);
+	//       i <= static_cast<uint8_t>(MCP::MCP_23X17::REG::OLAT); ++i) {
+	//    MCP::MCP_23X17::REG reg = static_cast<MCP::MCP_23X17::REG>(i);
 
-  //   Serial.printf("A PORT 0x%02X\n",
-  //                 MCP::MCP_23X17::getRegisterAddress(reg, true, false));
-  //   Serial.printf("B PORT 0x%02X\n",
-  //                 MCP::MCP_23X17::getRegisterAddress(reg, true, true));
-  // }
-  // ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
-  // ledcAttachPin(TFT_BL, pwmLedChannelTFT);
-  // ledcWrite(pwmLedChannelTFT, 100);
+	//   Serial.printf("A PORT 0x%02X\n",
+	//                 MCP::MCP_23X17::getRegisterAddress(reg, true, false));
+	//   Serial.printf("B PORT 0x%02X\n",
+	//                 MCP::MCP_23X17::getRegisterAddress(reg, true, true));
+	// }
+	// ledcSetup(pwmLedChannelTFT, pwmFreq, pwmResolution);
+	// ledcAttachPin(TFT_BL, pwmLedChannelTFT);
+	// ledcWrite(pwmLedChannelTFT, 100);
 }
-void loop() {
-  Serial.println("......");
+void loop()
+{
+	Serial.println("......");
 
-  vTaskDelay(500);
+	vTaskDelay(500);
 }
 
 // void TestTask(void *param) {
