@@ -314,7 +314,35 @@ private:
       LOG::DEBUG("TL_SM", "MANUAL MODE");
     }
   }
+  void updateMode(bool manual_requested) {
+    const Mode new_mode = manual_requested ? Mode::MANUAL : Mode::AUTO;
+    ctx_.prev_mode = ctx_.mode;
+    if (new_mode != ctx_.mode) {
 
+      ctx_.mode = new_mode;
+      ctx_.inputs.mode_changed = true;
+      LOG::DEBUG("SM", "Mode updated to %s",
+                 ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+      if (ctx_.mode == Mode::AUTO) {
+
+        if (timer1_was_deleted) {
+          timer1_was_deleted = false;
+          enableTimer(0);
+          createTimers();
+
+        } else if (timer2_was_deleted) {
+          timer2_was_deleted = false;
+          enableTimer(1);
+          createTimers();
+        }
+      } else {
+        disableTimers();
+      }
+      setAutoUpdate();
+      update();
+      ctx_.inputs.mode_changed = false;
+    }
+  }
   bool checkFaultyInput() {
     bool faulty_input = false;
     faulty_input = (ctx_.inputs.ui.turn_on_red + ctx_.inputs.ui.turn_on_yellow +

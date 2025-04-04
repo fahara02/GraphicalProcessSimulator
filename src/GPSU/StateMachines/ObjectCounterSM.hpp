@@ -210,6 +210,37 @@ public:
 
 private:
   std::shared_ptr<COMPONENT::MCP23017> io_;
+  void updateMode(bool manual_requested) {
+    const Mode new_mode = manual_requested ? Mode::MANUAL : Mode::AUTO;
+    ctx_.prev_mode = ctx_.mode;
+    if (new_mode != ctx_.mode) {
+
+      ctx_.mode = new_mode;
+      ctx_.inputs.mode_changed = true;
+      LOG::DEBUG("SM", "Mode updated to %s",
+                 ctx_.mode == Mode::MANUAL ? "MANUAL" : "AUTO");
+      if (ctx_.mode == Mode::AUTO) {
+
+        if (timer1_was_deleted) {
+          timer1_was_deleted = false;
+          enableTimer(0);
+          createTimers();
+
+        } else if (timer2_was_deleted) {
+          timer2_was_deleted = false;
+          enableTimer(1);
+          createTimers();
+        }
+      } else {
+        disableTimers();
+        enableTimer(0);
+        createTimers();
+      }
+      setAutoUpdate();
+      update();
+      ctx_.inputs.mode_changed = false;
+    }
+  }
   void addObject(uint32_t runtime) {
     if (ctx_.obj_cnt >= Context::Config::max_objs)
       return;
