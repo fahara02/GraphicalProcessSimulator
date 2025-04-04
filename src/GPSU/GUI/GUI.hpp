@@ -252,6 +252,7 @@ private:
   uint16_t interpolateColor(uint16_t c1, uint16_t c2, uint8_t ratio) {
     return ((c1 & 0xF81F) * (255 - ratio) + (c2 & 0xF81F) * ratio) >> 8;
   }
+  uint16_t swapBytes(uint16_t color) { return (color >> 8) | (color << 8); }
 };
 
 } // namespace GUI

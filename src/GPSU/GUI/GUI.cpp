@@ -117,9 +117,7 @@ void Display::createSprites() {
   if (setup_counter) {
 
     layer_1->createSprite(width, height - 50);
-    layer_1->setSwapBytes(true);
-    layer_2->createSprite(width, height - 50);
-    layer_2->setSwapBytes(true);
+    layer_1->setSwapBytes(false);
   }
 }
 void Display::sendDisplayCommand(const Command &cmd) {
@@ -327,6 +325,10 @@ void Display::processScreenSetup() {
 
   bg_->fillSprite(TFT_BLACK); // reset
   if (setup_counter) {
+    bg_->unloadFont();
+    label_->unloadFont();
+    label_->setFreeFont(&FreeSans12pt7b);
+    bg_->fillScreen(Colors::black);
     bg_->fillSprite(Colors::white);
     bg_->setSwapBytes(true);
     bg_->pushImage(0, 80, 240, 69, Asset::conv_belt2);
@@ -343,6 +345,7 @@ void Display::processScreenSetup() {
   // layer_1->fillSprite(TFT_BLACK);
   if (setup_counter) {
     layer_1->fillSprite(TFT_BLACK); // Black for counters
+
   } else {
     layer_1->fillSprite(Colors::logo);
   }
@@ -354,6 +357,8 @@ void Display::processScreenSetup() {
 void Display::processScreenExecute(int angle) {
   if (setup_traffic) {
     layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX);
+  } else if (setup_counter) {
+    layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
   } else {
     layer_1->pushToSprite(bg_.get(), 0, IMAGE_TOP_PX, Colors::black);
   }
@@ -396,11 +401,11 @@ void Display::updateTrafficLight(Command cmd) {
 
 void Display::updateObjectCounter(Command cmd) {
   processScreenSetup();
-  label_->setTextColor(TFT_RED, TFT_BLACK);
-  label_->drawString("OBJECT_COUNTER", 5, 5, MENU_FONT);
+  label_->setTextColor(Colors::logo, Colors::white);
+  label_->drawString("OBJECT_COUNTER", 5, 5);
   ObjectCounter::State state = cmd.contexts.oc_context.curr;
   const char *state_string = GPSU::Util::ToString::OCState(state);
-  label_->drawString(state_string, 5, 20, MENU_FONT);
+  label_->drawString(state_string, 5, 20);
 
   // layer_1->fillSmoothRoundRect(0, 55, 240, 30, 10, Colors::NAVY,
   // Colors::black);
@@ -438,37 +443,32 @@ void Display::updateObjectCounter(Command cmd) {
 
 void Display::drawBox(TFT_eSprite *sprite, drawData &data, Items::State state) {
   using State = Items::State;
-  sprite->setSwapBytes(true);
   uint32_t fill_color = 0;
-  uint32_t border_color =
-      Colors::black; // Non-black border to prevent transparency
+  uint32_t border_color = Colors::black;
 
   switch (state) {
   case State::PLACED:
-    fill_color = 0x001F; // Dark blue (non-black)
+    fill_color = swapBytes(0x001F); // Dark blue
     break;
   case State::SENSED:
-    fill_color = 0xFFE0; // Yellow
+    fill_color = swapBytes(0xFFE0); // Yellow
     break;
   case State::ARRIVAL:
-    fill_color = 0x07E0; // Bright green
+    fill_color = swapBytes(0x07E0); // Bright green
     break;
   case State::PICKED:
-    fill_color = 0x7BEF; // Mid-gray
+    fill_color = swapBytes(0x7BEF); // Mid-gray
     break;
   case State::FAILED:
-    fill_color = 0xF800; // Red
+    fill_color = swapBytes(0xF800); // Red
     break;
   default:
     return;
   }
 
-  // Draw 3D-styled box
-
   sprite->fillRoundRect(data.x, data.y, data.w, data.h, 3, fill_color);
   sprite->drawRoundRect(data.x, data.y, data.w, data.h, 3, border_color);
 
-  // Optional: Add highlight/shadow effects
   sprite->drawFastHLine(data.x + 2, data.y + 2, data.w - 4,
                         lightenColor(fill_color));
   sprite->drawFastVLine(data.x + 2, data.y + 2, data.h - 4,
