@@ -56,14 +56,15 @@ struct Traits {
     return ctx.mode == Mode::AUTO;
   }
   static inline bool manual_start(const Context &ctx) {
-    return (ctx.mode == Mode::MANUAL && ctx.inputs.ui.start);
+    return (ctx.mode == Mode::MANUAL && ctx.inputs.ui.start &&
+            !ctx.inputs.ui.stop);
   }
 
   static inline bool start(const Context &ctx) {
     return auto_mode(ctx) || manual_start(ctx);
   }
   static inline bool stop(const Context &ctx) {
-    return !ctx.inputs.ui.start && ctx.mode == Mode::MANUAL;
+    return ctx.inputs.ui.stop && ctx.mode == Mode::MANUAL;
   }
   static inline bool objectPlaced(const Context &ctx) {
     for (uint8_t i = 0; i < ctx.obj_cnt; i++) {
@@ -145,10 +146,6 @@ struct Traits {
        {State::RESET, State::READY, faultCleared, nullptr, nullptr},
        {State::READY, State::RUNNING, start, startConveyor, nullptr},
        {State::RUNNING, State::FAULT, checkFault, alarm, stopConveyor},
-       //    {State::RUNNING, State::RUNNING, objectPlaced, newObject, nullptr},
-       //    {State::RUNNING, State::RUNNING, objectSensed, triggerSensor,
-       //    nullptr}, {State::RUNNING, State::RUNNING, objectAtPick,
-       //    activatePicker, nullptr},
        {State::RUNNING, State::E_STOP, eStop, alarm, stopConveyor},
        {State::E_STOP, State::RESET, reset, nullptr, nullptr},
        {State::RUNNING, State::READY, stop, stopConveyor, nullptr}}
@@ -350,12 +347,12 @@ private:
       return;
     } else {
       pinStatus = static_cast<uint8_t>(raw_value);
-      if (ctx_.inputs.ui.start != (pinStatus >> 1) & 0x01) {
+      if (check_Start() != (pinStatus >> 1) & 0x01) {
         ctx_.inputs.ui.start = (pinStatus >> 1) & 0x01;
         ctx_.inputs.new_data = true;
       }
-      if (ctx_.inputs.ui.ack != (pinStatus >> 2) & 0x01) {
-        ctx_.inputs.ui.ack = (pinStatus >> 2) & 0x01;
+      if (ctx_.inputs.ui.stop != (pinStatus >> 2) & 0x01) {
+        ctx_.inputs.ui.stop = (pinStatus >> 2) & 0x01;
         ctx_.inputs.new_data = true;
       }
       if (ctx_.inputs.ui.pick = (pinStatus >> 3) & 0x01) {
@@ -370,17 +367,18 @@ private:
     if (ctx_.inputs.new_data) {
       if (ctx_.inputs.ui.start) {
         LOG::DEBUG("OC_SM", "Start");
-      } else if (!ctx_.inputs.ui.start) {
+      } else if (ctx_.inputs.ui.stop) {
         LOG::DEBUG("OC_SM", "stop");
-      } else if (ctx_.inputs.ui.ack) {
-        LOG::DEBUG("OC_SM", "ackknowledged");
       } else if (ctx_.inputs.ui.pick) {
         LOG::DEBUG("OC_SM", "Pick");
       } else if (ctx_.inputs.ui.manual_mode) {
         LOG::DEBUG("OC_SM", "MANUAL MODE");
       }
+      ctx_.inputs.new_data = false;
+      // ctx_.inputs = Context::Inputs{};
     }
   }
+  bool check_Start() { return ctx_.inputs.ui.start && !ctx_.inputs.ui.stop; }
 };
 
 } // namespace SM

@@ -481,7 +481,7 @@ struct Inputs {
   } sensors;
   struct UI {
     bool start = false;
-    bool ack = false;
+    bool stop = false;
     bool pick = false;        // Manual pick trigger
     bool manual_mode = false; // Auto/Manual toggle
     bool reset = false;

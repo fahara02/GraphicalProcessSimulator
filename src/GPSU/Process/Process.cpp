@@ -231,7 +231,7 @@ ObjectCounter::Context
 GPSU::Process::mapUserCommand(ObjectCounter::Context ctx) {
   uint8_t pinStatus = io_->digitalRead(MCP::PORT::GPIOB);
   ctx.inputs.ui.start = (pinStatus >> 1) & 0x01;
-  ctx.inputs.ui.ack = (pinStatus >> 2) & 0x01;
+  ctx.inputs.ui.stop = (pinStatus >> 2) & 0x01;
   ctx.inputs.ui.pick = (pinStatus >> 3) & 0x01;
   ctx.inputs.ui.manual_mode = (pinStatus >> 4) & 0x01;
   if (ctx.inputs.ui.start) {
@@ -240,8 +240,8 @@ GPSU::Process::mapUserCommand(ObjectCounter::Context ctx) {
   if (!ctx.inputs.ui.start) {
     LOG::DEBUG("SENSED GPB1 i.e stop");
   }
-  if (ctx.inputs.ui.ack) {
-    LOG::DEBUG("SENSED GPB2 i.e ackknowledge");
+  if (ctx.inputs.ui.stop) {
+    LOG::DEBUG("SENSED GPB2 i.e stop");
   }
   if (ctx.inputs.ui.pick) {
     LOG::DEBUG("SENSED GPB3 i.e PICK");
