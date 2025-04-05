@@ -5,15 +5,57 @@
 #include <variant>
 #include "Logger.hpp"
 #include <algorithm>
+#include <unordered_set>
+#include <atomic>
 
 namespace SM
 {
+/*
+ DESIGN GOAL RULES
+1.THERE IS ALWAYS A TOP_STATE
+2.STATE  CAN TRANSIT TO ANOTHER  STATE OF SAME LEVEL ONNLY AT FIRST ,THEN IF DICTATED BY
+TRANSITION TO THE INNER STATE OF THE TO STATE FROM THE PARENT STATE(2 TRANSITION  SEQUENTIAL )
+2.1 A COMPOSITE STATE WHEN ACTIVE  BY  DEFUALT WILL ACTIVATE ALL ITS NESTED DEFAULT STATE,
+3.GROUP/GROUPS AND ITS MEMBERS ALWAYS HAVE COMMON PARENT as THERE IS ALWAYS A TOP STATE
+4.TRANSITION BETWEEN GROUPS WITH COMMON PARENT NOT ALLOWED
+5.TRANSITION BETWEEN GROUPS WITH DIFFERENT PARENT ALLOWED
+6.TRANSITION BETWEEN A STATE TO A GROUP WILL HAPPEN IN TWO STEP STATE TO GROUP PARENT THEN
+IMMEDIATELY GROUP PARENT TO GROUP DEFAULT STATE // NO LINT
+7.FOR A SAME EVENT IF TRANSITION GUARD IS TRUE MULTIPLE GROUPS WITH SAME LEVEL WILL TRANSIT //NO
+LINT
+8.FOR A SAME EVENT IF TRANSITION GUARD IS TRUE MULTIPLE NESTED STATE WILL TRANSIT BUT IN ORDER
+OF LOWER LEVEL FIRST //NO LINT
+9.LOWEST LEVEL STATE WILL PROPAGATE EVENT UPWARDS //NO LINT
+10.HIGHER LEVEL STATE WILL PROPAGATE LEVELS BOTH WAYS UPWARDS AND DOWNWARDS //NO LINT
+11.HIGHEST LEVEL STATE WILL PROPAGATE EVENT  DOWSNWARDS //NO LINT
 
+*/
+constexpr int MAX_GROUP_SM = 4;
+constexpr int MAX_STATE_SM = 20;
 constexpr int MAX_INNER_STATE = 10;
 constexpr int MAX_STATE_PER_GROUP = 5;
+constexpr int MAX_GROUP_PER_STATE = 4;
+constexpr int MAX_GROUP_PER_LEVEL = 4; // Total Group number not exceeding MAX_GROUP_SM
+constexpr int MAX_TRANSITIONS = MAX_GROUP_PER_LEVEL * MAX_STATE_PER_GROUP;
 constexpr int MAX_NESTING = 3;
 static constexpr size_t MAX_EVENT_TYPE = 4;
 static constexpr size_t MAX_LISTENER_PER_TYPE = 5;
+
+class Utility
+{
+  public:
+	class ID
+	{
+	  public:
+		inline static int generate() { return ++id_counter; }
+
+	  private:
+		static std::atomic<int> id_counter;
+	};
+};
+
+// Static member initialization
+std::atomic<int> Utility::ID::id_counter{0};
 
 enum class EventType
 {
@@ -38,7 +80,7 @@ struct Event
 	{
 		return std::get<T>(_data);
 	}
-	constexpr Event& operator=(Event& other)
+	constexpr Event& operator=(const Event& other)
 	{
 		if(this != &other)
 		{
@@ -115,27 +157,14 @@ struct event_member_is_correct_type
 };
 } // namespace detail
 
-struct StateFunction
+class StateFunction
 {
   public:
-	constexpr StateFunction() : _id(-1), id_updated(false) {}
-	constexpr StateFunction(int id) : _id(id), id_updated(true) {}
-	constexpr virtual ~StateFunction() = default;
+	constexpr StateFunction() : _id(Utility::ID::generate()) {}
 	constexpr int getId() const { return _id; }
-	constexpr bool setId(int id)
-	{
-		if(!id_updated)
-		{
-			_id = id;
-			id_updated = true;
-			return true;
-		}
-		return false;
-	}
 
   private:
 	int _id;
-	bool id_updated = false;
 };
 
 template<typename Context>
@@ -144,7 +173,6 @@ struct Guard : public StateFunction
   public:
 	using FuncPtr = bool (*)(const std::optional<Context>&);
 	constexpr Guard(FuncPtr func) : StateFunction(), _func(func) {}
-	constexpr Guard(int id, FuncPtr func) : StateFunction(id), _func(func) {}
 	constexpr ~Guard() override = default;
 	static_assert(detail::has_event_member<Context>::value, "Context must have an 'event' member");
 	static_assert(detail::event_member_is_correct_type<Context>::value,
@@ -167,7 +195,6 @@ struct Action : public StateFunction
   public:
 	using FuncPtr = void (*)(std::optional<Context>&);
 	constexpr Action(FuncPtr func) : StateFunction(), _func(func) {}
-	constexpr Action(int id, FuncPtr func) : StateFunction(id), _func(func) {}
 	constexpr ~Action() override = default;
 	static_assert(detail::has_event_member<Context>::value, "Context must have an 'event' member");
 	static_assert(detail::event_member_is_correct_type<Context>::value,
@@ -209,10 +236,6 @@ struct StateBase
 		_entryActionGuard(entryGuard), _exitActionGuard(exitGuard), _listenerCount{}, _listeners{},
 		_parent(parent), _group(group)
 	{
-		_entryAction.setId(_id);
-		_exitAction.setId(_id);
-		_entryActionGuard.setId(_id);
-		_exitActionGuard.setId(_id);
 	}
 
 	constexpr StateBase(BaseState* parent, const int id, const char* name,
@@ -244,13 +267,24 @@ struct StateBase
 				  "Context's 'event' member must be of type SM::Event");
 
 	virtual bool isComposite() const { return false; }
-	virtual void handleEvent(const Event& ev) const;
+	virtual bool handleEvent(const Event& ev) const { return false; };
 	constexpr int getId() const { return _id; }
 	constexpr const char* getName() const { return _name; }
 	constexpr bool hasParent() const { return _parent ? true : false; }
 	constexpr bool hasGroup() const { return _group ? true : false; }
 	constexpr BaseState* getParent() { return _parent; }
 	constexpr Groups* getGroup() { return _group; }
+
+	constexpr void setParent(StateBase<Context>* parent)
+	{
+		_parent = parent;
+		_level = parent ? parent->_level + 1 : 0;
+		if(_level > MAX_NESTING)
+		{
+			LOG::ERROR("STATE_BASE", "Cant have Nesting more than %d", MAX_NESTING);
+		}
+	}
+	constexpr void setGroup(Group<Context>* group) { _group = group; }
 	constexpr bool hasEntryAction() const
 	{
 		return _entryAction != NullAction<Context> ? true : false;
@@ -294,8 +328,15 @@ struct StateBase
 
 	void dispatchEvent(const Event& event)
 	{
+		new_event = event;
+		notified_by_parent = true;
 
-		handleEvent(event);
+		if(isComposite())
+		{
+			iterateNestedStates([&](StateBase& state) { state.dispatchEvent(event); });
+		}
+
+		bool handled = handleEvent(event);
 
 		size_t eventTypeIndex = static_cast<size_t>(event.getType());
 		if(eventTypeIndex < MAX_EVENT_TYPE)
@@ -304,11 +345,6 @@ struct StateBase
 			{
 				_listeners[eventTypeIndex][i](event);
 			}
-		}
-
-		if(isComposite())
-		{
-			iterateNestedStates([&](StateBase& state) { state.dispatchEvent(event); });
 		}
 	}
 
@@ -330,10 +366,17 @@ struct StateBase
 	}
 
 	constexpr bool operator!=(const StateBase& rhs) const { return !(*this == rhs); }
+	constexpr int getNestingLevel() const { return _level; }
+
+  protected:
+	bool notified_by_parent = false;
+
+	Event new_event;
 
   private:
 	const int _id;
 	const char* _name;
+	int _level = 0;
 
 	Actions _entryAction;
 	Actions _exitAction;
@@ -341,7 +384,6 @@ struct StateBase
 	Guards _exitActionGuard;
 	size_t _listenerCount[MAX_EVENT_TYPE];
 	EventHandler _listeners[MAX_EVENT_TYPE][MAX_LISTENER_PER_TYPE];
-
 	Groups* _parent = nullptr;
 	Groups* _group = nullptr;
 };
@@ -399,7 +441,10 @@ struct Group
 	static_assert((details::is_state_type<Context, States>::value && ...),
 				  "All elements in Group must be of State type.");
 
-	constexpr Group(const char* name, States... states) : _name(name), _states(states...) {}
+	constexpr Group(const char* name, States... states) : _name(name), _states(states...)
+	{
+		setGroupForElements(std::index_sequence_for<States...>{});
+	}
 
 	const char* getGroupName() const { return _name; }
 	constexpr bool operator==(const Group& rhs) const
@@ -416,10 +461,13 @@ struct Group
 	{
 		return std::get<0>(_states); // Default state is the first element
 	}
+	constexpr void setParent(State<Context>* parent) { _commonParent = parent; }
+	constexpr State<Context>* getCommonParent() const { return _commonParent; }
 
   private:
 	const char* _name;
 	std::tuple<States...> _states;
+	State<Context>* _commonParent;
 
 	template<std::size_t Index = 0, typename Func>
 	void iterateGroup(Func&& func) const
@@ -429,6 +477,11 @@ struct Group
 			func(std::get<Index>(_states));
 			iterateGroup<Index + 1>(std::forward<Func>(func));
 		}
+	}
+	template<std::size_t... Is>
+	constexpr void setGroupForElements(std::index_sequence<Is...>)
+	{
+		(std::get<Is>(_states).setGroup(this), ...);
 	}
 };
 template<typename Context>
@@ -441,6 +494,7 @@ struct State : public StateBase<Context>
 	using BaseState = StateBase<Context>;
 	using Actions = Action<Context>;
 	using Guards = Guard<Context>;
+	using Groups = Group<Context>;
 
 	template<typename T>
 	using IsState = details::is_state_type<Context, T>;
@@ -461,49 +515,36 @@ struct State : public StateBase<Context>
 	static_assert(
 		((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...),
 		"All elements of State must be either State or Group types with matching Context.");
-
 	template<typename =
 				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
-	constexpr State(int id, const char* name, InnerElements... elements) :
-		BaseState(id, name, NullAction<Context>, NullAction<Context>, NullGuard<Context>,
-				  NullGuard<Context>),
-		elements_(std::make_tuple(elements...))
-	{
-	}
-
-	template<typename =
-				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
-	constexpr State(int id, const Actions& entryAction, const Actions& exitAction, const char* name,
-					InnerElements... elements) :
-		BaseState(id, name, entryAction, exitAction, NullGuard<Context>, NullGuard<Context>),
-		elements_(std::make_tuple(elements...))
-	{
-	}
-	template<typename =
-				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
-	constexpr State(int id, const Actions& entryAction, const Actions& exitAction,
-					const Guards& entryGuard, const Guards& exitGuard, const char* name,
-					InnerElements... elements) :
-		BaseState(id, name, entryAction, exitAction, entryGuard, exitGuard),
-		elements_(std::make_tuple(elements...))
-	{
-	}
-	template<typename =
-				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
-	constexpr State(BaseState* parent, int id, const Actions& entryAction,
+	constexpr State(BaseState* parent, Groups* group, const Actions& entryAction,
 					const Actions& exitAction, const Guards& entryGuard, const Guards& exitGuard,
 					const char* name, InnerElements... elements) :
-		BaseState(parent, id, name, entryAction, exitAction, entryGuard, exitGuard),
+		BaseState(parent, group, Utility::ID::generate(), name, entryAction, exitAction, entryGuard,
+				  exitGuard),
 		elements_(std::make_tuple(elements...))
 	{
+		setParentForElements(std::index_sequence_for<InnerElements...>{});
 	}
-	template<typename =
-				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
-	constexpr State(BaseState* parent, Group<Context> group, int id, const Actions& entryAction,
-					const Actions& exitAction, const Guards& entryGuard, const Guards& exitGuard,
-					const char* name, InnerElements... elements) :
-		BaseState(parent, group, id, name, entryAction, exitAction, entryGuard, exitGuard),
-		elements_(std::make_tuple(elements...))
+	constexpr State(const char* name, InnerElements... elements) :
+		State(nullptr, nullptr, Utility::ID::generate(), name, NullAction<Context>,
+			  NullAction<Context>, NullGuard<Context>, NullGuard<Context>, elements...)
+	{
+	}
+	constexpr State(BaseState* parent, const char* name, InnerElements... elements) :
+		State(parent, nullptr, Utility::ID::generate(), name, NullAction<Context>,
+			  NullAction<Context>, NullGuard<Context>, NullGuard<Context>, elements...)
+	{
+	}
+	constexpr State(Groups* group, const char* name, InnerElements... elements) :
+		State(nullptr, group, Utility::ID::generate(), name, NullAction<Context>,
+			  NullAction<Context>, NullGuard<Context>, NullGuard<Context>, elements...)
+	{
+	}
+	constexpr State(const Actions& entryAction, const Actions& exitAction, const char* name,
+					InnerElements... elements) :
+		State(nullptr, nullptr, Utility::ID::generate(), name, entryAction, exitAction,
+			  NullGuard<Context>, NullGuard<Context>, elements...)
 	{
 	}
 
@@ -538,10 +579,17 @@ struct State : public StateBase<Context>
 		});
 	}
 
-	void handleEvent(const Event& event) const override
+	bool handleEvent(const Event& event) const override
 	{
-		LOG::INFO("State", "\n Handling Event %s to State %s", event.toString(), this->getName());
-	};
+		LOG::INFO("Handling event...");
+		bool handled = true; /* custom handling logic */
+		;
+		if(!handled && this->hasParent())
+		{
+			handled = this->getParent()->handleEvent(event);
+		}
+		return handled;
+	}
 	void propagateEvent(const Event& event)
 	{
 		if(this->isComposite())
@@ -549,6 +597,11 @@ struct State : public StateBase<Context>
 			LOG::INFO("State", "\nState %s is composite, dispatching event to nested states",
 					  this->getName());
 			this->dispatchEvent(event);
+		}
+		else if(this->hasParent() && this->notified_by_parent)
+		{
+			this->getParent().handleEvent(event);
+			this->notified_by_parent = false;
 		}
 		else
 		{
@@ -606,6 +659,26 @@ struct State : public StateBase<Context>
 			iterateElements<Index + 1>(std::forward<Func>(func));
 		}
 	}
+	template<std::size_t... Is>
+	constexpr void setParentForElements(std::index_sequence<Is...>)
+	{
+		(processElement(std::get<Is>(elements_)), ...);
+	}
+
+	template<typename Element>
+	constexpr void processElement(Element& element)
+	{
+		using ElementType = std::decay_t<decltype(element)>;
+		if constexpr(std::is_base_of_v<StateBase<Context>, ElementType>)
+		{
+			element.setParent(this);
+		}
+		else if constexpr(details::is_a_group<ElementType, Context>::value)
+		{
+			element.setParent(this); // Set Groups parent
+			element.iterate([this](auto& groupElement) { groupElement.setParent(this); });
+		}
+	}
 };
 
 template<typename Context>
@@ -638,25 +711,27 @@ struct Transition
 		}
 	}
 
+	// In Transition::canTransit, adjust conditions
 	bool canTransit(const std::optional<Context>& context) const
 	{
-		return _guard.evaluate(context) && (_fromState->canActOnExit(context)) &&
-			   (_toState->canActOnEntry(context)) && !hasDifferentGroup();
+		bool sameGroup = (_fromState->getGroup() == _toState->getGroup());
+		bool commonParent = hasCommonAncestor();
+
+		// Allow transitions within the same group or between groups with different parents
+		return _guard.evaluate(context) &&
+			   (sameGroup || (!commonParent && _fromState->getGroup() != _toState->getGroup())) &&
+			   _fromState->canActOnExit(context) && _toState->canActOnEntry(context);
 	}
 	constexpr bool hasCommonAncestor() const { return _commonParent ? true : false; }
 	constexpr tS* getAncestor() { return _commonParent; }
 	constexpr bool hasCommonGroup() const { return _commonGroup ? true : false; }
-	constexpr bool hasDifferentGroup() const
-	{
-		return ((_fromState->hasGroup() && _toState->hasGroup()) &&
-				(_fromState->getGroup() != _toState->getGroup())) ?
-				   true :
-				   false;
-	}
+
 	constexpr Groups* getCommonGroup() { return _commonGroup; }
 
 	tS* executeTransition(std::optional<Context>& context) const
 	{
+		if(!context.has_value())
+			return false;
 		if(canTransit(context))
 		{
 			_onTransitionAction.execute(context);
@@ -684,258 +759,362 @@ struct Transition
 template<typename Context>
 constexpr Transition<Context> NullTransition{
 	-1, NullState<Context>, NullEvent, NullState<Context>, NullGuard<Context>, NullAction<Context>};
-
-template<typename Context, typename... Transitions>
-struct TransitionsTable
+template<typename Context>
+struct TransitionTable
 {
-  public:
-	constexpr TransitionsTable(Transitions... transitions) :
-		transitions_(std::make_tuple(transitions...))
-	{
-	}
-	template<std::size_t Index = 0>
-	constexpr const Transition<Context>& getTransition(std::size_t index) const
-	{
-		if constexpr(sizeof...(Transitions) == 0)
-		{
-			// Handle the empty tuple case
-			LOG::ERROR("SM_TST", "TransitionTable is empty.\n");
-			return NullTransition<Context>;
-		}
-		else
-		{
-			if(index == Index)
-			{
-				return std::get<Index>(transitions_);
-			}
-			else if constexpr(Index + 1 < sizeof...(Transitions))
-			{
-				return getTransition<Index + 1>(index);
-			}
-			else
-			{
-				LOG::ERROR("SM_TST", "Index out of bounds: %zu\n", index);
-				return NullTransition<Context>;
-			}
-		}
-	}
-	constexpr const Transition<Context>& operator[](std::size_t index) const
-	{
-		return getTransition(index);
-	}
+	std::array<std::array<Transition<Context>, MAX_STATE_PER_GROUP>, MAX_INNER_STATE>
+		stateTransitions;
+	std::array<size_t, MAX_INNER_STATE> stateTransitionCounts{};
+	std::unordered_map<const Group<Context>*, std::array<Transition<Context>, MAX_STATE_PER_GROUP>>
+		groupTransitions;
+	std::unordered_map<const Group<Context>*, size_t> groupTransitionCounts;
 
-	constexpr const Transition<Context>& findTransition(const State<Context>& currState,
-														const Event& evt) const
+	template<typename... Transitions>
+	constexpr TransitionTable(Transitions... transitions)
 	{
-		return findTransitionRecursive(currState, evt,
-									   std::make_index_sequence<sizeof...(Transitions)>{});
-	}
-	void printTransitions() const
-	{
-		printHelper(std::make_index_sequence<sizeof...(Transitions)>{});
+		static_assert(sizeof...(Transitions) <= MAX_TRANSITIONS,
+					  "Too many transitions for capacity");
+
+		processTransitions(std::make_index_sequence<sizeof...(Transitions)>{},
+						   std::forward_as_tuple(transitions...));
 	}
 
   private:
-	std::tuple<Transitions...> transitions_;
-	template<std::size_t Index, std::size_t... Rest>
-	constexpr const Transition<Context>&
-		findTransitionRecursive(const State<Context>& currState, const Event& evt,
-								std::index_sequence<Index, Rest...>) const
+	template<std::size_t... Is, typename Tuple>
+	void processTransitions(std::index_sequence<Is...>, Tuple&& transitions)
 	{
-		if(std::get<Index>(transitions_).getFromState() == currState &&
-		   std::get<Index>(transitions_).getEvent() == evt)
-		{
-			return std::get<Index>(transitions_);
-		}
-		if constexpr(sizeof...(Rest) > 0)
-		{
-			return findTransitionRecursive(currState, evt, std::index_sequence<Rest...>{});
-		}
-		return NullTransition<Context>;
+		(processTransition(std::get<Is>(transitions)), ...);
 	}
-	template<std::size_t... Is>
-	void printHelper(custom::index_sequence<Is...>) const
+
+	void processTransition(const Transition<Context>& trans)
 	{
-		int dummy[] = {
-			0,
-			(LOG::INFO("SM_TST", "Transition %d: From %s, Event %s, To %s, Action %s, Guard %s\n",
-					   std::get<Is>(transitions_).id,
-					   std::get<Is>(transitions_).getFromState().getName(),
-					   std::get<Is>(transitions_).getEvent().getName(),
-					   std::get<Is>(transitions_).getToState().getName(),
-					   std::get<Is>(transitions_).getAction().getName(),
-					   std::get<Is>(transitions_).getGuard().getName()),
-			 0)...};
-		(void)dummy;
+		const State<Context>* fromState = trans.getFromState();
+
+		// Handle state-based transitions
+		if(const int stateId = fromState->getId(); stateId >= 0 && stateId < MAX_INNER_STATE)
+		{
+			auto& count = stateTransitionCounts[stateId];
+			if(count < MAX_STATE_PER_GROUP)
+			{
+				stateTransitions[stateId][count++] = trans;
+			}
+		}
+
+		// Handle group-based transitions
+		if(fromState->hasGroup())
+		{
+			auto group = fromState->getGroup();
+			auto& groupTrans = groupTransitions[group];
+			auto& count = groupTransitionCounts[group];
+			if(count < MAX_STATE_PER_GROUP)
+			{
+				groupTrans[count++] = trans;
+			}
+		}
+	}
+
+  public:
+	struct TransitionRange
+	{
+		const Transition<Context>* _begin;
+		const Transition<Context>* _end;
+		const Transition<Context>* begin() const { return _begin; }
+		const Transition<Context>* end() const { return _end; }
+		bool empty() const { return _begin == _end; }
+	};
+
+	TransitionRange findTransitions(const State<Context>* currentState, const Event& event) const
+	{
+		// Check state transitions first
+		if(const int stateId = currentState->getId(); stateId >= 0 && stateId < MAX_INNER_STATE)
+		{
+			const size_t count = stateTransitionCounts[stateId];
+			for(size_t i = 0; i < count; ++i)
+			{
+				if(stateTransitions[stateId][i].getEvent() == event)
+				{
+					return {&stateTransitions[stateId][i], &stateTransitions[stateId][i] + 1};
+				}
+			}
+		}
+
+		// Then check group transitions
+		if(currentState->hasGroup())
+		{
+			if(auto it = groupTransitions.find(currentState->getGroup());
+			   it != groupTransitions.end())
+			{
+				const auto& transArray = it->second;
+				size_t count = groupTransitionCounts.at(currentState->getGroup());
+				for(size_t i = 0; i < count; ++i)
+				{
+					if(transArray[i].getEvent() == event)
+					{
+						return {&transArray[i], &transArray[i] + 1};
+					}
+				}
+			}
+		}
+
+		return {nullptr, nullptr};
 	}
 };
-
-template<typename Context>
-using TransitionTable = std::array<Transition<Context>, MAX_STATE_PER_GROUP>;
-
 template<typename Context, size_t N>
 class FSM
 {
   public:
-	FSM(const State<Context>* topState,
-		const std::array<TransitionTable<Context>, N>& transitionTables) :
-		_topState(topState), _currentState(getDeepestDefaultState(topState))
+	FSM(const State<Context>* topState, const TransitionTable<Context>& transitionsTable) :
+		_topState(topState), _transitionsTable(transitionsTable)
 	{
-		// Initialize transitions using static arrays based on MAX_INNER_STATE and
-		// MAX_STATE_PER_GROUP
-		for(const auto& table: transitionTables)
-		{
-			for(const auto& trans: table)
-			{
-				const State<Context>* fromState = trans.getFromState();
-				const int fromId = fromState->getId();
-
-				// Populate state transitions
-				if(fromId >= 0 && fromId < MAX_INNER_STATE)
-				{
-					if(_stateTransitionCounts[fromId] < MAX_STATE_PER_GROUP)
-					{
-						_stateTransitions[fromId][_stateTransitionCounts[fromId]++] = trans;
-					}
-				}
-
-				// Populate group transitions if applicable
-				if(fromState->hasGroup())
-				{
-					const Group<Context>* group = fromState->getGroup();
-					auto& groupTrans = _groupTransitions[group];
-					auto& count = _groupTransitionCounts[group];
-					if(count < MAX_STATE_PER_GROUP)
-					{
-						groupTrans[count++] = trans;
-					}
-				}
-			}
-		}
+		initializeActiveStates();
+		analyzeGroups();
 	}
-	void updateContext(std::optional<Context>& context) { _ctx = context; }
-	void updateContext(Event& ev) { _ctx.event = ev; }
+
 	void processEvent(const Event& event, std::optional<Context>& context)
 	{
-
-		const State<Context>* state = _currentState;
-		for(int i = 0; i < MAX_NESTING && state != nullptr; ++i)
+		// Structure to hold transition and its nesting level
+		struct TransitionInfo
 		{
-			// Check group transitions first
-			if(state->hasGroup())
-			{
-				const Group<Context>* group = state->getGroup();
-				auto git = _groupTransitions.find(group);
-				if(git != _groupTransitions.end())
-				{
-					const auto& transArray = git->second;
-					size_t count = _groupTransitionCounts[git->first];
-					for(size_t j = 0; j < count; ++j)
-					{
-						const auto& trans = transArray[j];
-						if(trans.getEvent() == event &&
-						   evaluateCombinedGuard(trans, state, context))
-						{
-							performTransition(trans, context);
-							return;
-						}
-					}
-				}
-			}
-			// Check state transitions
-			const int stateId = state->getId();
-			if(stateId >= 0 && stateId < MAX_INNER_STATE)
-			{
-				const size_t count = _stateTransitionCounts[stateId];
-				for(size_t j = 0; j < count; ++j)
-				{
-					const auto& trans = _stateTransitions[stateId][j];
-					if(trans.getEvent() == event && evaluateCombinedGuard(trans, state, context))
-					{
-						performTransition(trans, context);
-						return;
-					}
-				}
-			}
+			const Transition<Context>* trans;
+			int level;
+		};
+		std::vector<TransitionInfo> transitionsToPerform;
 
-			state = state->getParent();
+		// Helper function to add a transition if its guard is true
+		auto addTransition = [&](const State<Context>* state, int level) {
+			auto range = _transitionsTable.findTransitions(state, event);
+			for(const auto& trans: range)
+			{
+				if(evaluateCombinedGuard(trans, state, context))
+				{
+					transitionsToPerform.push_back({&trans, level});
+					break; // One transition per state per event
+				}
+			}
+		};
+
+		// Collect transition from the main active state
+		if(_activeMainState)
+		{
+			addTransition(_activeMainState, _activeMainState->getNestingLevel());
 		}
-		LOG::INFO("FSM", "No transition for event %s in state %s", event.toString(),
-				  _currentState->getName());
+
+		// Collect transitions from active group states
+		for(size_t i = 0; i < _groupCount; ++i)
+		{
+			if(_activeGroupStates[i])
+			{
+				addTransition(_activeGroupStates[i], _activeGroupStates[i]->getNestingLevel());
+			}
+		}
+
+		// Sort transitions by level (descending order: deeper levels first)
+		std::sort(transitionsToPerform.begin(), transitionsToPerform.end(),
+				  [](const auto& a, const auto& b) { return a.level > b.level; });
+
+		// Execute all collected transitions in order
+		for(const auto& info: transitionsToPerform)
+		{
+			performTransition(*info.trans, context);
+		}
+
+		// Log if no transitions occurred
+		if(transitionsToPerform.empty())
+		{
+			LOG::INFO("FSM", "No transition for event %s", event.toString());
+		}
 	}
+
+	void updateContext(std::optional<Context>& context) { _ctx = context; }
+	void updateContext(Event& ev) { _ctx.event = ev; }
 
   private:
 	std::optional<Context> _ctx;
 	const State<Context>* _topState;
-	const State<Context>* _currentState;
-	// Static arrays for transitions indexed by state ID
-	std::array<std::array<Transition<Context>, MAX_STATE_PER_GROUP>, MAX_INNER_STATE>
-		_stateTransitions;
-	std::array<size_t, MAX_INNER_STATE> _stateTransitionCounts{};
-	// Group transitions using pointers but fixed-size arrays
-	std::unordered_map<const Group<Context>*, std::array<Transition<Context>, MAX_STATE_PER_GROUP>>
-		_groupTransitions;
-	std::unordered_map<const Group<Context>*, size_t> _groupTransitionCounts;
+	const State<Context>* _activeMainState = nullptr; // Main hierarchy active state
+	std::array<const State<Context>*, MAX_GROUP_SM> _activeGroupStates = {nullptr}; // Group states
+	std::array<const State<Context>*, MAX_GROUP_SM> _prevGroupStates = {nullptr};
+	std::array<const Group<Context>*, MAX_GROUP_SM> _allGroups = {nullptr}; // All unique groups
+	size_t _groupCount = 0;
+	const TransitionTable<Context>& _transitionsTable;
 
-	const State<Context>* getDeepestDefaultState(const StateBase<Context>* state) const
+	void initializeActiveStates()
 	{
-		for(int i = 0; i < MAX_NESTING && state->isComposite(); ++i)
+		_activeMainState = getDeepestDefaultState(_topState);
+		for(size_t i = 0; i < MAX_GROUP_SM; ++i)
 		{
-			state = state->getDefaultState();
+			_activeGroupStates[i] = nullptr;
+			_prevGroupStates[i] = nullptr;
 		}
-		return state;
 	}
-
-	const State<Context>* findLCA(const StateBase<Context>* s1, const StateBase<Context>* s2) const
+	void analyzeGroups()
 	{
-		const StateBase<Context>* ancestors[MAX_NESTING];
-		size_t s1Depth = 0;
-		for(const State<Context>* p = s1; p && s1Depth < MAX_NESTING; p = p->getParent())
+		std::unordered_set<const Group<Context>*> visitedGroups;
+		collectGroups(_topState, 0, visitedGroups);
+		_groupCount = 0;
+		for(const auto* group: visitedGroups)
 		{
-			ancestors[s1Depth++] = p;
-		}
-
-		for(const State<Context>* p = s2; p; p = p->getParent())
-		{
-			for(size_t i = 0; i < s1Depth; ++i)
+			if(_groupCount < MAX_GROUP_SM)
 			{
-				if(p == ancestors[i])
+				_allGroups[_groupCount++] = group;
+			}
+			else
+			{
+				LOG::WARNING("FSM", "Number of groups exceeds MAX_GROUP_SM (%d)", MAX_GROUP_SM);
+				break;
+			}
+		}
+	}
+	void collectGroups(const State<Context>* state, int level,
+					   std::vector<const Group<Context>*>& visitedGroups)
+	{
+		if(!state->isComposite())
+			return;
+
+		state->iterateStates([&](const auto& element) {
+			using ElementType = std::decay_t<decltype(element)>;
+			if constexpr(State<Context>::template IsGroup_v<ElementType>)
+			{
+				const Group<Context>* group = &element;
+				if(std::find(visitedGroups.begin(), visitedGroups.end(), group) ==
+				   visitedGroups.end())
 				{
-					return p;
+					visitedGroups.push_back(group);
 				}
 			}
-			if(p == _topState)
+			else if constexpr(State<Context>::template IsState_v<ElementType>)
+			{
+				collectGroups(&element, level + 1, visitedGroups);
+			}
+		});
+	}
+	const State<Context>* getDeepestDefaultState(const StateBase<Context>* state) const
+	{
+		while(state->isComposite())
+		{
+			auto* nextState = state->getDefaultState();
+			if(nextState == state)
+			{ // Prevent infinite loop
+				LOG::ERROR("FSM", "Infinite loop in getDeepestDefaultState for state %s",
+						   state->getName());
 				break;
+			}
+			state = nextState;
+		}
+		return static_cast<const State<Context>*>(state);
+	}
+	const State<Context>* findLCA(const StateBase<Context>* s1, const StateBase<Context>* s2) const
+	{
+		std::vector<const StateBase<Context>*> s1Ancestors;
+		for(auto* p = s1; p; p = p->getParent())
+			s1Ancestors.push_back(p);
+		for(auto* p = s2; p; p = p->getParent())
+		{
+			if(std::find(s1Ancestors.begin(), s1Ancestors.end(), p) != s1Ancestors.end())
+			{
+				return static_cast<const State<Context>*>(p);
+			}
 		}
 		return _topState;
 	}
-
 	void performTransition(const Transition<Context>& trans, std::optional<Context>& context)
 	{
-		const State<Context>* target = trans.getToState();
-		const State<Context>* lca = findLCA(_currentState, target);
+		const State<Context>* oldState = trans.getFromState();
+		const State<Context>* newState = trans.getToState();
+		const State<Context>* lca = findLCA(oldState, newState);
 
-		// Exit states up to LCA
-		const State<Context>* currentExit = _currentState;
-		for(int i = 0; i < MAX_NESTING && currentExit != lca; ++i)
+		// Exit up to LCA
+		const State<Context>* currentExit = oldState;
+		while(currentExit != lca)
 		{
-			currentExit->onExit(context);
+			exitState(currentExit, context);
 			currentExit = currentExit->getParent();
 		}
-		// Execute transition action
+
+		// Perform first transition
 		trans.getAction().execute(context);
-		// Enter states from LCA to target
-		const State<Context>* enterPath[MAX_NESTING];
-		size_t pathLen = 0;
-		for(const State<Context>* s = target; s != lca && pathLen < MAX_NESTING; s = s->getParent())
+		newState->onEntry(context);
+
+		// Second transition to inner state if composite
+		if(newState->isComposite())
 		{
-			enterPath[pathLen++] = s;
+			const State<Context>* innerState = getDeepestDefaultState(newState->getDefaultState());
+			context->event = Event(EventType::INTERNAL_EV, "EnterInner");
+			innerState->onEntry(context);
+			if(!oldState->hasGroup())
+			{
+				_activeMainState = innerState;
+			}
+			else
+			{
+				size_t groupIdx = getGroupIndex(oldState->getGroup());
+				_activeGroupStates[groupIdx] = innerState;
+			}
 		}
-		for(int i = pathLen - 1; i >= 0; --i)
+		else
 		{
-			enterPath[i]->onEntry(context);
+			if(!oldState->hasGroup())
+			{
+				_activeMainState = newState;
+			}
+			else
+			{
+				size_t groupIdx = getGroupIndex(oldState->getGroup());
+				_activeGroupStates[groupIdx] = newState;
+			}
 		}
-		_currentState = getDeepestDefaultState(target);
+	}
+
+	void exitState(const State<Context>* state, std::optional<Context>& context)
+	{
+		state->onExit(context);
+		if(state->isComposite())
+		{
+			state->iterateStates([&](const auto& element) {
+				using ElementType = std::decay_t<decltype(element)>;
+				if constexpr(State<Context>::template IsGroup_v<ElementType>)
+				{
+					size_t idx = getGroupIndex(&element);
+					if(idx < _groupCount && _activeGroupStates[idx])
+					{
+						_activeGroupStates[idx]->onExit(context);
+						_activeGroupStates[idx] = nullptr;
+					}
+				}
+			});
+		}
+	}
+
+	void enterState(const State<Context>* state, std::optional<Context>& context)
+	{
+		state->onEntry(context);
+		if(state->isComposite())
+		{
+			state->iterateStates([&](const auto& element) {
+				using ElementType = std::decay_t<decltype(element)>;
+				if constexpr(State<Context>::template IsGroup_v<ElementType>)
+				{
+					size_t idx = getGroupIndex(&element);
+					if(idx < _groupCount)
+					{
+						const State<Context>* defaultState =
+							getDeepestDefaultState(element.getDefaultState());
+						defaultState->onEntry(context);
+						_activeGroupStates[idx] = defaultState;
+					}
+				}
+			});
+		}
+	}
+
+	size_t getGroupIndex(const Group<Context>* group) const
+	{
+		for(size_t i = 0; i < _groupCount; ++i)
+		{
+			if(_allGroups[i] == group)
+				return i;
+		}
+		return MAX_GROUP_SM; // Indicate invalid
 	}
 
 	/** Combine state's guards with transition's guard */
@@ -947,183 +1126,3 @@ class FSM
 };
 
 } // namespace SM
-
-// template<typename Context>
-// using TransitionTable = std::vector<Transition<Context>>;
-
-// template<typename Context, size_t N>
-// class FSM
-// {
-//   public:
-// 	/** Constructor taking top state and array of transition tables */
-// 	FSM(const StateBase<Context>* topState,
-// 		const std::array<TransitionTable<Context>, N>& transitionTables) :
-// 		_topState(topState), _currentState(getDeepestDefaultState(topState))
-// 	{
-// 		// Populate the main transition map and group transition map
-// 		for(const auto& table: transitionTables)
-// 		{
-// 			for(const auto& trans: table)
-// 			{
-// 				const StateBase<Context>* fromState = trans.getFromState();
-// 				transitionMap_[fromState].push_back(trans);
-// 				// If the fromState belongs to a group, add to _groupTransitions
-// 				if(fromState->getGroup())
-// 				{
-// 					_groupTransitions[fromState->getGroup()].push_back(trans);
-// 				}
-// 			}
-// 		}
-// 		// Copy inner transitions for composite states and groups
-// 		copyInnerTransitions(_topState);
-// 	}
-
-// 	/** Process an event and perform state transition if applicable */
-// 	void processEvent(const Event& event, std::optional<Context>& context)
-// 	{
-// 		const StateBase<Context>* state = _currentState;
-// 		while(state)
-// 		{
-// 			// Check group transitions first if the state is in a group
-// 			if(state->getGroup())
-// 			{
-// 				auto groupIt = _groupTransitions.find(state->getGroup());
-// 				if(groupIt != _groupTransitions.end())
-// 				{
-// 					for(const auto& trans: groupIt->second)
-// 					{
-// 						if(trans.getEvent() == event &&
-// 						   evaluateCombinedGuard(trans, state, context))
-// 						{
-// 							performTransition(trans, context);
-// 							return;
-// 						}
-// 					}
-// 				}
-// 			}
-// 			// Check regular transitions
-// 			auto it = transitionMap_.find(state);
-// 			if(it != transitionMap_.end())
-// 			{
-// 				for(const auto& trans: it->second)
-// 				{
-// 					if(trans.getEvent() == event && evaluateCombinedGuard(trans, state, context))
-// 					{
-// 						performTransition(trans, context);
-// 						return;
-// 					}
-// 				}
-// 			}
-// 			state = state->getParent();
-// 		}
-// 		LOG::INFO("FSM", "No transition found for event %s in state %s", event.toString(),
-// 				  _currentState->getName());
-// 	}
-
-// 	/** Get the current state */
-// 	const StateBase<Context>* getCurrentState() const { return _currentState; }
-
-//   private:
-// 	const StateBase<Context>* _topState;
-// 	const StateBase<Context>* _currentState;
-// 	std::unordered_map<const StateBase<Context>*, std::vector<Transition<Context>>> transitionMap_;
-// 	std::unordered_map<const Group<Context>*, std::vector<Transition<Context>>> _groupTransitions;
-
-// 	/** Get the deepest default state for initialization */
-// 	const StateBase<Context>* getDeepestDefaultState(const StateBase<Context>* state) const
-// 	{
-// 		const StateBase<Context>* current = state;
-// 		while(current->isComposite())
-// 		{
-// 			current = current->getDefaultState();
-// 		}
-// 		return current;
-// 	}
-
-// 	/** Copy inner transitions from composite states and groups */
-// 	void copyInnerTransitions(const StateBase<Context>* state)
-// 	{
-// 		if(state->isComposite())
-// 		{
-// 			state->iterateNestedStates([this](StateBase<Context>& nestedState) {
-// 				// If nestedState is in a group, its transitions are already in _groupTransitions
-// 				if(!nestedState.getGroup())
-// 				{
-// 					auto it = transitionMap_.find(&nestedState);
-// 					if(it != transitionMap_.end())
-// 					{
-// 						transitionMap_[&nestedState] = it->second; // Copy transitions
-// 					}
-// 				}
-// 				copyInnerTransitions(&nestedState);
-// 			});
-// 		}
-// 	}
-
-// 	/** Combine state's guards with transition's guard */
-// 	bool evaluateCombinedGuard(const Transition<Context>& trans, const StateBase<Context>* state,
-// 							   const std::optional<Context>& context) const
-// 	{
-// 		return trans.canTransit(context);
-// 	}
-
-// 	/** Find the Least Common Ancestor (LCA) */
-// 	const StateBase<Context>* findLCA(const StateBase<Context>* s1,
-// 									  const StateBase<Context>* s2) const
-// 	{
-// 		std::unordered_set<const StateBase<Context>*> ancestors;
-// 		const StateBase<Context>* temp = s1;
-// 		while(temp)
-// 		{
-// 			ancestors.insert(temp);
-// 			temp = temp->getParent();
-// 		}
-// 		temp = s2;
-// 		while(temp)
-// 		{
-// 			if(ancestors.find(temp) != ancestors.end())
-// 				return temp;
-// 			temp = temp->getParent();
-// 		}
-// 		return _topState; // Default to top state if no LCA found
-// 	}
-
-// 	/** Exit states up to the LCA */
-// 	void exitUpTo(const StateBase<Context>* from, const StateBase<Context>* ancestor) const
-// 	{
-// 		const StateBase<Context>* current = from;
-// 		while(current != ancestor)
-// 		{
-// 			current->onExit();
-// 			current = current->getParent();
-// 		}
-// 	}
-
-// 	/** Enter states from LCA to target */
-// 	void enterPath(const StateBase<Context>* ancestor, const StateBase<Context>* target) const
-// 	{
-// 		std::vector<const StateBase<Context>*> path;
-// 		const StateBase<Context>* s = target;
-// 		while(s != ancestor)
-// 		{
-// 			path.push_back(s);
-// 			s = s->getParent();
-// 		}
-// 		for(auto it = path.rbegin(); it != path.rend(); ++it)
-// 		{
-// 			(*it)->onEntry();
-// 		}
-// 	}
-
-// 	/** Perform the state transition */
-// 	void performTransition(const Transition<Context>& trans, std::optional<Context>& context)
-// 	{
-// 		const StateBase<Context>* target = trans.getToState();
-// 		const StateBase<Context>* lca = findLCA(_currentState, target);
-// 		exitUpTo(_currentState, lca);
-// 		trans.getAction().execute(context);
-// 		enterPath(lca, target);
-// 		_currentState = getDeepestDefaultState(target);
-// 		LOG::INFO("FSM", "Transitioned from %s to %s", _currentState->getName(), target->getName());
-// 	}
-//};
