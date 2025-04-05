@@ -4,14 +4,16 @@
 #include <type_traits>
 #include <variant>
 #include "Logger.hpp"
+#include <algorithm>
 
 namespace SM
 {
 
 constexpr int MAX_INNER_STATE = 10;
+constexpr int MAX_STATE_PER_GROUP = 5;
+constexpr int MAX_NESTING = 3;
 static constexpr size_t MAX_EVENT_TYPE = 4;
-static constexpr size_t MAX_LISTENER_PER_TYPE = 12;
-class FSM;
+static constexpr size_t MAX_LISTENER_PER_TYPE = 5;
 
 enum class EventType
 {
@@ -116,12 +118,24 @@ struct event_member_is_correct_type
 struct StateFunction
 {
   public:
-	constexpr StateFunction(int id) : _id(id) {}
+	constexpr StateFunction() : _id(-1), id_updated(false) {}
+	constexpr StateFunction(int id) : _id(id), id_updated(true) {}
 	constexpr virtual ~StateFunction() = default;
 	constexpr int getId() const { return _id; }
+	constexpr bool setId(int id)
+	{
+		if(!id_updated)
+		{
+			_id = id;
+			id_updated = true;
+			return true;
+		}
+		return false;
+	}
 
   private:
-	const int _id;
+	int _id;
+	bool id_updated = false;
 };
 
 template<typename Context>
@@ -129,6 +143,7 @@ struct Guard : public StateFunction
 {
   public:
 	using FuncPtr = bool (*)(const std::optional<Context>&);
+	constexpr Guard(FuncPtr func) : StateFunction(), _func(func) {}
 	constexpr Guard(int id, FuncPtr func) : StateFunction(id), _func(func) {}
 	constexpr ~Guard() override = default;
 	static_assert(detail::has_event_member<Context>::value, "Context must have an 'event' member");
@@ -142,15 +157,16 @@ struct Guard : public StateFunction
   private:
 	FuncPtr _func;
 };
-static_assert(std::is_trivially_destructible_v<ValidatedContext>,
-			  "ValidatedContext must be trivially destructible");
-inline constexpr Guard<ValidatedContext> NullGuard(-1, nullptr);
+
+template<typename Context>
+constexpr Guard<Context> NullGuard(nullptr);
 
 template<typename Context>
 struct Action : public StateFunction
 {
   public:
 	using FuncPtr = void (*)(std::optional<Context>&);
+	constexpr Action(FuncPtr func) : StateFunction(), _func(func) {}
 	constexpr Action(int id, FuncPtr func) : StateFunction(id), _func(func) {}
 	constexpr ~Action() override = default;
 	static_assert(detail::has_event_member<Context>::value, "Context must have an 'event' member");
@@ -166,53 +182,119 @@ struct Action : public StateFunction
 	FuncPtr _func;
 };
 
-inline constexpr Action<ValidatedContext> NullAction(-1, nullptr);
+// inline constexpr Action<ValidatedContext> NullAction(nullptr);
+template<typename Context>
+constexpr Action<Context> NullAction(nullptr);
+
+template<typename Context, typename... States>
+struct Group;
 template<typename Context> // NoLint
 struct StateBase
 {
 	using EventHandler = void (*)(const Event&);
+	using Actions = Action<Context>;
+	using Guards = Guard<Context>;
+	using BaseState = StateBase<Context>;
+	using Groups = Group<Context>;
 
   public:
+	// Existing constructor with default parameters
 	constexpr StateBase(const int id, const char* name,
-						const Action<Context>& entryAction = NullAction,
-						const Action<Context>& exitAction = NullAction,
-						const Guard<Context>& entryGuard = NullGuard,
-						const Guard<Context>& exitGuard = NullGuard) :
+						const Actions& entryAction = NullAction<Context>,
+						const Actions& exitAction = NullAction<Context>,
+						const Guards& entryGuard = NullGuard<Context>,
+						const Guards& exitGuard = NullGuard<Context>, BaseState* parent = nullptr,
+						Groups* group = nullptr) :
 		_id(id), _name(name), _entryAction(entryAction), _exitAction(exitAction),
-		_entryActionGuard(entryGuard), _exitActionGuard(exitGuard), _listenerCount{}, _listeners{}
+		_entryActionGuard(entryGuard), _exitActionGuard(exitGuard), _listenerCount{}, _listeners{},
+		_parent(parent), _group(group)
 	{
+		_entryAction.setId(_id);
+		_exitAction.setId(_id);
+		_entryActionGuard.setId(_id);
+		_exitActionGuard.setId(_id);
 	}
 
+	constexpr StateBase(BaseState* parent, const int id, const char* name,
+						const Actions& entryAction = NullAction<Context>,
+						const Actions& exitAction = NullAction<Context>,
+						const Guards& entryGuard = NullGuard<Context>,
+						const Guards& exitGuard = NullGuard<Context>) :
+		StateBase(id, name, entryAction, exitAction, entryGuard, exitGuard, parent, nullptr)
+	{
+	}
+	constexpr StateBase(BaseState* parent, Groups* group, const int id, const char* name,
+						const Actions& entryAction = NullAction<Context>,
+						const Actions& exitAction = NullAction<Context>,
+						const Guards& entryGuard = NullGuard<Context>,
+						const Guards& exitGuard = NullGuard<Context>) :
+		StateBase(id, name, entryAction, exitAction, entryGuard, exitGuard, parent, group)
+	{
+	}
+	constexpr StateBase(Group<Context>* group, const int id, const char* name,
+						const Actions& entryAction = NullAction<Context>,
+						const Actions& exitAction = NullAction<Context>,
+						const Guards& entryGuard = NullGuard<Context>,
+						const Guards& exitGuard = NullGuard<Context>) :
+		StateBase(id, name, entryAction, exitAction, entryGuard, exitGuard, nullptr, group)
+	{
+	}
 	static_assert(detail::has_event_member<Context>::value, "Context must have an 'event' member");
 	static_assert(detail::event_member_is_correct_type<Context>::value,
 				  "Context's 'event' member must be of type SM::Event");
 
 	virtual bool isComposite() const { return false; }
 	virtual void handleEvent(const Event& ev) const;
-
 	constexpr int getId() const { return _id; }
 	constexpr const char* getName() const { return _name; }
-
-	constexpr bool canActOnEntry() const { return _entryActionGuard.evaluate(_ctx); }
-	constexpr bool canActOnExit() const { return _exitActionGuard.evaluate(_ctx); }
-	constexpr void onEntry() const
+	constexpr bool hasParent() const { return _parent ? true : false; }
+	constexpr bool hasGroup() const { return _group ? true : false; }
+	constexpr BaseState* getParent() { return _parent; }
+	constexpr Groups* getGroup() { return _group; }
+	constexpr bool hasEntryAction() const
 	{
-		if(canActOnEntry())
+		return _entryAction != NullAction<Context> ? true : false;
+	}
+	constexpr bool hasExitAction() const
+	{
+		return _exitAction != NullAction<Context> ? true : false;
+	}
+	constexpr bool hasEntryGuard() const
+	{
+		return _entryActionGuard != NullGuard<Context> ? true : false;
+	}
+	constexpr bool hasExitGuard() const
+	{
+		return _exitActionGuard != NullGuard<Context> ? true : false;
+	}
+
+	constexpr bool canActOnEntry(Context& ctx) const
+	{
+		return hasEntryAction() ? _entryActionGuard.evaluate(ctx) : true;
+	}
+	constexpr bool canActOnExit(Context& ctx) const
+	{
+		return hasExitAction() ? _exitActionGuard.evaluate(ctx) : true;
+	}
+
+	constexpr void onEntry(Context& ctx) const
+	{
+		if(canActOnEntry(ctx))
 		{
-			_entryAction.execute(_ctx);
+			_entryAction.execute(ctx);
 		}
 	}
-	constexpr void onExit() const
+	constexpr void onExit(Context& ctx) const
 	{
-		if(canActOnExit())
+		if(canActOnExit(ctx))
 		{
-			_exitAction.execute(_ctx);
+			_exitAction.execute(ctx);
 		}
 	}
 
 	void dispatchEvent(const Event& event)
 	{
-		_ctx.event = event;
+
 		handleEvent(event);
 
 		size_t eventTypeIndex = static_cast<size_t>(event.getType());
@@ -252,26 +334,33 @@ struct StateBase
   private:
 	const int _id;
 	const char* _name;
-	Context _ctx;
-	Action<Context> _entryAction;
-	Action<Context> _exitAction;
-	Guard<Context> _entryActionGuard;
-	Guard<Context> _exitActionGuard;
+
+	Actions _entryAction;
+	Actions _exitAction;
+	Guards _entryActionGuard;
+	Guards _exitActionGuard;
 	size_t _listenerCount[MAX_EVENT_TYPE];
 	EventHandler _listeners[MAX_EVENT_TYPE][MAX_LISTENER_PER_TYPE];
-};
 
-struct DefaultInnerState : public StateBase<ValidatedContext>
+	Groups* _parent = nullptr;
+	Groups* _group = nullptr;
+};
+template<typename Context>
+struct DefaultInnerState : public StateBase<Context>
 {
   public:
-	constexpr DefaultInnerState() : StateBase(0, "DefaultInnerState", NullAction, NullAction) {}
-	void iterateNestedStates(std::function<void(StateBase&)> func) override {}
+	constexpr DefaultInnerState() :
+
+		StateBase<Context>(0, "DefaultInnerState")
+	{
+	}
+
+	void iterateNestedStates(std::function<void(StateBase<Context>&)> func) override {}
 };
 
 template<typename Context, typename... InnerElements>
 struct State;
-template<typename Context, typename... States>
-struct Group;
+
 namespace details
 {
 // Checks if T is a State derived from StateBase<Context>
@@ -313,7 +402,10 @@ struct Group
 	constexpr Group(const char* name, States... states) : _name(name), _states(states...) {}
 
 	const char* getGroupName() const { return _name; }
-
+	constexpr bool operator==(const Group& rhs) const
+	{
+		return (std::strcmp(_name, rhs._name) == 0);
+	}
 	template<typename Func>
 	void iterate(Func&& func) const
 	{
@@ -339,6 +431,9 @@ struct Group
 		}
 	}
 };
+template<typename Context>
+constexpr Group<Context> NullGroup("NULL");
+
 template<typename Context, typename... InnerElements>
 struct State : public StateBase<Context>
 {
@@ -370,7 +465,8 @@ struct State : public StateBase<Context>
 	template<typename =
 				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
 	constexpr State(int id, const char* name, InnerElements... elements) :
-		BaseState(id, name, NullAction, NullAction, NullGuard, NullGuard),
+		BaseState(id, name, NullAction<Context>, NullAction<Context>, NullGuard<Context>,
+				  NullGuard<Context>),
 		elements_(std::make_tuple(elements...))
 	{
 	}
@@ -379,7 +475,7 @@ struct State : public StateBase<Context>
 				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
 	constexpr State(int id, const Actions& entryAction, const Actions& exitAction, const char* name,
 					InnerElements... elements) :
-		BaseState(id, name, entryAction, exitAction, NullGuard, NullGuard),
+		BaseState(id, name, entryAction, exitAction, NullGuard<Context>, NullGuard<Context>),
 		elements_(std::make_tuple(elements...))
 	{
 	}
@@ -392,6 +488,25 @@ struct State : public StateBase<Context>
 		elements_(std::make_tuple(elements...))
 	{
 	}
+	template<typename =
+				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
+	constexpr State(BaseState* parent, int id, const Actions& entryAction,
+					const Actions& exitAction, const Guards& entryGuard, const Guards& exitGuard,
+					const char* name, InnerElements... elements) :
+		BaseState(parent, id, name, entryAction, exitAction, entryGuard, exitGuard),
+		elements_(std::make_tuple(elements...))
+	{
+	}
+	template<typename =
+				 std::enable_if_t<((IsState_v<InnerElements> || IsGroup_v<InnerElements>) && ...)>>
+	constexpr State(BaseState* parent, Group<Context> group, int id, const Actions& entryAction,
+					const Actions& exitAction, const Guards& entryGuard, const Guards& exitGuard,
+					const char* name, InnerElements... elements) :
+		BaseState(parent, group, id, name, entryAction, exitAction, entryGuard, exitGuard),
+		elements_(std::make_tuple(elements...))
+	{
+	}
+
 	bool isComposite() const override { return sizeof...(InnerElements) > 0; }
 
 	constexpr auto getDefaultState() const { return getDefaultStateImpl<0>(); }
@@ -445,7 +560,7 @@ struct State : public StateBase<Context>
 
   private:
 	std::tuple<InnerElements...> elements_;
-	static constexpr DefaultInnerState defaultState{};
+	static constexpr DefaultInnerState<Context> defaultState{};
 
 	template<std::size_t Index = 0>
 	constexpr auto getDefaultStateImpl() const
@@ -494,32 +609,53 @@ struct State : public StateBase<Context>
 };
 
 template<typename Context>
-using OptState = StateBase<Context>*;
+constexpr State<Context> NullState(-1, "NULL");
 
 // Update Transition to use pointers
 template<typename Context>
 struct Transition
 {
-	using BaseState = StateBase<Context>;
+	using tS = State<Context>;
 	using Actions = Action<Context>;
 	using Guards = Guard<Context>;
+	using Groups = Group<Context>;
 
   public:
 	const int _id;
-	constexpr Transition(int id, const BaseState* from, const BaseState* to, const Guards& guard,
+	constexpr Transition(int id, const tS* from, const tS* to, const Guards& guard,
 						 const Event& event = NullEvent,
-						 const Actions& onTransitionAction = NullAction) :
+						 const Actions& onTransitionAction = NullAction<Context>) :
 		_id(id), _fromState(from), _toState(to), _guard(guard), _event(event),
 		_onTransitionAction(onTransitionAction)
 	{
+		if((from->hasParent() && to->hasParent()) && (from->getParent() == to->getParent()))
+		{
+			_commonParent = from->getParent();
+		}
+		if((from->hasGroup() && to->hasGroup()) && (from->getGroup() == to->getGroup()))
+		{
+			_commonGroup = from->getGroup();
+		}
 	}
 
 	bool canTransit(const std::optional<Context>& context) const
 	{
-		return _guard.evaluate(context);
+		return _guard.evaluate(context) && (_fromState->canActOnExit(context)) &&
+			   (_toState->canActOnEntry(context)) && !hasDifferentGroup();
 	}
+	constexpr bool hasCommonAncestor() const { return _commonParent ? true : false; }
+	constexpr tS* getAncestor() { return _commonParent; }
+	constexpr bool hasCommonGroup() const { return _commonGroup ? true : false; }
+	constexpr bool hasDifferentGroup() const
+	{
+		return ((_fromState->hasGroup() && _toState->hasGroup()) &&
+				(_fromState->getGroup() != _toState->getGroup())) ?
+				   true :
+				   false;
+	}
+	constexpr Groups* getCommonGroup() { return _commonGroup; }
 
-	OptState<Context> executeTransition(std::optional<Context>& context) const
+	tS* executeTransition(std::optional<Context>& context) const
 	{
 		if(canTransit(context))
 		{
@@ -529,17 +665,465 @@ struct Transition
 		return nullptr; // No transition
 	}
 
-	const BaseState* getFromState() const { return _fromState; }
+	const tS* getFromState() const { return _fromState; }
 	const Event& getEvent() const { return _event; }
-	const BaseState* getToState() const { return _toState; }
+	const tS* getToState() const { return _toState; }
 	const Actions& getAction() const { return _onTransitionAction; }
 	const Guards& getGuard() const { return _guard; }
 
   private:
-	const BaseState* _fromState;
-	const BaseState* _toState;
+	const tS* _fromState;
+	const tS* _toState;
 	const Guards& _guard;
 	const Event& _event;
 	const Actions& _onTransitionAction;
+	const tS* _commonParent;
+	const Groups* _commonGroup;
 };
+
+template<typename Context>
+constexpr Transition<Context> NullTransition{
+	-1, NullState<Context>, NullEvent, NullState<Context>, NullGuard<Context>, NullAction<Context>};
+
+template<typename Context, typename... Transitions>
+struct TransitionsTable
+{
+  public:
+	constexpr TransitionsTable(Transitions... transitions) :
+		transitions_(std::make_tuple(transitions...))
+	{
+	}
+	template<std::size_t Index = 0>
+	constexpr const Transition<Context>& getTransition(std::size_t index) const
+	{
+		if constexpr(sizeof...(Transitions) == 0)
+		{
+			// Handle the empty tuple case
+			LOG::ERROR("SM_TST", "TransitionTable is empty.\n");
+			return NullTransition<Context>;
+		}
+		else
+		{
+			if(index == Index)
+			{
+				return std::get<Index>(transitions_);
+			}
+			else if constexpr(Index + 1 < sizeof...(Transitions))
+			{
+				return getTransition<Index + 1>(index);
+			}
+			else
+			{
+				LOG::ERROR("SM_TST", "Index out of bounds: %zu\n", index);
+				return NullTransition<Context>;
+			}
+		}
+	}
+	constexpr const Transition<Context>& operator[](std::size_t index) const
+	{
+		return getTransition(index);
+	}
+
+	constexpr const Transition<Context>& findTransition(const State<Context>& currState,
+														const Event& evt) const
+	{
+		return findTransitionRecursive(currState, evt,
+									   std::make_index_sequence<sizeof...(Transitions)>{});
+	}
+	void printTransitions() const
+	{
+		printHelper(std::make_index_sequence<sizeof...(Transitions)>{});
+	}
+
+  private:
+	std::tuple<Transitions...> transitions_;
+	template<std::size_t Index, std::size_t... Rest>
+	constexpr const Transition<Context>&
+		findTransitionRecursive(const State<Context>& currState, const Event& evt,
+								std::index_sequence<Index, Rest...>) const
+	{
+		if(std::get<Index>(transitions_).getFromState() == currState &&
+		   std::get<Index>(transitions_).getEvent() == evt)
+		{
+			return std::get<Index>(transitions_);
+		}
+		if constexpr(sizeof...(Rest) > 0)
+		{
+			return findTransitionRecursive(currState, evt, std::index_sequence<Rest...>{});
+		}
+		return NullTransition<Context>;
+	}
+	template<std::size_t... Is>
+	void printHelper(custom::index_sequence<Is...>) const
+	{
+		int dummy[] = {
+			0,
+			(LOG::INFO("SM_TST", "Transition %d: From %s, Event %s, To %s, Action %s, Guard %s\n",
+					   std::get<Is>(transitions_).id,
+					   std::get<Is>(transitions_).getFromState().getName(),
+					   std::get<Is>(transitions_).getEvent().getName(),
+					   std::get<Is>(transitions_).getToState().getName(),
+					   std::get<Is>(transitions_).getAction().getName(),
+					   std::get<Is>(transitions_).getGuard().getName()),
+			 0)...};
+		(void)dummy;
+	}
+};
+
+template<typename Context>
+using TransitionTable = std::array<Transition<Context>, MAX_STATE_PER_GROUP>;
+
+template<typename Context, size_t N>
+class FSM
+{
+  public:
+	FSM(const State<Context>* topState,
+		const std::array<TransitionTable<Context>, N>& transitionTables) :
+		_topState(topState), _currentState(getDeepestDefaultState(topState))
+	{
+		// Initialize transitions using static arrays based on MAX_INNER_STATE and
+		// MAX_STATE_PER_GROUP
+		for(const auto& table: transitionTables)
+		{
+			for(const auto& trans: table)
+			{
+				const State<Context>* fromState = trans.getFromState();
+				const int fromId = fromState->getId();
+
+				// Populate state transitions
+				if(fromId >= 0 && fromId < MAX_INNER_STATE)
+				{
+					if(_stateTransitionCounts[fromId] < MAX_STATE_PER_GROUP)
+					{
+						_stateTransitions[fromId][_stateTransitionCounts[fromId]++] = trans;
+					}
+				}
+
+				// Populate group transitions if applicable
+				if(fromState->hasGroup())
+				{
+					const Group<Context>* group = fromState->getGroup();
+					auto& groupTrans = _groupTransitions[group];
+					auto& count = _groupTransitionCounts[group];
+					if(count < MAX_STATE_PER_GROUP)
+					{
+						groupTrans[count++] = trans;
+					}
+				}
+			}
+		}
+	}
+	void updateContext(std::optional<Context>& context) { _ctx = context; }
+	void updateContext(Event& ev) { _ctx.event = ev; }
+	void processEvent(const Event& event, std::optional<Context>& context)
+	{
+
+		const State<Context>* state = _currentState;
+		for(int i = 0; i < MAX_NESTING && state != nullptr; ++i)
+		{
+			// Check group transitions first
+			if(state->hasGroup())
+			{
+				const Group<Context>* group = state->getGroup();
+				auto git = _groupTransitions.find(group);
+				if(git != _groupTransitions.end())
+				{
+					const auto& transArray = git->second;
+					size_t count = _groupTransitionCounts[git->first];
+					for(size_t j = 0; j < count; ++j)
+					{
+						const auto& trans = transArray[j];
+						if(trans.getEvent() == event &&
+						   evaluateCombinedGuard(trans, state, context))
+						{
+							performTransition(trans, context);
+							return;
+						}
+					}
+				}
+			}
+			// Check state transitions
+			const int stateId = state->getId();
+			if(stateId >= 0 && stateId < MAX_INNER_STATE)
+			{
+				const size_t count = _stateTransitionCounts[stateId];
+				for(size_t j = 0; j < count; ++j)
+				{
+					const auto& trans = _stateTransitions[stateId][j];
+					if(trans.getEvent() == event && evaluateCombinedGuard(trans, state, context))
+					{
+						performTransition(trans, context);
+						return;
+					}
+				}
+			}
+
+			state = state->getParent();
+		}
+		LOG::INFO("FSM", "No transition for event %s in state %s", event.toString(),
+				  _currentState->getName());
+	}
+
+  private:
+	std::optional<Context> _ctx;
+	const State<Context>* _topState;
+	const State<Context>* _currentState;
+	// Static arrays for transitions indexed by state ID
+	std::array<std::array<Transition<Context>, MAX_STATE_PER_GROUP>, MAX_INNER_STATE>
+		_stateTransitions;
+	std::array<size_t, MAX_INNER_STATE> _stateTransitionCounts{};
+	// Group transitions using pointers but fixed-size arrays
+	std::unordered_map<const Group<Context>*, std::array<Transition<Context>, MAX_STATE_PER_GROUP>>
+		_groupTransitions;
+	std::unordered_map<const Group<Context>*, size_t> _groupTransitionCounts;
+
+	const State<Context>* getDeepestDefaultState(const StateBase<Context>* state) const
+	{
+		for(int i = 0; i < MAX_NESTING && state->isComposite(); ++i)
+		{
+			state = state->getDefaultState();
+		}
+		return state;
+	}
+
+	const State<Context>* findLCA(const StateBase<Context>* s1, const StateBase<Context>* s2) const
+	{
+		const StateBase<Context>* ancestors[MAX_NESTING];
+		size_t s1Depth = 0;
+		for(const State<Context>* p = s1; p && s1Depth < MAX_NESTING; p = p->getParent())
+		{
+			ancestors[s1Depth++] = p;
+		}
+
+		for(const State<Context>* p = s2; p; p = p->getParent())
+		{
+			for(size_t i = 0; i < s1Depth; ++i)
+			{
+				if(p == ancestors[i])
+				{
+					return p;
+				}
+			}
+			if(p == _topState)
+				break;
+		}
+		return _topState;
+	}
+
+	void performTransition(const Transition<Context>& trans, std::optional<Context>& context)
+	{
+		const State<Context>* target = trans.getToState();
+		const State<Context>* lca = findLCA(_currentState, target);
+
+		// Exit states up to LCA
+		const State<Context>* currentExit = _currentState;
+		for(int i = 0; i < MAX_NESTING && currentExit != lca; ++i)
+		{
+			currentExit->onExit(context);
+			currentExit = currentExit->getParent();
+		}
+		// Execute transition action
+		trans.getAction().execute(context);
+		// Enter states from LCA to target
+		const State<Context>* enterPath[MAX_NESTING];
+		size_t pathLen = 0;
+		for(const State<Context>* s = target; s != lca && pathLen < MAX_NESTING; s = s->getParent())
+		{
+			enterPath[pathLen++] = s;
+		}
+		for(int i = pathLen - 1; i >= 0; --i)
+		{
+			enterPath[i]->onEntry(context);
+		}
+		_currentState = getDeepestDefaultState(target);
+	}
+
+	/** Combine state's guards with transition's guard */
+	bool evaluateCombinedGuard(const Transition<Context>& trans, const StateBase<Context>* state,
+							   const std::optional<Context>& context) const
+	{
+		return trans.canTransit(context);
+	}
+};
+
 } // namespace SM
+
+// template<typename Context>
+// using TransitionTable = std::vector<Transition<Context>>;
+
+// template<typename Context, size_t N>
+// class FSM
+// {
+//   public:
+// 	/** Constructor taking top state and array of transition tables */
+// 	FSM(const StateBase<Context>* topState,
+// 		const std::array<TransitionTable<Context>, N>& transitionTables) :
+// 		_topState(topState), _currentState(getDeepestDefaultState(topState))
+// 	{
+// 		// Populate the main transition map and group transition map
+// 		for(const auto& table: transitionTables)
+// 		{
+// 			for(const auto& trans: table)
+// 			{
+// 				const StateBase<Context>* fromState = trans.getFromState();
+// 				transitionMap_[fromState].push_back(trans);
+// 				// If the fromState belongs to a group, add to _groupTransitions
+// 				if(fromState->getGroup())
+// 				{
+// 					_groupTransitions[fromState->getGroup()].push_back(trans);
+// 				}
+// 			}
+// 		}
+// 		// Copy inner transitions for composite states and groups
+// 		copyInnerTransitions(_topState);
+// 	}
+
+// 	/** Process an event and perform state transition if applicable */
+// 	void processEvent(const Event& event, std::optional<Context>& context)
+// 	{
+// 		const StateBase<Context>* state = _currentState;
+// 		while(state)
+// 		{
+// 			// Check group transitions first if the state is in a group
+// 			if(state->getGroup())
+// 			{
+// 				auto groupIt = _groupTransitions.find(state->getGroup());
+// 				if(groupIt != _groupTransitions.end())
+// 				{
+// 					for(const auto& trans: groupIt->second)
+// 					{
+// 						if(trans.getEvent() == event &&
+// 						   evaluateCombinedGuard(trans, state, context))
+// 						{
+// 							performTransition(trans, context);
+// 							return;
+// 						}
+// 					}
+// 				}
+// 			}
+// 			// Check regular transitions
+// 			auto it = transitionMap_.find(state);
+// 			if(it != transitionMap_.end())
+// 			{
+// 				for(const auto& trans: it->second)
+// 				{
+// 					if(trans.getEvent() == event && evaluateCombinedGuard(trans, state, context))
+// 					{
+// 						performTransition(trans, context);
+// 						return;
+// 					}
+// 				}
+// 			}
+// 			state = state->getParent();
+// 		}
+// 		LOG::INFO("FSM", "No transition found for event %s in state %s", event.toString(),
+// 				  _currentState->getName());
+// 	}
+
+// 	/** Get the current state */
+// 	const StateBase<Context>* getCurrentState() const { return _currentState; }
+
+//   private:
+// 	const StateBase<Context>* _topState;
+// 	const StateBase<Context>* _currentState;
+// 	std::unordered_map<const StateBase<Context>*, std::vector<Transition<Context>>> transitionMap_;
+// 	std::unordered_map<const Group<Context>*, std::vector<Transition<Context>>> _groupTransitions;
+
+// 	/** Get the deepest default state for initialization */
+// 	const StateBase<Context>* getDeepestDefaultState(const StateBase<Context>* state) const
+// 	{
+// 		const StateBase<Context>* current = state;
+// 		while(current->isComposite())
+// 		{
+// 			current = current->getDefaultState();
+// 		}
+// 		return current;
+// 	}
+
+// 	/** Copy inner transitions from composite states and groups */
+// 	void copyInnerTransitions(const StateBase<Context>* state)
+// 	{
+// 		if(state->isComposite())
+// 		{
+// 			state->iterateNestedStates([this](StateBase<Context>& nestedState) {
+// 				// If nestedState is in a group, its transitions are already in _groupTransitions
+// 				if(!nestedState.getGroup())
+// 				{
+// 					auto it = transitionMap_.find(&nestedState);
+// 					if(it != transitionMap_.end())
+// 					{
+// 						transitionMap_[&nestedState] = it->second; // Copy transitions
+// 					}
+// 				}
+// 				copyInnerTransitions(&nestedState);
+// 			});
+// 		}
+// 	}
+
+// 	/** Combine state's guards with transition's guard */
+// 	bool evaluateCombinedGuard(const Transition<Context>& trans, const StateBase<Context>* state,
+// 							   const std::optional<Context>& context) const
+// 	{
+// 		return trans.canTransit(context);
+// 	}
+
+// 	/** Find the Least Common Ancestor (LCA) */
+// 	const StateBase<Context>* findLCA(const StateBase<Context>* s1,
+// 									  const StateBase<Context>* s2) const
+// 	{
+// 		std::unordered_set<const StateBase<Context>*> ancestors;
+// 		const StateBase<Context>* temp = s1;
+// 		while(temp)
+// 		{
+// 			ancestors.insert(temp);
+// 			temp = temp->getParent();
+// 		}
+// 		temp = s2;
+// 		while(temp)
+// 		{
+// 			if(ancestors.find(temp) != ancestors.end())
+// 				return temp;
+// 			temp = temp->getParent();
+// 		}
+// 		return _topState; // Default to top state if no LCA found
+// 	}
+
+// 	/** Exit states up to the LCA */
+// 	void exitUpTo(const StateBase<Context>* from, const StateBase<Context>* ancestor) const
+// 	{
+// 		const StateBase<Context>* current = from;
+// 		while(current != ancestor)
+// 		{
+// 			current->onExit();
+// 			current = current->getParent();
+// 		}
+// 	}
+
+// 	/** Enter states from LCA to target */
+// 	void enterPath(const StateBase<Context>* ancestor, const StateBase<Context>* target) const
+// 	{
+// 		std::vector<const StateBase<Context>*> path;
+// 		const StateBase<Context>* s = target;
+// 		while(s != ancestor)
+// 		{
+// 			path.push_back(s);
+// 			s = s->getParent();
+// 		}
+// 		for(auto it = path.rbegin(); it != path.rend(); ++it)
+// 		{
+// 			(*it)->onEntry();
+// 		}
+// 	}
+
+// 	/** Perform the state transition */
+// 	void performTransition(const Transition<Context>& trans, std::optional<Context>& context)
+// 	{
+// 		const StateBase<Context>* target = trans.getToState();
+// 		const StateBase<Context>* lca = findLCA(_currentState, target);
+// 		exitUpTo(_currentState, lca);
+// 		trans.getAction().execute(context);
+// 		enterPath(lca, target);
+// 		_currentState = getDeepestDefaultState(target);
+// 		LOG::INFO("FSM", "Transitioned from %s to %s", _currentState->getName(), target->getName());
+// 	}
+//};
