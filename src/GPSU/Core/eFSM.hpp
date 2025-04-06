@@ -18,15 +18,19 @@ TRANSITION TO THE INNER STATE OF THE TO STATE FROM THE PARENT STATE(2 TRANSITION
 2.1 A COMPOSITE STATE WHEN ACTIVE  BY  DEFUALT WILL ACTIVATE ALL ITS NESTED DEFAULT STATE,
 3.GROUP/GROUPS AND ITS MEMBERS ALWAYS HAVE COMMON PARENT as THERE IS ALWAYS A TOP STATE
 4.TRANSITION BETWEEN GROUPS WITH COMMON PARENT NOT ALLOWED
-5.TRANSITION BETWEEN GROUPS WITH DIFFERENT PARENT ALLOWED
-6.TRANSITION BETWEEN A STATE TO A GROUP WILL HAPPEN IN TWO STEP STATE TO GROUP PARENT THEN
-IMMEDIATELY GROUP PARENT TO GROUP DEFAULT STATE // NO LINT
+5.TRANSITION BETWEEN GROUPS WITH DIFFERENT PARENT ALLOWED,IT MEANS ONE GROUP STATE TO ANOTHER GROUP
+STATE
+5.1 STATE TO GROUP OR GROUP TO STATE TRANSITION NEVER HAPPENS ,TRASITION IS ALWAYS BETWEEN
+STATES
+6.TRANSITION BETWEEN A STATE TO A GROUP's INNER STATE  WILL HAPPEN IN TWO STEP STATE TO GROUP
+PARENT THEN IMMEDIATELY GROUP PARENT TO GROUP  INNER STATE DICTATED BY TRANSITION TABLE   // NO LINT
 7.FOR A SAME EVENT IF TRANSITION GUARD IS TRUE MULTIPLE GROUPS WITH SAME LEVEL WILL TRANSIT //NO
 LINT
 8.FOR A SAME EVENT IF TRANSITION GUARD IS TRUE MULTIPLE NESTED STATE WILL TRANSIT BUT IN ORDER
 OF LOWER LEVEL FIRST //NO LINT
 9.LOWEST LEVEL STATE WILL PROPAGATE EVENT UPWARDS //NO LINT
-10.HIGHER LEVEL STATE WILL PROPAGATE LEVELS BOTH WAYS UPWARDS AND DOWNWARDS //NO LINT
+10.HIGHER LEVEL STATE WILL
+PROPAGATE LEVELS BOTH WAYS UPWARDS AND DOWNWARDS //NO LINT
 11.HIGHEST LEVEL STATE WILL PROPAGATE EVENT  DOWSNWARDS //NO LINT
 
 */
@@ -393,7 +397,7 @@ struct DefaultInnerState : public StateBase<Context>
   public:
 	constexpr DefaultInnerState() :
 
-		StateBase<Context>(0, "DefaultInnerState")
+		StateBase<Context>(Utility::ID::generate(), "DefaultInnerState")
 	{
 	}
 
@@ -557,14 +561,14 @@ struct State : public StateBase<Context>
 	{
 		iterateElements<0>(std::forward<Func>(func));
 	}
-	void iterateNestedStates(std::function<void(BaseState&)> func) override
+	void iterateNestedStates(std::function<void(BaseState&)> func) const override
 	{
-		LOG::INFO("State", "\nIterating Nested States...from State %s", this->getName());
+
 		iterateElements<0>([&func](const auto& element) {
 			using ElementType = std::decay_t<decltype(element)>;
 			if constexpr(std::is_base_of_v<BaseState, ElementType>)
 			{
-				func(const_cast<ElementType&>(element));
+				func(element);
 			}
 			else if constexpr(IsGroup_v<ElementType>)
 			{
@@ -572,7 +576,7 @@ struct State : public StateBase<Context>
 					using GroupElementType = std::decay_t<decltype(groupElement)>;
 					if constexpr(std::is_base_of_v<BaseState, GroupElementType>)
 					{
-						func(const_cast<GroupElementType&>(groupElement));
+						func(groupElement);
 					}
 				});
 			}
@@ -698,7 +702,7 @@ struct Transition
 	constexpr Transition(int id, const tS* from, const tS* to, const Guards& guard,
 						 const Event& event = NullEvent,
 						 const Actions& onTransitionAction = NullAction<Context>) :
-		_id(id), _fromState(from), _toState(to), _guard(guard), _event(event),
+		_id(id), _from(from), _to(to), _guard(guard), _event(event),
 		_onTransitionAction(onTransitionAction)
 	{
 		if((from->hasParent() && to->hasParent()) && (from->getParent() == to->getParent()))
@@ -711,21 +715,26 @@ struct Transition
 		}
 	}
 
-	// In Transition::canTransit, adjust conditions
 	bool canTransit(const std::optional<Context>& context) const
 	{
-		bool sameGroup = (_fromState->getGroup() == _toState->getGroup());
-		bool commonParent = hasCommonAncestor();
+		if(!_guard.evaluate(context) || !_from->canActOnExit(context) ||
+		   !_to->canActOnEntry(context))
+			return false;
 
-		// Allow transitions within the same group or between groups with different parents
-		return _guard.evaluate(context) &&
-			   (sameGroup || (!commonParent && _fromState->getGroup() != _toState->getGroup())) &&
-			   _fromState->canActOnExit(context) && _toState->canActOnEntry(context);
+		bool sameGroup = (_from->getGroup() == _to->getGroup());
+		bool groupsShareCommonParent = false;
+
+		if(!sameGroup && _from->hasGroup() && _to->hasGroup())
+		{
+			auto* fromGroup = _from->getGroup();
+			auto* toGroup = _to->getGroup();
+			groupsShareCommonParent = (fromGroup->getCommonParent() == toGroup->getCommonParent());
+		}
+
+		return (sameGroup || !groupsShareCommonParent);
 	}
 	constexpr bool hasCommonAncestor() const { return _commonParent ? true : false; }
 	constexpr tS* getAncestor() { return _commonParent; }
-	constexpr bool hasCommonGroup() const { return _commonGroup ? true : false; }
-
 	constexpr Groups* getCommonGroup() { return _commonGroup; }
 
 	tS* executeTransition(std::optional<Context>& context) const
@@ -735,20 +744,20 @@ struct Transition
 		if(canTransit(context))
 		{
 			_onTransitionAction.execute(context);
-			return _toState;
+			return _to;
 		}
 		return nullptr; // No transition
 	}
 
-	const tS* getFromState() const { return _fromState; }
+	const tS* getFromState() const { return _from; }
 	const Event& getEvent() const { return _event; }
-	const tS* getToState() const { return _toState; }
+	const tS* getToState() const { return _to; }
 	const Actions& getAction() const { return _onTransitionAction; }
 	const Guards& getGuard() const { return _guard; }
 
   private:
-	const tS* _fromState;
-	const tS* _toState;
+	const tS* _from;
+	const tS* _to;
 	const Guards& _guard;
 	const Event& _event;
 	const Actions& _onTransitionAction;
@@ -762,9 +771,8 @@ constexpr Transition<Context> NullTransition{
 template<typename Context>
 struct TransitionTable
 {
-	std::array<std::array<Transition<Context>, MAX_STATE_PER_GROUP>, MAX_INNER_STATE>
-		stateTransitions;
-	std::array<size_t, MAX_INNER_STATE> stateTransitionCounts{};
+	std::unordered_map<int, std::array<Transition<Context>, MAX_STATE_PER_GROUP>> stateTransitions;
+	std::unordered_map<int, size_t> stateTransitionCounts;
 	std::unordered_map<const Group<Context>*, std::array<Transition<Context>, MAX_STATE_PER_GROUP>>
 		groupTransitions;
 	std::unordered_map<const Group<Context>*, size_t> groupTransitionCounts;
@@ -788,16 +796,12 @@ struct TransitionTable
 
 	void processTransition(const Transition<Context>& trans)
 	{
-		const State<Context>* fromState = trans.getFromState();
-
-		// Handle state-based transitions
-		if(const int stateId = fromState->getId(); stateId >= 0 && stateId < MAX_INNER_STATE)
+		int stateId = trans.getFromState()->getId();
+		auto fromState = trans.getFromState();
+		auto& count = stateTransitionCounts[stateId];
+		if(count < MAX_STATE_PER_GROUP)
 		{
-			auto& count = stateTransitionCounts[stateId];
-			if(count < MAX_STATE_PER_GROUP)
-			{
-				stateTransitions[stateId][count++] = trans;
-			}
+			stateTransitions[stateId][count++] = trans;
 		}
 
 		// Handle group-based transitions
@@ -826,14 +830,15 @@ struct TransitionTable
 	TransitionRange findTransitions(const State<Context>* currentState, const Event& event) const
 	{
 		// Check state transitions first
-		if(const int stateId = currentState->getId(); stateId >= 0 && stateId < MAX_INNER_STATE)
+		int stateId = currentState->getId();
+		if(auto it = stateTransitions.find(stateId); it != stateTransitions.end())
 		{
-			const size_t count = stateTransitionCounts[stateId];
+			size_t count = stateTransitionCounts.at(stateId);
 			for(size_t i = 0; i < count; ++i)
 			{
-				if(stateTransitions[stateId][i].getEvent() == event)
+				if(it->second[i].getEvent() == event)
 				{
-					return {&stateTransitions[stateId][i], &stateTransitions[stateId][i] + 1};
+					return {&it->second[i], &it->second[i] + 1};
 				}
 			}
 		}
@@ -887,8 +892,19 @@ class FSM
 			{
 				if(evaluateCombinedGuard(trans, state, context))
 				{
+					const State<Context>* toState = trans.getToState();
+					if(state->getGroup() != toState->getGroup() &&
+					   findLCA(state, toState) != nullptr)
+					{
+						LOG::WARNING(
+							"FSM",
+							"Transition from %s to %s disallowed: groups with common ancestor",
+							state->getName(), toState->getName());
+						continue;
+					}
 					transitionsToPerform.push_back({&trans, level});
-					break; // One transition per state per event
+
+					break;
 				}
 			}
 		};
@@ -941,10 +957,19 @@ class FSM
 	void initializeActiveStates()
 	{
 		_activeMainState = getDeepestDefaultState(_topState);
-		for(size_t i = 0; i < MAX_GROUP_SM; ++i)
+		if(!_activeMainState)
 		{
-			_activeGroupStates[i] = nullptr;
-			_prevGroupStates[i] = nullptr;
+			LOG::ERROR("FSM", "Failed to initialize active state due to cycle or null top state");
+		}
+		std::vector<const State<Context>*> entryPath;
+		for(auto* p = _activeMainState; p != nullptr; p = p->getParent())
+		{
+			entryPath.push_back(p);
+		}
+		std::reverse(entryPath.begin(), entryPath.end());
+		for(auto* state: entryPath)
+		{
+			enterState(state, _ctx);
 		}
 	}
 	void analyzeGroups()
@@ -990,15 +1015,19 @@ class FSM
 	}
 	const State<Context>* getDeepestDefaultState(const StateBase<Context>* state) const
 	{
+		std::unordered_set<const StateBase<Context>*> visited;
 		while(state->isComposite())
 		{
+			if(visited.count(state))
+			{
+				LOG::ERROR("FSM", "Cycle detected in default states for state %s",
+						   state->getName());
+				return nullptr;
+			}
+			visited.insert(state);
 			auto* nextState = state->getDefaultState();
 			if(nextState == state)
-			{ // Prevent infinite loop
-				LOG::ERROR("FSM", "Infinite loop in getDeepestDefaultState for state %s",
-						   state->getName());
-				break;
-			}
+				break; // Self-reference detected
 			state = nextState;
 		}
 		return static_cast<const State<Context>*>(state);
@@ -1021,53 +1050,85 @@ class FSM
 	{
 		const State<Context>* oldState = trans.getFromState();
 		const State<Context>* newState = trans.getToState();
+		if(!oldState || !newState)
+			return;
+
 		const State<Context>* lca = findLCA(oldState, newState);
+		if(!lca)
+			return;
 
 		// Exit up to LCA
 		const State<Context>* currentExit = oldState;
-		while(currentExit != lca)
+		while(currentExit && currentExit != lca)
 		{
 			exitState(currentExit, context);
 			currentExit = currentExit->getParent();
 		}
 
-		// Perform first transition
-		trans.getAction().execute(context);
-		newState->onEntry(context);
-
-		// Second transition to inner state if composite
-		if(newState->isComposite())
+		// Check if transitioning to a group's inner state
+		std::vector<const State<Context>*> entryPath;
+		for(auto* p = newState; p && p != lca; p = p->getParent())
 		{
-			const State<Context>* innerState = getDeepestDefaultState(newState->getDefaultState());
-			context->event = Event(EventType::INTERNAL_EV, "EnterInner");
-			innerState->onEntry(context);
-			if(!oldState->hasGroup())
+			entryPath.push_back(p);
+		}
+		std::reverse(entryPath.begin(), entryPath.end());
+
+		if(newState->hasGroup() && entryPath.size() > 1)
+		{
+			// Two-step transition: first to group parent, then to inner state
+			const State<Context>* groupParent = newState->getGroup()->getCommonParent();
+			if(groupParent &&
+			   std::find(entryPath.begin(), entryPath.end(), groupParent) != entryPath.end())
 			{
-				_activeMainState = innerState;
+				for(auto* state: entryPath)
+				{
+					if(state == groupParent)
+					{
+						enterState(state, context);
+						break;
+					}
+				}
+				for(auto* state: entryPath)
+				{
+					if(state != groupParent)
+					{
+						enterState(state, context);
+					}
+				}
 			}
 			else
 			{
-				size_t groupIdx = getGroupIndex(oldState->getGroup());
-				_activeGroupStates[groupIdx] = innerState;
+				for(auto* state: entryPath)
+				{
+					enterState(state, context);
+				}
 			}
 		}
 		else
 		{
-			if(!oldState->hasGroup())
+			for(auto* state: entryPath)
 			{
-				_activeMainState = newState;
-			}
-			else
-			{
-				size_t groupIdx = getGroupIndex(oldState->getGroup());
-				_activeGroupStates[groupIdx] = newState;
+				enterState(state, context);
 			}
 		}
-	}
 
+		trans.getAction().execute(context);
+		if(oldState == _activeMainState)
+			_activeMainState = newState;
+	}
 	void exitState(const State<Context>* state, std::optional<Context>& context)
 	{
+		if(!state)
+			return;
 		state->onExit(context);
+		if(state->hasGroup())
+		{
+			size_t groupIdx = getGroupIndex(state->getGroup());
+			if(groupIdx < _groupCount)
+			{
+				_activeGroupStates[groupIdx] = nullptr;
+			}
+		}
 		if(state->isComposite())
 		{
 			state->iterateStates([&](const auto& element) {
@@ -1087,20 +1148,38 @@ class FSM
 
 	void enterState(const State<Context>* state, std::optional<Context>& context)
 	{
+		if(!state)
+			return;
 		state->onEntry(context);
+		if(state->hasGroup())
+		{
+			size_t idx = getGroupIndex(state->getGroup());
+			if(idx < _groupCount)
+			{
+				_activeGroupStates[idx] = state;
+			}
+		}
 		if(state->isComposite())
 		{
+			const State<Context>* defaultState = getDeepestDefaultState(state);
+			if(defaultState && defaultState != state)
+			{
+				enterState(defaultState, context);
+			}
 			state->iterateStates([&](const auto& element) {
 				using ElementType = std::decay_t<decltype(element)>;
 				if constexpr(State<Context>::template IsGroup_v<ElementType>)
 				{
 					size_t idx = getGroupIndex(&element);
-					if(idx < _groupCount)
+					if(idx < _groupCount && !_activeGroupStates[idx])
 					{
-						const State<Context>* defaultState =
+						const State<Context>* groupDefault =
 							getDeepestDefaultState(element.getDefaultState());
-						defaultState->onEntry(context);
-						_activeGroupStates[idx] = defaultState;
+						if(groupDefault)
+						{
+							enterState(groupDefault, context);
+							_activeGroupStates[idx] = groupDefault;
+						}
 					}
 				}
 			});

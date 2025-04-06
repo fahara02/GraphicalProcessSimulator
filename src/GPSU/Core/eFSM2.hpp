@@ -653,7 +653,7 @@
 // 	constexpr Transition(int id, const tS* from, const tS* to, const Guards& guard,
 // 						 const Event& event = NullEvent,
 // 						 const Actions& onTransitionAction = NullAction<Context>) :
-// 		_id(id), _fromState(from), _toState(to), _guard(guard), _event(event),
+// 		_id(id), _from(from), _to(to), _guard(guard), _event(event),
 // 		_onTransitionAction(onTransitionAction)
 // 	{
 // 		if((from->hasParent() && to->hasParent()) && (from->getParent() == to->getParent()))
@@ -668,8 +668,8 @@
 
 // 	bool canTransit(const std::optional<Context>& context) const
 // 	{
-// 		return _guard.evaluate(context) && (_fromState->getGroup() == _toState->getGroup()) &&
-// 			   (_fromState->canActOnExit(context)) && (_toState->canActOnEntry(context));
+// 		return _guard.evaluate(context) && (_from->getGroup() == _to->getGroup()) &&
+// 			   (_from->canActOnExit(context)) && (_to->canActOnEntry(context));
 // 	}
 // 	constexpr bool hasCommonAncestor() const { return _commonParent ? true : false; }
 // 	constexpr tS* getAncestor() { return _commonParent; }
@@ -682,20 +682,20 @@
 // 		if(canTransit(context))
 // 		{
 // 			_onTransitionAction.execute(context);
-// 			return _toState;
+// 			return _to;
 // 		}
 // 		return nullptr; // No transition
 // 	}
 
-// 	const tS* getFromState() const { return _fromState; }
+// 	const tS* getFromState() const { return _from; }
 // 	const Event& getEvent() const { return _event; }
-// 	const tS* getToState() const { return _toState; }
+// 	const tS* getToState() const { return _to; }
 // 	const Actions& getAction() const { return _onTransitionAction; }
 // 	const Guards& getGuard() const { return _guard; }
 
 //   private:
-// 	const tS* _fromState;
-// 	const tS* _toState;
+// 	const tS* _from;
+// 	const tS* _to;
 // 	const Guards& _guard;
 // 	const Event& _event;
 // 	const Actions& _onTransitionAction;
