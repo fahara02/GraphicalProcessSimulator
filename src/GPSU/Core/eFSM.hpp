@@ -12,28 +12,90 @@ namespace SM
 {
 /*
  DESIGN GOAL RULES
-1.THERE IS ALWAYS A TOP_STATE
-2.STATE  CAN TRANSIT TO ANOTHER  STATE OF SAME LEVEL ONNLY AT FIRST ,THEN IF DICTATED BY
-TRANSITION TO THE INNER STATE OF THE TO STATE FROM THE PARENT STATE(2 TRANSITION  SEQUENTIAL )
-2.1 A COMPOSITE STATE WHEN ACTIVE  BY  DEFUALT WILL ACTIVATE ALL ITS NESTED DEFAULT STATE,
-3.GROUP/GROUPS AND ITS MEMBERS ALWAYS HAVE COMMON PARENT as THERE IS ALWAYS A TOP STATE
-4.TRANSITION BETWEEN GROUPS WITH COMMON PARENT NOT ALLOWED
-5.TRANSITION BETWEEN GROUPS WITH DIFFERENT PARENT ALLOWED,IT MEANS ONE GROUP STATE TO ANOTHER GROUP
-STATE
-5.1 STATE TO GROUP OR GROUP TO STATE TRANSITION NEVER HAPPENS ,TRASITION IS ALWAYS BETWEEN
-STATES
-6.TRANSITION BETWEEN A STATE TO A GROUP's INNER STATE  WILL HAPPEN IN TWO STEP STATE TO GROUP
-PARENT THEN IMMEDIATELY GROUP PARENT TO GROUP  INNER STATE DICTATED BY TRANSITION TABLE   // NO LINT
-7.FOR A SAME EVENT IF TRANSITION GUARD IS TRUE MULTIPLE GROUPS WITH SAME LEVEL WILL TRANSIT //NO
-LINT
-8.FOR A SAME EVENT IF TRANSITION GUARD IS TRUE MULTIPLE NESTED STATE WILL TRANSIT BUT IN ORDER
-OF LOWER LEVEL FIRST //NO LINT
-9.LOWEST LEVEL STATE WILL PROPAGATE EVENT UPWARDS //NO LINT
-10.HIGHER LEVEL STATE WILL
-PROPAGATE LEVELS BOTH WAYS UPWARDS AND DOWNWARDS //NO LINT
-11.HIGHEST LEVEL STATE WILL PROPAGATE EVENT  DOWSNWARDS //NO LINT
 
+1. THERE IS ALWAYS A TOP_STATE
+1.1 GROUP/GROUPS AND ITS MEMBERS ALWAYS HAVE COMMON PARENT as THERE IS ALWAYS A TOP STATE
+1.2 LOWER INDEX MEANS HIGHER PRIORITY FOR ANY GROUP(_priority)/TRANSIT(_priority)/STATE(_level*_id)
+1.3 IF THERE IS GROUPS DIRECTLY BELOW TOP_STATE ACTIVE STATE WILL BE EACH ACTIVE STATE OF THE GROUP
+AND GROUP ACTIVATION WILL BE BASED ON PRIORITY
+2. STATE CAN ONLY TRANSIT TO ANOTHER STATE VIA RULE OF PARENT_TO_CHILD(NEVER GRAND
+CHILD)/CHILD_TO_PARENT(NEVER GRAND PARENT)/SIBLINGS WITH SAMEGROUP/AND AS PER 5  ON ONE
+TRANSITION.
+3 WHEN A COMPOSITE STATE ENTER OR EXIT IT WILL ONLY EFFECT ITS INNER CHILD STATES  SEQUENTIALLY
+ON SAME TRANSITION.
+3.1 A COMPOSITE STATE WHEN ACTIVE BY DEFAULT WILL ACTIVATE ALL ITS NESTED
+DEFAULT STATES FIRST IF NOT DICTATED BY TRANSITIONS AND GUARD CONDITIONS FOR A SPECIFIC INNER STATE
+OF ITS CHILD.FOR FOR LOWER LEVELS NEED TO BE TRANSITED FROM DEFAULT TO SPECIFIC BY SPECIFIC
+TRANSITION CALL.
+3.2 IF A COMPOSITE STATE HAS MULTIPLE GROUPS, ALL WILL BE ACTIVATED ,ACTIVATION ORDER WILL BE BASED
+ON GROUP PRIORITY IN SEQUENCE. AND STATE WILL BE DEFAULT STATE IF NOT  IF NOT DICTATED BY TRANSITION
+OR GUARD CONDITIONS (i.e., who can enter first?)
+4. TRANSITION BETWEEN GROUPS WITH COMMON PARENT NOT ALLOWED
+5. TRANSITION BETWEEN GROUPS (INNER STATES) WITH DIFFERENT PARENT ALLOWED, IT MEANS ONE GROUP STATE
+TO ANOTHER GROUP STATE
+
+5.1 STATE TO GROUP OR GROUP TO STATE TRANSITION NEVER HAPPENS; TRANSITION IS ALWAYS BETWEEN STATES
+
+6. TRANSITION BETWEEN A STATE TO A GROUP'S INNER STATE WILL HAPPEN IN TWO STEPS:
+   a. STATE TO GROUP PARENT, then
+   b. IMMEDIATELY GROUP PARENT TO GROUP INNER STATE DICTATED BY TRANSITION TABLE  OR IF NOT DEFAULT
+  // NO LINT
+
+7. FOR THE SAME EVENT, IF TRANSITION GUARD IS TRUE IN MULTIPLE GROUPS WITH SAME LEVEL, ALL WILL
+TRANSIT  // NO LINT
+
+8. FOR THE SAME EVENT, IF TRANSITION GUARD IS TRUE IN MULTIPLE NESTED STATES, TRANSITIONS WILL OCCUR
+IN ORDER OF LOWER LEVEL FIRST  // NO LINT
+
+9. LOWEST LEVEL STATE WILL PROPAGATE EVENT UPWARDS  // NO LINT
+
+10. HIGHER LEVEL STATE WILL PROPAGATE EVENTS BOTH WAYS, UPWARDS AND DOWNWARDS  // NO LINT
+
+11. HIGHEST LEVEL STATE WILL PROPAGATE EVENT DOWNWARDS  // NO LINT
+
+12. ENTRY AND EXIT ACTIONS
+	12.1 Every state (simple or composite) must have clearly defined entry and exit actions.
+	12.2 For composite states, the entry action must execute before nested default states are
+activated; conversely, exit actions must be executed after all nested states have exited.
+
+13. TRANSITION CONFLICT RESOLUTION
+	13.1 When multiple transitions are enabled for the same event, a deterministic priority scheme
+must be applied//. 13.2 Priorities can be defined explicitly (by order or assigned values) or
+implicitly (by state hierarchy). 13.3 The conflict resolution strategy must be documented to avoid
+ambiguity.
+
+14. INTERNAL VS. EXTERNAL TRANSITIONS
+	14.1 Transitions are classified as internal or external.
+	14.2 An internal transition does not trigger exit and re-entry actions for the source state,
+while an external transition does. 14.3 The type of transition must be explicitly stated and handled
+according to its classification.
+
+15. EVENT CONSUMPTION AND PROPAGATION CONTROL
+	15.1 Each state must indicate whether an event is “consumed” after processing or allowed to
+propagate. 15.2 Once an event is consumed at a given level, it should not trigger further
+transitions in parent states. 15.3 The propagation rules must be clearly defined to ensure
+consistency across nested levels.
+
+16. CONCURRENCY (ORTHOGONAL REGIONS)
+	16.1 If concurrent state groups (orthogonal regions) are allowed, each region must process
+events independently unless coordinated explicitly.
+	16.2 Transitions in one region should not
+interfere with those in another. 16.3 Synchronization mechanisms must be defined for inter-region
+communication if needed.
+
+//FOR FUTUTRE NOT NOW
+17. ERROR HANDLING AND UNDEFINED TRANSITIONS
+	17.1 A default error handling mechanism must be defined for events that do not match any valid
+transition. 17.2 Fallback or error states may be specified to maintain system robustness. 17.3
+Logging and notification procedures should be in place for undefined or unexpected transitions.
+
+18. TIMING AND DELAYS
+	18.1 Time-based transitions (such as timeouts or delays) must be integrated into the state
+machine with clear rules. 18.2 Timing mechanisms should follow the same priority and conflict
+resolution rules as event-driven transitions. 18.3 Rules for starting, stopping, and resetting
+timers must be explicitly documented.
 */
+
 constexpr int MAX_GROUP_SM = 4;
 constexpr int MAX_STATE_SM = 20;
 constexpr int MAX_INNER_STATE = 10;
@@ -448,6 +510,7 @@ struct Group
 	constexpr Group(const char* name, States... states) : _name(name), _states(states...)
 	{
 		setGroupForElements(std::index_sequence_for<States...>{});
+		setPriority();
 	}
 
 	const char* getGroupName() const { return _name; }
@@ -467,8 +530,18 @@ struct Group
 	}
 	constexpr void setParent(State<Context>* parent) { _commonParent = parent; }
 	constexpr State<Context>* getCommonParent() const { return _commonParent; }
+	constexpr void setPriority()
+	{
+		_priority = std::apply(
+			[](const auto&... state) {
+				return (0 + ... + (state.getId() * state.getNestingLevel()));
+			},
+			_states);
+	}
+	constexpr int getPriority() const { return _priority; }
 
   private:
+	int _priority = -1;
 	const char* _name;
 	std::tuple<States...> _states;
 	State<Context>* _commonParent;
@@ -698,7 +771,14 @@ struct Transition
 	using Groups = Group<Context>;
 
   public:
+	enum class TransitionType : uint8_t
+	{
+		TRANS_INTERNAL = 0,
+		TRANS_EXTERNAL = 1,
+		UNDEFINED = -1
+	};
 	const int _id;
+
 	constexpr Transition(int id, const tS* from, const tS* to, const Guards& guard,
 						 const Event& event = NullEvent,
 						 const Actions& onTransitionAction = NullAction<Context>) :
@@ -713,6 +793,8 @@ struct Transition
 		{
 			_commonGroup = from->getGroup();
 		}
+		setTransitionType();
+		setPriority();
 	}
 
 	bool canTransit(const std::optional<Context>& context) const
@@ -721,21 +803,40 @@ struct Transition
 		   !_to->canActOnEntry(context))
 			return false;
 
-		bool sameGroup = (_from->getGroup() == _to->getGroup());
-		bool groupsShareCommonParent = false;
-
-		if(!sameGroup && _from->hasGroup() && _to->hasGroup())
-		{
-			auto* fromGroup = _from->getGroup();
-			auto* toGroup = _to->getGroup();
-			groupsShareCommonParent = (fromGroup->getCommonParent() == toGroup->getCommonParent());
-		}
-
-		return (sameGroup || !groupsShareCommonParent);
+		return (sameGroup() || !groupsShareCommonParent());
+	}
+	constexpr bool sameLevel() const
+	{
+		retun _from->getNestingLevel() == _to->getNestingLevel() ? true : false;
 	}
 	constexpr bool hasCommonAncestor() const { return _commonParent ? true : false; }
+
 	constexpr tS* getAncestor() { return _commonParent; }
 	constexpr Groups* getCommonGroup() { return _commonGroup; }
+	constexpr bool sameGroup() const
+	{
+		return (_from->getGroup() == _to->getGroup()) ? true : false;
+	}
+	constexpr bool hasCommonGroup() const
+	{
+
+		return sameGroup() && _from->hasGroup() && _to->hasGroup() ? true : false;
+	}
+	constexpr bool groupsShareCommonParent()
+	{
+		if(_from->hasGroup() && _to->hasGroup())
+		{
+
+			bool sameGroup = (_from->getGroup() == _to->getGroup());
+			return ((fromGroup->getCommonParent() == toGroup->getCommonParent()) && (!sameGroup)) ?
+					   true :
+					   false;
+		}
+		else
+		{
+			return false;
+		}
+	}
 
 	tS* executeTransition(std::optional<Context>& context) const
 	{
@@ -748,7 +849,35 @@ struct Transition
 		}
 		return nullptr; // No transition
 	}
+	void setTransitionType()
+	{
+		bool fromOrToParent = (_to->hasParent() && (_to->getParent() == _from)) ||
+							  (_from->hasParent() && (_from->getParent() == _to));
 
+		if(hasCommonAncestor() && sameLevel() || fromOrToParent)
+		{
+			_type = TransitionType::TRANS_INTERNAL;
+		}
+		else
+		{
+			_type = TransitionType::TRANS_EXTERNAL;
+		}
+	}
+	void setPriority()
+	{ // Internal transition are set to be highest so that the composite state is stable before
+	  // intearcting for new external transition
+		if(_type == TransitionType::TRANS_INTERNAL)
+		{
+			_priority = _from->getNestingLevel() * _from->getId()
+		}
+		else
+		{
+			_priority = _from->getNestingLevel() * _from->getId() + MAX_STATE_SM;
+		}
+	}
+
+	constexpr void getTransitionType(TransitionType type) const { return _type; }
+	constexpr int getPrioirty() const { return _priority; }
 	const tS* getFromState() const { return _from; }
 	const Event& getEvent() const { return _event; }
 	const tS* getToState() const { return _to; }
@@ -763,6 +892,8 @@ struct Transition
 	const Actions& _onTransitionAction;
 	const tS* _commonParent;
 	const Groups* _commonGroup;
+	TransitionType _type = TransitionType::UNDEFINED;
+	int _priority;
 };
 
 template<typename Context>
@@ -903,8 +1034,6 @@ class FSM
 						continue;
 					}
 					transitionsToPerform.push_back({&trans, level});
-
-					break;
 				}
 			}
 		};
@@ -1075,41 +1204,19 @@ class FSM
 
 		if(newState->hasGroup() && entryPath.size() > 1)
 		{
-			// Two-step transition: first to group parent, then to inner state
-			const State<Context>* groupParent = newState->getGroup()->getCommonParent();
+			const Group<Context>* group = newState->getGroup();
+			const State<Context>* groupParent = group->getCommonParent();
 			if(groupParent &&
-			   std::find(entryPath.begin(), entryPath.end(), groupParent) != entryPath.end())
+			   std::find(entryPath.begin(), entryPath.end(), groupParent) == entryPath.end())
 			{
-				for(auto* state: entryPath)
-				{
-					if(state == groupParent)
-					{
-						enterState(state, context);
-						break;
-					}
-				}
-				for(auto* state: entryPath)
-				{
-					if(state != groupParent)
-					{
-						enterState(state, context);
-					}
-				}
-			}
-			else
-			{
-				for(auto* state: entryPath)
-				{
-					enterState(state, context);
-				}
+				entryPath.insert(entryPath.begin(), groupParent);
 			}
 		}
-		else
+
+		// Enter each state in the adjusted entry path
+		for(auto* state: entryPath)
 		{
-			for(auto* state: entryPath)
-			{
-				enterState(state, context);
-			}
+			enterState(state, context);
 		}
 
 		trans.getAction().execute(context);
