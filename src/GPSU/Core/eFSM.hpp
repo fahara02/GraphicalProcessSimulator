@@ -315,7 +315,7 @@ enum class EventGroupType
 };
 enum class EventStatus : uint8_t
 {
-	OCURRED = 0,
+	OCCURRED = 0,
 	DISPATCHED = 1,
 	DISCARDED = 2,
 	ACKNOWLEDGED = 3,
@@ -337,8 +337,8 @@ class IEvent
   public:
 	IEvent(const IEvent&) = delete; // No copy
 	IEvent& operator=(const IEvent&) = delete; // No copy-assign
-	IEvent(IEvent&&) = default; // Allow move
-	IEvent& operator=(IEvent&&) = default; // Allow move-assign
+	IEvent(IEvent&&) noexcept = default; // Allow move
+	IEvent& operator=(IEvent&&) noexcept = default; // Allow move-assign
 
 	virtual ~IEvent() = default;
 	virtual EventGroupType getType() const = 0;
@@ -346,8 +346,9 @@ class IEvent
 	virtual bool create(EventOrigin org)
 	{
 		bool result = false;
-		if(createImpl(EventOrigin org))
+		if(createImpl(org))
 		{
+			_id = generateEventId();
 			if(_birthTime != 0)
 			{
 				_birthTime = xTaskGetTickCount() * portTICK_PERIOD_MS;
@@ -377,13 +378,13 @@ class IEvent
 	}
 	constexpr bool operator==(const IEvent& other) const
 	{
-		return _id == other._type && _name == other._name && _data == other._data;
+		return _id == other._id && _birthTime == other._birthTime;
 	}
 
   protected:
 	bool setOrigin(EventOrigin ogn)
 	{
-		if(org == EventOrigin::NONE)
+		if(ogn == EventOrigin::NONE)
 		{
 			_origin = ogn;
 			return true;
@@ -416,7 +417,6 @@ class EventBase : public IEvent
 
 		if(create(org))
 		{
-			_id = generateEventId();
 		}
 	}
 
