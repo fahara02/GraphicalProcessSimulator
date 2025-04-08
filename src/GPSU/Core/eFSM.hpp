@@ -7,38 +7,220 @@
 #include <algorithm>
 #include <unordered_set>
 #include <atomic>
+#include <functional>
+#include "freertos/FreeRTOS.h"
 
 namespace SM
 {
 /*
  DESIGN GOAL RULES
+//<---STATE--->
+1. THERE IS ALWAYS A TOP STATE/ROOT STATE
+1.1 A State is Either IDLE Or ACTIVE
+1.2 State is of Three Kind
+	1.2a  simple State(isSimple = true)- A simple State has no internal Vertices or Transitions.
+	1.2b  composite State(isComposite = true)- A composite State contains at least one Region.A
+composite State can be either a simple composite State with exactly one Region or an orthogonal
+State with multiple Regions (isOrthogonal = true)
+	1.2c submachine State- refers to an entire StateMachine, which is, conceptually, deemed to be
+	 “nested” within the State
+1.3  Any State enclosed within a Region of a composite State is called a substate of that
+composite State.
+1.4  Sharing of substate i.e overlapping not allowed !
+1.5 A State is said to be active if it is part of the active state configuration.
+1.6 A state configuration is said to be stable when:
+	1.6a no further Transitions from that state configuration are enabled and
+	1.6b all the entry Behaviors of that configuration, if present, have completed (but not
+necessarily the doActivity Behaviors of that configuration, which, if defined, may continue
+executing)
+1.7 State entry, exit, and doActivity Behaviors
+  1.7a A State may have an associated entry Behavior. This Behavior, if defined, is executed
+whenever the State is entered through an external Transition
+  1.7b  A State may also have an associated exit Behavior, which, if defined, is executed whenever
+the State is exited.
+  1.7c A State may also have an associated doActivity Behavior. This Behavior commences execution
+when the State is entered (but only after the State entry Behavior has completed) and executes
+concurrently with any other Behaviors that may be associated with the State, until:
+ 1.7c1 it completes (in which case a completion event is generated)
+ 1.7c2 the State is exited, in which case execution of the doActivity Behavior is aborted.
+ 1.7c3 The execution of a doActivity Behavior of a State is not affected by the firing of an
+internal Transition of that State.
+1.8  State history is a Pseudostates and is of two types  deepHistory and shallowHistory
+ 1.81 Deep history (deepHistory) represents the full state configuration(including innermost state)
+of the most recent visit to the containing Region
+1.82 Shallow history (shallowHistory) represents a return to only the topmost substate of the most
+recent state configuration, which is entered using the default entry rule.
 
-1. THERE IS ALWAYS A TOP_STATE
-1.1 GROUP/GROUPS AND ITS MEMBERS ALWAYS HAVE COMMON PARENT as THERE IS ALWAYS A TOP STATE
-1.2 LOWER INDEX MEANS HIGHER PRIORITY FOR ANY GROUP(_priority)/TRANSIT(_priority)/STATE(_level*_id)
-1.3 IF THERE IS GROUPS DIRECTLY BELOW TOP_STATE ACTIVE STATE WILL BE EACH ACTIVE STATE OF THE GROUP
-AND GROUP ACTIVATION WILL BE BASED ON PRIORITY
-2. STATE CAN ONLY TRANSIT TO ANOTHER STATE VIA RULE OF PARENT_TO_CHILD(NEVER GRAND
-CHILD)/CHILD_TO_PARENT(NEVER GRAND PARENT)/SIBLINGS WITH SAMEGROUP/AND AS PER 5  ON ONE
+1.9 Entering A State
+ 1.9a For A Simple State --- the entry Behavior of the State is executed (if defined) upon entry,
+but only after any effect Behavior associated . with the incoming Transition is completed. Also, if
+a doActivity Behavior is defined for the State, this Behavior commences execution immediately after
+the entry Behavior is executed
+1.9b Composite State --
+	Composites State has  5 types of Entry
+	1.9b1  Default entry:  when the composite State is the direct target of a Transition.After
+executing the entry Behavior and forking a possible doActivity Behavior execution, There is an
+initial Pseudostate  defined, State entry continues from that Vertex via its outgoing Transition to
+that initial Pseudostate then it will enter to its inner state based on psedustate transition logic.
+if no pseudostate then  treat the composite State as a simple State, terminating the traversal on
+that State despite its internal parts.
+   1.9b2 Explicit entry: If the incoming Transition or its continuations terminate on a directly
+contained substate of the composite State, then that substate becomes active and its entry Behavior
+is executed after the execution of the entry Behavior of the containing composite State. This rule
+applies recursively if the Transition terminates on an indirect (deeply nested) substate.
+   1.9b3 Shallow history entry: If the incoming Transition terminates on a shallowHistory
+Pseudostate of a Region of the composite State, the active substate becomes the substate that was
+most recently active prior to this entry, unless:
+1.9b31  the most recently active substate is the FinalState, or
+1.9b32   this is the first entry into this State.
+1.9b33  In the latter two cases, if a default shallow history Transition is defined originating from
+the shallowHistory Pseudostate, it will be taken. Otherwise, default State entry is applied
+
+1.9b4 Deep history entry: The rule for this case is the same as for shallow history except that the
+target Pseudostate is of type deepHistory and the rule is applied recursively to all levels in the
+active state configuration below this one
+1.9b5 Entry point entry: If a Transition enters a composite State through an entryPoint
+Pseudostate, then the effect Behavior associated with the outgoing Transition originating from the
+entry point and penetrating into the State (but after the entry Behavior of the composite State has
+been executed).
+1.9b6  If the composite State is also an orthogonal State with multiple Regions, each of its Regions
+is also entered, either by default or explicitly.
+1.9b7  If the Transition terminates on the edge of the composite State (i.e., without entering the
+State), then all the Regions are entered using the default entry rule above.
+1.9b8 If the Transition explicitly enters one or more Regions (in case of a fork), these Regions are
+entered explicitly and the others by default.
+1.9c Regardless of how a State is entered, the StateMachine is deemed to be “in” that State even
+before any entry Behavior or effect Behavior (if defined) of that State start executing.
+1.10  Exiting a State
+1.10a When exiting a State, regardless of whether it is simple or composite, the final step involved
+in the exit, after all other Behaviors associated with the exit are completed, is the execution of
+the exit Behavior of that State
+1.10b If the State has a doActivity Behavior that is still executing when the State is exited, that
+Behavior is aborted before the exit Behavior commences execution.
+1.10c When exiting from a composite State, exit commences with the innermost State in the active
+state configuration. This means that exit Behaviors are executed in sequence starting with the
+innermost active State.
+1.10d  If the exit occurs through an exitPoint Pseudostate, then the exit Behavior of the State is
+executed after the effect Behavior of the Transition terminating on the exit point.
+1.10e  When exiting from an orthogonal State, each of its Regions is exited. After that, the exit
+Behavior of the State is executed
+1.10f Regardless of how a State is exited, the StateMachine is deemed to have “left” that State only
+after the exit Behavior (if defined) of that State has completed execution.
+
+
+  //<----GROUPS i.e Wrapper of ORTHOGONAL STATES/Region------->
+2.HAREL'S AND STATE /ORTHOGONAL STATE IS ACTUALLY PARALLEL CONCURRENT GROUP ,WE WILL CALL IT GROUP
+WHERE HE SAYS'S  " being in a state, the system must be in all of its AND components".
+2.1 GROUP/GROUPS AND ITS MEMBERS ALWAYS HAVE COMMON PARENT as THERE IS ALWAYS A TOP STATE
+2.2 Group will be activated when any of its inner state enters or if it is directly owned by a
+StateMachine
+2.3 Groups will be deactivated when parent state exit 2.4 IF THERE IS GROUPS DIRECTLY
+BELOW TOP_STATE/ANY COMPOSITE STATE  ACTIVE STATE WILL BE EACH ACTIVE STATE OF THOSE GROUPS AND
+GROUPS ACTIVATION WILL  BE CONCURRENT .IF TRUE PARALLEL BEHAVIOUR CANT BE POSSIBLE(i.e FOR SINGLE
+CORE) ACTIVATION WILL BE ATLEAST BE BASED ON GROUP PRIORITY AND IMMEDIATE SEQUENCE OF HIGHEST
+PRIORITY TO LOWER
+<----------TRANSITIONS--------->
+3 TRANSITIONS IS OF THREE TYPES ---INTERNAL , EXTERNAL ,LOCAL
+3.1 INTERNAL -Implies that the Transition, if triggered, occurs without exiting or entering the
+source State. Also means Source==Traget
+3.2 EXTERNAL- Implies that the Transition, if triggered, will exit the source State.
+3.3 LOCAL- Implies that the Transition, if triggered, will not exit the composite (source) State,
+but it will exit and re-enter any state within the composite State that is in the current state
+configuration.
+3.4 Simple state with no orthogonal region inside will only have internal and external transition
+3.5 State can only Transit to a State not other Entity. All Transition Must have a Source State and
+Target State
+3.6 STATE TO GROUP OR GROUP TO STATE TRANSITION NEVER HAPPENS; TRANSITION IS ALWAYS BETWEEN STATES
+3.7 STATE CAN ONLY TRANSIT TO ANOTHER STATE VIA RULE OF PARENT TO CHILD(NEVER GRAND
+CHILD)/CHILD_TO_PARENT(NEVER GRAND PARENT)/SIBLINGS WITH SAMEGROUP/AND AS PER 3.6 //3.7   ON ONE
 TRANSITION.
-3 WHEN A COMPOSITE STATE ENTER OR EXIT IT WILL ONLY EFFECT ITS INNER CHILD STATES  SEQUENTIALLY
-ON SAME TRANSITION.
-3.1 A COMPOSITE STATE WHEN ACTIVE BY DEFAULT WILL ACTIVATE ALL ITS NESTED
-DEFAULT STATES FIRST IF NOT DICTATED BY TRANSITIONS AND GUARD CONDITIONS FOR A SPECIFIC INNER STATE
-OF ITS CHILD.FOR FOR LOWER LEVELS NEED TO BE TRANSITED FROM DEFAULT TO SPECIFIC BY SPECIFIC
-TRANSITION CALL.
-3.2 IF A COMPOSITE STATE HAS MULTIPLE GROUPS, ALL WILL BE ACTIVATED ,ACTIVATION ORDER WILL BE BASED
-ON GROUP PRIORITY IN SEQUENCE. AND STATE WILL BE DEFAULT STATE IF NOT  IF NOT DICTATED BY TRANSITION
-OR GUARD CONDITIONS (i.e., who can enter first?)
-4. TRANSITION BETWEEN GROUPS WITH COMMON PARENT NOT ALLOWED
-5. TRANSITION BETWEEN GROUPS (INNER STATES) WITH DIFFERENT PARENT ALLOWED, IT MEANS ONE GROUP STATE
+3.8 TRANSITION BETWEEN GROUPS/REGION WITH COMMON PARENT NOT ALLOWED
+3.9 TRANSITION BETWEEN GROUPS (INNER STATES) WITH DIFFERENT PARENT ALLOWED, IT MEANS ONE GROUP STATE
 TO ANOTHER GROUP STATE
-
-5.1 STATE TO GROUP OR GROUP TO STATE TRANSITION NEVER HAPPENS; TRANSITION IS ALWAYS BETWEEN STATES
-
-6. TRANSITION BETWEEN A STATE TO A GROUP'S INNER STATE WILL HAPPEN IN TWO STEPS:
+3.10 TRANSITION BETWEEN A STATE TO A GROUP'S INNER STATE WILL HAPPEN IN TWO STEPS:
    a. STATE TO GROUP PARENT, then
    b. IMMEDIATELY GROUP PARENT TO GROUP INNER STATE DICTATED BY TRANSITION TABLE  OR IF NOT DEFAULT
+3.11 A Transition is enabled if and only if:
+3.11a  All of its source States are in the active state configuration.
+3.11b  At least one of the triggers of the Transition has an Event that is matched by the Event type
+of the dispatched Event occurrence. In case of Signal Events, any occurrence of the same or
+compatible type as specified in the Trigger will match. If one of the Triggers is for an
+AnyReceiveEvent, then either a Signal or CallEvent satisfies this Trigger, provided that there is no
+other Signal or CallEvent Trigger for the same Transition or any other Transition having the same
+source Vertex as the Transition with the AnyReceiveEvent trigger
+3.11c If there exists at least one full path from the source state configuration to either the
+target state configuration or to a dynamic choice Pseudostate in which all guard conditions are true
+3.12 Transitions without guards are treated as if their guards are always true.
+
+
+4. TRANSITION CONFLICT RESOLUTION
+	 When multiple transitions are enabled for the same event, a deterministic priority scheme
+must be applied.That is Higher INDEX MEANS HIGHER PRIORITY FOR ANY
+GROUP(_priority)/TRANSIT(_priority)/STATE(_level*_id)
+ For that Hierarchical (Depth-First)
+Evaluation: 4.1: When an event occurs, first evaluate transitions in the most deeply nested active
+state. If a transition is enabled in a nested state, it takes precedence over those in parent
+states. 4.2: If no transitions are enabled in the current state, the event “bubbles up” to its
+parent, and the evaluation continues until an enabled transition is found or the root is reached.
+
+Transition Type Priority within Composite States:
+4.3 (Internal Transitions):
+Definition: An internal transition occurs without exiting or re-entering the source state (source
+and target are the same).
+Priority: These transitions have the highest priority because they preserve the current state
+configuration.
+4.4 (Local Transitions):
+Definition: A local transition does not exit the composite (source) state but will exit and re-enter
+any substate that is part of the current configuration.
+Priority: These transitions come second in priority. They allow internal reconfiguration while still
+preserving the composite boundary.
+4.5 (External Transitions):
+Definition: An external transition causes the composite (source) state to exit entirely.
+Priority: These transitions have the lowest priority among the three, as they represent a full exit
+from the composite state.
+Ordering within the Same Transition Type:
+4.6: When multiple transitions of the same type are enabled, their order of declaration (or a
+predefined order in the state machine specification) is used to determine which one fires.
+Concurrent (Orthogonal) Regions/GROUP:
+4.7: For orthogonal regions, each region evaluates its transitions independently.
+4.8: If transitions from different regions conflict (or interact with shared resources), a
+predefined static or configurable region priority (or deterministic execution order) should be used
+to resolve the conflict.Use Group priority for this
+4.9 a Transition originating from a substate has higher priority than a conflicting Transition
+originating from any of its containing States
+
+4.10 The priority of a Transition is defined based on its source State
+4.11 The priority of Transitions chained in a compound transition is based on the priority of the
+Transition with the most deeply nested source State
+4.12 The priority of Transitions chained in a compound transition is based on the priority of the
+Transition with the most deeply nested source State
+
+In general, if t1 is a Transition whose source State is s1, and t2 has source s2, then:
+•     If s1 is a direct or indirectly nested substate of s2, then t1 has higher priority than t2.
+•     If s1 and s2 are not in the same state configuration, then there is no priority difference
+between t1 and t2.in this case if t1 and t2 both guards is true then they will be fired based on the
+s1 and s2 level .if both are same then they will fired based on order of transition table
+definition.
+5
+
+
+5.<-------------Event--------------->
+//All event evaluated staring from root (No exception)
+//
+//
+//
+//A innerState of a Composite State can transit to  Outside Parent's Sibling and vice versa
+//GUARD / ACTION WITH LOWER ID  WILL BE EVALUATED FIRST
+//<--------------Event Propagation------------------>
+//Event Source can be an External Class,StateMachine,Transition,External State,Parent State,Sibling
+  State, own Group or External Group .
+// Internal Events are those  whose source is Parent State,Sibling
+  State, own Group
+//External events can only be notified to state machine
+//state machine will notify the event to currentState via handleEvent api
+//Transitions
+
+
   // NO LINT
 
 7. FOR THE SAME EVENT, IF TRANSITION GUARD IS TRUE IN MULTIPLE GROUPS WITH SAME LEVEL, ALL WILL
@@ -58,11 +240,7 @@ IN ORDER OF LOWER LEVEL FIRST  // NO LINT
 	12.2 For composite states, the entry action must execute before nested default states are
 activated; conversely, exit actions must be executed after all nested states have exited.
 
-13. TRANSITION CONFLICT RESOLUTION
-	13.1 When multiple transitions are enabled for the same event, a deterministic priority scheme
-must be applied//. 13.2 Priorities can be defined explicitly (by order or assigned values) or
-implicitly (by state hierarchy). 13.3 The conflict resolution strategy must be documented to avoid
-ambiguity.
+13.
 
 14. INTERNAL VS. EXTERNAL TRANSITIONS
 	14.1 Transitions are classified as internal or external.
@@ -107,13 +285,191 @@ constexpr int MAX_NESTING = 3;
 static constexpr size_t MAX_EVENT_TYPE = 4;
 static constexpr size_t MAX_LISTENER_PER_TYPE = 5;
 
+using HandlerID_t = int32_t;
+using TimerID_t = int32_t;
+using EventID_t = int32_t;
+using StateID_t = int32_t;
+using SignalID_t = int32_t;
+using Time_t = unsigned long;
+using Trigger_t = std::function<void()>;
+using EventHandler_t = std::function<bool(void)>;
+using TimerHandler_t = std::function<bool(const TimerID_t)>;
+using EnqueuedEventHandler_t = std::function<bool(const EventID_t)>;
+using ActionHandler_t = std::function<void()>;
+
+constexpr SignalID_t USER_SIGNAL_START = 0;
+enum class SIGNAL : SignalID_t
+{
+	SIG_ENTRY = -1,
+	SIG_EXIT = -2,
+	SIG_INIT = -3,
+	SIG_USER = USER_SIGNAL_START
+};
+enum class EventGroupType
+{
+	Signal,
+	MSG,
+	Call,
+	Time,
+	Change
+};
+enum class EventStatus : uint8_t
+{
+	OCURRED = 0,
+	DISPATCHED = 1,
+	DISCARDED = 2,
+	ACKNOWLEDGED = 3,
+	TRIGGERED = 4,
+	COMPLETION = 5,
+	ANY = 99
+};
+enum class EventOrigin : uint8_t
+{
+	INTERNAL_EV = 0,
+	EXTERNAL_EV = 1,
+	BROADCAST_EV = 2,
+	STAE_MACHINE_EV = 3,
+	SYSTE_EV = 4,
+	NONE = 99
+};
+class IEvent
+{
+  public:
+	IEvent(const IEvent&) = delete; // No copy
+	IEvent& operator=(const IEvent&) = delete; // No copy-assign
+	IEvent(IEvent&&) = default; // Allow move
+	IEvent& operator=(IEvent&&) = default; // Allow move-assign
+
+	virtual ~IEvent() = default;
+	virtual EventGroupType getType() const = 0;
+	virtual bool trigger(const Trigger_t& t) = 0;
+	virtual bool create(EventOrigin org)
+	{
+		bool result = false;
+		if(createImpl(EventOrigin org))
+		{
+			if(_birthTime != 0)
+			{
+				_birthTime = xTaskGetTickCount() * portTICK_PERIOD_MS;
+			}
+			result = setOrigin(org);
+			result = setStatus(EventStatus::OCCURRED);
+		}
+		return result;
+	}
+	virtual bool createImpl(EventOrigin org) = 0;
+	EventID_t getId() const { return _id; }
+	EventStatus status() const { return _status; }
+	bool isStatus(EventStatus st) const { return _status == st ? true : false; }
+	EventOrigin getOrigin() const { return _origin; }
+	int32_t when() const { return _birthTime; }
+	bool setStatus(EventStatus st)
+	{
+		if(st != _status)
+		{
+			_status = st;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	constexpr bool operator==(const IEvent& other) const
+	{
+		return _id == other._type && _name == other._name && _data == other._data;
+	}
+
+  protected:
+	bool setOrigin(EventOrigin ogn)
+	{
+		if(org == EventOrigin::NONE)
+		{
+			_origin = ogn;
+			return true;
+		}
+		return false;
+	}
+
+  private:
+	EventID_t _id;
+	Time_t _birthTime = 0;
+	EventStatus _status = EventStatus::ANY;
+	EventOrigin _origin = EventOrigin::NONE;
+
+	// Generate unique IDs (per event type)
+	static EventID_t generateEventId()
+	{
+		static std::atomic<EventID_t> idCounter{0};
+		return idCounter++;
+	}
+
+}; // namespace SM
+
+template<typename T, typename Derived>
+class EventBase : public IEvent
+{
+  public:
+	// Constructor initializes common event properties
+	EventBase(EventOrigin org)
+	{
+
+		if(create(org))
+		{
+			_id = generateEventId();
+		}
+	}
+
+	// Implement IEvent's pure virtual functions via CRTP
+	EventGroupType getType() const override
+	{
+		return Derived::EventType; // Requires Derived to define EventType
+	}
+
+	bool trigger(const Trigger_t& t) override
+	{
+		return static_cast<Derived*>(this)->triggerImpl(t);
+	}
+
+	bool createImpl() override { return static_cast<Derived*>(this)->createImplDerived(); }
+
+	//=== Common Status Management ===
+	bool markDispatched() { return setStatus(EventStatus::DISPATCHED); }
+	bool discard() { return setStatus(EventStatus::DISCARDED); }
+	bool acknowledge() { return setStatus(EventStatus::ACKNOWLEDGED); }
+	bool triggered() { return setStatus(EventStatus::TRIGGERED); }
+	bool markCompleted() { return setStatus(EventStatus::COMPLETION); }
+
+  protected:
+	T Data;
+};
+
+class IEventDispatcher
+{
+  public:
+	virtual ~IEventDispatcher() = default;
+	virtual EventGroupType getType() const = 0;
+	virtual bool start() = 0;
+	virtual void stop() = 0;
+	virtual HandlerID_t registerEventHandler(const EventHandler_t& handler) = 0;
+	virtual void unregisterEventHandler(const HandlerID_t handlerID) = 0;
+	virtual void emitEvent(const HandlerID_t handlerID) = 0;
+};
+
 class Utility
 {
   public:
 	class ID
 	{
 	  public:
-		inline static int generate() { return ++id_counter; }
+		// The generate function now accepts an optional "childs" parameter.
+		// Here we shift the incremented counter by 4 bits and combine it with childs,
+		// which should be in the range [0, 15]. This makes the generated id contain both
+		// a unique part (from the counter) and the child order.
+		inline static int generate(int childs = 0)
+		{
+			return ((++id_counter) << 4) | (childs & 0xF);
+		}
 
 	  private:
 		static std::atomic<int> id_counter;
@@ -130,6 +486,20 @@ enum class EventType
 	BROADCAST_EV,
 	NULL_EV
 };
+enum class TransitionType : uint8_t
+{
+	TRANS_INTERNAL = 0,
+	TRANS_EXTERNAL = 1,
+	UNDEFINED = 2
+};
+
+enum class StateActionTrigger
+{
+	ON_STATE_ENTRY,
+	ON_STATE_EXIT,
+	DURING,
+};
+
 struct Event
 {
 	constexpr Event() : _type(EventType::NULL_EV), _name("Null") {}
@@ -274,10 +644,10 @@ struct Action : public StateFunction
   private:
 	FuncPtr _func;
 };
-
-// inline constexpr Action<ValidatedContext> NullAction(nullptr);
 template<typename Context>
 constexpr Action<Context> NullAction(nullptr);
+
+// inline constexpr Action<ValidatedContext> NullAction(nullptr);
 
 template<typename Context, typename... States>
 struct Group;
@@ -334,6 +704,8 @@ struct StateBase
 
 	virtual bool isComposite() const { return false; }
 	virtual bool handleEvent(const Event& ev) const { return false; };
+	virtual void iterateNestedStates(std::function<void(StateBase&)> func) = 0;
+	constexpr bool isActive() { return _active; }
 	constexpr int getId() const { return _id; }
 	constexpr const char* getName() const { return _name; }
 	constexpr bool hasParent() const { return _parent ? true : false; }
@@ -341,16 +713,6 @@ struct StateBase
 	constexpr BaseState* getParent() { return _parent; }
 	constexpr Groups* getGroup() { return _group; }
 
-	constexpr void setParent(StateBase<Context>* parent)
-	{
-		_parent = parent;
-		_level = parent ? parent->_level + 1 : 0;
-		if(_level > MAX_NESTING)
-		{
-			LOG::ERROR("STATE_BASE", "Cant have Nesting more than %d", MAX_NESTING);
-		}
-	}
-	constexpr void setGroup(Group<Context>* group) { _group = group; }
 	constexpr bool hasEntryAction() const
 	{
 		return _entryAction != NullAction<Context> ? true : false;
@@ -376,9 +738,25 @@ struct StateBase
 	{
 		return hasExitAction() ? _exitActionGuard.evaluate(ctx) : true;
 	}
-
+	void decativateGroup()
+	{
+		if(hasGroup())
+		{
+			if(getGroup()->isActive())
+			{
+				getGroup()->deactivate();
+			}
+		}
+	}
 	constexpr void onEntry(Context& ctx) const
 	{
+		if(hasGroup())
+		{
+			if(!getGroup()->isActive())
+			{
+				getGroup()->activate();
+			}
+		}
 		if(canActOnEntry(ctx))
 		{
 			_entryAction.execute(ctx);
@@ -386,12 +764,45 @@ struct StateBase
 	}
 	constexpr void onExit(Context& ctx) const
 	{
+		iterateNestedStates([&](StateBase& state) { state.decativateGroup(); });
 		if(canActOnExit(ctx))
 		{
 			_exitAction.execute(ctx);
 		}
 	}
 
+	void registerEventListener(EventType eventType, EventHandler handler)
+	{
+		size_t eventTypeIndex = static_cast<size_t>(eventType);
+		if(eventTypeIndex < MAX_EVENT_TYPE &&
+		   _listenerCount[eventTypeIndex] < MAX_LISTENER_PER_TYPE)
+		{
+			_listeners[eventTypeIndex][_listenerCount[eventTypeIndex]++] = handler;
+		}
+	}
+
+	constexpr bool operator==(const StateBase& rhs) const
+	{
+		return (_id == rhs._id) && (std::strcmp(_name, rhs._name) == 0);
+	}
+
+	constexpr bool operator!=(const StateBase& rhs) const { return !(*this == rhs); }
+	constexpr int getNestingLevel() const { return _level; }
+
+  protected:
+	bool notified_by_parent = false;
+	Event new_event;
+
+	constexpr void setParent(StateBase<Context>* parent)
+	{
+		_parent = parent;
+		_level = parent ? parent->_level + 1 : 0;
+		if(_level > MAX_NESTING)
+		{
+			LOG::ERROR("STATE_BASE", "Cant have Nesting more than %d", MAX_NESTING);
+		}
+	}
+	constexpr void setGroup(Group<Context>* group) { _group = group; }
 	void dispatchEvent(const Event& event)
 	{
 		new_event = event;
@@ -414,37 +825,16 @@ struct StateBase
 		}
 	}
 
-	virtual void iterateNestedStates(std::function<void(StateBase&)> func) = 0;
-
-	void registerEventListener(EventType eventType, EventHandler handler)
-	{
-		size_t eventTypeIndex = static_cast<size_t>(eventType);
-		if(eventTypeIndex < MAX_EVENT_TYPE &&
-		   _listenerCount[eventTypeIndex] < MAX_LISTENER_PER_TYPE)
-		{
-			_listeners[eventTypeIndex][_listenerCount[eventTypeIndex]++] = handler;
-		}
-	}
-
-	constexpr bool operator==(const StateBase& rhs) const
-	{
-		return (_id == rhs._id) && (std::strcmp(_name, rhs._name) == 0);
-	}
-
-	constexpr bool operator!=(const StateBase& rhs) const { return !(*this == rhs); }
-	constexpr int getNestingLevel() const { return _level; }
-
-  protected:
-	bool notified_by_parent = false;
-
-	Event new_event;
-
   private:
 	const int _id;
 	const char* _name;
 	int _level = 0;
+	bool _active = false;
+	bool _maintainHistory = false;
+	int _entryCount = 0;
 
 	Actions _entryAction;
+	Actions _duringAction;
 	Actions _exitAction;
 	Guards _entryActionGuard;
 	Guards _exitActionGuard;
@@ -538,9 +928,13 @@ struct Group
 			},
 			_states);
 	}
+	constexpr bool isActive() const { return _active; }
+	constexpr void activate() { _active = true; }
+	constexpr void deactivate() { _active = false; }
 	constexpr int getPriority() const { return _priority; }
 
   private:
+	bool _active = false;
 	int _priority = -1;
 	const char* _name;
 	std::tuple<States...> _states;
@@ -675,10 +1069,9 @@ struct State : public StateBase<Context>
 					  this->getName());
 			this->dispatchEvent(event);
 		}
-		else if(this->hasParent() && this->notified_by_parent)
+		else if(this->hasParent() && !this->notified_by_parent)
 		{
 			this->getParent().handleEvent(event);
-			this->notified_by_parent = false;
 		}
 		else
 		{
@@ -760,6 +1153,29 @@ struct State : public StateBase<Context>
 
 template<typename Context>
 constexpr State<Context> NullState(-1, "NULL");
+template<typename Context>
+struct TransitionPath
+
+{
+	using tS = State<Context>;
+	using Actions = Action<Context>;
+	using Guards = Guard<Context>;
+	using Groups = Group<Context>;
+
+  public:
+	constexpr TransitionPath(int id, const Guards& guard, const tS* to,
+							 const Event& event = NullEvent,
+							 const Actions& onTransitionAction = NullAction<Context>)
+	{
+	}
+
+  private:
+	const Guards& _guard;
+	const tS* _to;
+	const Event& _event;
+	const Actions& _onTransitionAction;
+	int _priority;
+};
 
 // Update Transition to use pointers
 template<typename Context>
@@ -771,12 +1187,6 @@ struct Transition
 	using Groups = Group<Context>;
 
   public:
-	enum class TransitionType : uint8_t
-	{
-		TRANS_INTERNAL = 0,
-		TRANS_EXTERNAL = 1,
-		UNDEFINED = -1
-	};
 	const int _id;
 
 	constexpr Transition(int id, const tS* from, const tS* to, const Guards& guard,
@@ -799,15 +1209,23 @@ struct Transition
 
 	bool canTransit(const std::optional<Context>& context) const
 	{
-		if(!_guard.evaluate(context) || !_from->canActOnExit(context) ||
-		   !_to->canActOnEntry(context))
-			return false;
+		if(_type == TransitionType::TRANS_INTERNAL)
+		{
+			return _guard.evaluate(context);
+		}
+		else
+		{
 
-		return (sameGroup() || !groupsShareCommonParent());
+			if(!_guard.evaluate(context) || !_from->canActOnExit(context) ||
+			   !_to->canActOnEntry(context))
+				return false;
+
+			return (sameGroup() || !groupsShareCommonParent());
+		}
 	}
 	constexpr bool sameLevel() const
 	{
-		retun _from->getNestingLevel() == _to->getNestingLevel() ? true : false;
+		return _from->getNestingLevel() == _to->getNestingLevel() ? true : false;
 	}
 	constexpr bool hasCommonAncestor() const { return _commonParent ? true : false; }
 
@@ -826,11 +1244,10 @@ struct Transition
 	{
 		if(_from->hasGroup() && _to->hasGroup())
 		{
-
-			bool sameGroup = (_from->getGroup() == _to->getGroup());
-			return ((fromGroup->getCommonParent() == toGroup->getCommonParent()) && (!sameGroup)) ?
-					   true :
-					   false;
+			const auto* fromGroup = _from->getGroup();
+			const auto* toGroup = _to->getGroup();
+			bool sameGroup = (fromGroup == toGroup);
+			return ((fromGroup->getCommonParent() == toGroup->getCommonParent()) && (!sameGroup));
 		}
 		else
 		{
@@ -854,7 +1271,7 @@ struct Transition
 		bool fromOrToParent = (_to->hasParent() && (_to->getParent() == _from)) ||
 							  (_from->hasParent() && (_from->getParent() == _to));
 
-		if(hasCommonAncestor() && sameLevel() || fromOrToParent)
+		if(fromOrToParent)
 		{
 			_type = TransitionType::TRANS_INTERNAL;
 		}
@@ -868,7 +1285,7 @@ struct Transition
 	  // intearcting for new external transition
 		if(_type == TransitionType::TRANS_INTERNAL)
 		{
-			_priority = _from->getNestingLevel() * _from->getId()
+			_priority = _from->getNestingLevel() * _from->getId();
 		}
 		else
 		{
@@ -876,7 +1293,7 @@ struct Transition
 		}
 	}
 
-	constexpr void getTransitionType(TransitionType type) const { return _type; }
+	constexpr TransitionType getTransitionType() const { return _type; }
 	constexpr int getPrioirty() const { return _priority; }
 	const tS* getFromState() const { return _from; }
 	const Event& getEvent() const { return _event; }
